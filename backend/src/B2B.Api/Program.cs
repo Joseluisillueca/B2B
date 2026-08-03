@@ -3,6 +3,7 @@ using B2B.Api.Auth;
 using B2B.Api.Data;
 using B2B.Api.Sync;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -24,6 +25,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (db.Database.IsRelational())
+        db.Database.Migrate();
+
+    // Usuario de integración para el conector BC (Setup: Integration User/Password)
+    var seedEmail = app.Configuration["Seed:UserEmail"];
+    var seedPassword = app.Configuration["Seed:UserPassword"];
+    if (!string.IsNullOrEmpty(seedEmail) && !string.IsNullOrEmpty(seedPassword) && !db.Users.Any())
+    {
+        var user = new AppUser { Id = Guid.NewGuid(), Email = seedEmail.ToLowerInvariant(), PasswordHash = "" };
+        user.PasswordHash = new PasswordHasher<AppUser>().HashPassword(user, seedPassword);
+        db.Users.Add(user);
+        db.SaveChanges();
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {
