@@ -45,6 +45,47 @@ public static class SyncEndpoints
         app.MapPut("/api/core/b2binfo", (HttpRequest request, AppDbContext db) =>
             UpsertAsync(db, request, "company", "company", parentId: null)).RequireAuthorization();
 
+        // Ofertas del conector: PUT a URL fija SIN id, body = array [{id, offerData}]
+        // (contrato 03 §4.2-4.3). Cada elemento se guarda por su id raíz.
+        app.MapPut("/api/catalog/offers", async (HttpRequest request, AppDbContext db) =>
+        {
+            string body;
+            using (var reader = new StreamReader(request.Body))
+                body = await reader.ReadToEndAsync();
+
+            JsonNode? payload;
+            try
+            {
+                payload = JsonNode.Parse(body);
+            }
+            catch (JsonException)
+            {
+                return Results.Json(new { error = "Body must be valid JSON" }, statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            var elements = payload switch
+            {
+                JsonArray array => array.OfType<JsonObject>().ToList(),
+                JsonObject single => [single],
+                _ => []
+            };
+
+            var now = DateTime.UtcNow;
+            var received = 0;
+            foreach (var element in elements)
+            {
+                var id = CatalogNormalizer.Text(element["id"]);
+                if (id.Length == 0)
+                    continue;
+                await UpsertDocumentAsync(db, "offer", id, parentId: null,
+                    element.ToJsonString(), element, now);
+                received++;
+            }
+            await db.SaveChangesAsync();
+
+            return Results.Ok(new { received });
+        }).RequireAuthorization();
+
         // Rutas que el conector deriva de la URL de clientes con sufijos hardcodeados (contrato 04)
         app.MapPut("/api/clients/{clientId}/users/admin", (HttpRequest request, string clientId, AppDbContext db) =>
             UpsertAsync(db, request, "client-user", clientId, parentId: clientId)).RequireAuthorization();
@@ -70,7 +111,16 @@ public static class SyncEndpoints
             return Results.Json(new { error = "Body must be valid JSON" }, statusCode: StatusCodes.Status400BadRequest);
         }
 
-        var now = DateTime.UtcNow;
+        await UpsertDocumentAsync(db, entityType, externalId, parentId, body, payload, DateTime.UtcNow);
+        await db.SaveChangesAsync();
+
+        return Results.Ok(new { id = externalId });
+    }
+
+    private static async Task UpsertDocumentAsync(
+        AppDbContext db, string entityType, string externalId, string? parentId,
+        string body, JsonNode? payload, DateTime now)
+    {
         var doc = await db.SyncDocuments
             .SingleOrDefaultAsync(d => d.EntityType == entityType && d.ExternalId == externalId);
         if (doc is null)
@@ -95,8 +145,5 @@ public static class SyncEndpoints
 
         // Crudo y normalizado se guardan en el mismo SaveChanges: nunca divergen
         CatalogNormalizer.Normalize(db, entityType, externalId, payload);
-        await db.SaveChangesAsync();
-
-        return Results.Ok(new { id = externalId });
     }
 }

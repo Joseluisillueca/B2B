@@ -39,7 +39,12 @@ dotnet run --project src/B2B.Api
 | `GET /api/admin/sync-documents` (CMS: comunicación recibida, filtro y paginación) | — | ✅ Con tests |
 | `GET /health` | — | ✅ |
 
-Los PUT de modelos y productos además **normalizan** el payload a las tablas de dominio `catalog_models` y `catalog_products` (nombre es_ES, referencia, familia, segmentos, SKU/EAN, talla extraída de `attributes.tallas`, case packs con bundle) en la misma transacción que el crudo — son las tablas que consumirán el CMS y el front de pedidos.
+Los PUT además **normalizan** el payload a tablas de dominio en la misma transacción que el crudo — son las tablas que consumirán el CMS y el front de pedidos:
+
+- `catalog_models` / `catalog_products` — modelos, variantes y case packs (nombre es_ES, familia, segmentos, SKU/EAN, talla de `attributes.tallas`, bundle).
+- `stock_levels` — stock por (producto, ventana), con la ventana del body (`stockServiceId`) casada case-insensitive (hallazgo 03 §7.2). El sentinela `10000` = "ilimitado" (SCHEDULED abierta) se guarda tal cual.
+- `offers` — una fila por id determinista de BC: modelo/producto, cliente o grupo, PVD/PVP, tramo de cantidad, descuento, fechas, orderType. El PUT real del conector es a `/api/catalog/offers` **sin id y con array** `[{id, offerData}]`; el GET/DELETE de reconciliación opera sobre esta tabla.
+- `service_windows` — ventanas con id normalizado a minúsculas, aceptando el payload rico del adapter y el mínimo legacy.
 
 El login acepta `{email, password, type, longDuration}` y devuelve `{token, tokenExpiresIn}` con la fecha absoluta en formato `dd/MM/yyyy HH:mm:ss` que el `Evaluate` de BC-es sabe parsear (ver hallazgo en el contrato §1.3).
 

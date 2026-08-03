@@ -25,12 +25,15 @@ public static class QueryEndpoints
                 return Results.Json(new { error = "Body must be valid JSON" }, statusCode: StatusCodes.Status400BadRequest);
             }
 
-            var offers = await db.SyncDocuments.Where(d => d.EntityType == "offer").ToListAsync();
-            var items = offers
-                .Where(o => modelId is null
-                    || string.Equals(ExtractModelId(o.Payload), modelId, StringComparison.OrdinalIgnoreCase))
-                .Select(o => new { id = o.ExternalId })
-                .ToList();
+            // Debe devolver el universo completo de ofertas del modelo: es la base
+            // de la reconciliación GET-comparar-DELETE del conector (contrato 03 §4.4)
+            var query = db.Offers.AsQueryable();
+            if (modelId is not null)
+            {
+                var normalized = modelId.ToLower();
+                query = query.Where(o => o.ModelId.ToLower() == normalized);
+            }
+            var items = await query.Select(o => new { id = o.ExternalId }).ToListAsync();
 
             return Results.Ok(new { items });
         }).RequireAuthorization();
@@ -40,11 +43,14 @@ public static class QueryEndpoints
             var doc = await db.SyncDocuments
                 .SingleOrDefaultAsync(d => d.EntityType == "offer" && d.ExternalId == id);
             if (doc is not null)
-            {
                 db.SyncDocuments.Remove(doc);
-                await db.SaveChangesAsync();
-            }
-            return Results.Ok(new { id, deleted = doc is not null });
+
+            var offer = await db.Offers.SingleOrDefaultAsync(o => o.ExternalId == id);
+            if (offer is not null)
+                db.Offers.Remove(offer);
+
+            await db.SaveChangesAsync();
+            return Results.Ok(new { id, deleted = doc is not null || offer is not null });
         }).RequireAuthorization();
 
         app.MapMethods("/api/orders/search", ["GET", "POST"], async (HttpRequest request, AppDbContext db) =>
@@ -66,15 +72,4 @@ public static class QueryEndpoints
         return string.IsNullOrWhiteSpace(body) ? null : body;
     }
 
-    private static string? ExtractModelId(string payload)
-    {
-        try
-        {
-            return (JsonNode.Parse(payload) as JsonObject)?["modelId"]?.GetValue<string>();
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
 }

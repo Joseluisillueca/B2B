@@ -27,7 +27,100 @@ public static class CatalogNormalizer
             case "product":
                 UpsertProduct(db, externalId, obj);
                 break;
+            case "inventory":
+                UpsertStock(db, externalId, obj);
+                break;
+            case "service-window":
+                UpsertServiceWindow(db, externalId, obj);
+                break;
+            case "offer":
+                UpsertOffer(db, externalId, obj);
+                break;
         }
+    }
+
+    // Contrato 03 §2: la URL identifica el producto; la ventana viaja en el body
+    // (stockServiceId) con mayúsculas inconsistentes → clave normalizada a minúsculas.
+    private static void UpsertStock(AppDbContext db, string productExternalId, JsonObject obj)
+    {
+        var windowId = Text(obj["stockServiceId"]);
+        var key = windowId.ToLowerInvariant();
+
+        var level = db.StockLevels.SingleOrDefault(s =>
+            s.ProductExternalId == productExternalId && s.ServiceWindowKey == key);
+        if (level is null)
+        {
+            level = new StockLevel
+            {
+                Id = Guid.NewGuid(),
+                ProductExternalId = productExternalId,
+                ServiceWindowId = windowId,
+                ServiceWindowKey = key
+            };
+            db.StockLevels.Add(level);
+        }
+
+        level.ServiceWindowId = windowId;
+        level.Stock = Number(obj["stock"]);
+        level.OrderType = Text(obj["orderType"]);
+        level.EntryDate = Text(obj["entryDate"]);
+        level.UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Contrato 03 §1: payload rico del adapter (con id en minúsculas en el body)
+    // y payload legacy mínimo (solo fechas y orderType). Campos ausentes no machacan.
+    private static void UpsertServiceWindow(AppDbContext db, string urlId, JsonObject obj)
+    {
+        var id = (Text(obj["id"]) is { Length: > 0 } bodyId ? bodyId : urlId).ToLowerInvariant();
+
+        var window = db.ServiceWindows.SingleOrDefault(w => w.ExternalId == id);
+        if (window is null)
+        {
+            window = new ServiceWindow { ExternalId = id };
+            db.ServiceWindows.Add(window);
+        }
+
+        if (obj.ContainsKey("name"))
+            window.Name = SpanishText(obj["name"]);
+        window.OrderType = Text(obj["orderType"]);
+        window.FromDate = Text(obj["from"]);
+        window.ToDate = Text(obj["to"]);
+        window.LimitDate = Text(obj["limit"]);
+        window.PayloadJson = obj.ToJsonString(RawJson);
+        window.UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Contrato 03 §4.3: forma real {id, offerData:{...}}; también se acepta el
+    // objeto de datos directamente en la raíz (rutas con id individual).
+    private static void UpsertOffer(AppDbContext db, string externalId, JsonObject obj)
+    {
+        var data = obj["offerData"] as JsonObject ?? obj;
+
+        var offer = db.Offers.SingleOrDefault(o => o.ExternalId == externalId);
+        if (offer is null)
+        {
+            offer = new Offer { ExternalId = externalId };
+            db.Offers.Add(offer);
+        }
+
+        var basePrice = data["basePrice"] as JsonObject;
+        var firstDiscount = (data["discounts"] as JsonArray)?.OfType<JsonObject>().FirstOrDefault();
+
+        offer.ModelId = Text(data["modelId"]);
+        offer.ProductId = NullableText(data["productId"]);
+        offer.ClientId = NullableText(data["clientId"]);
+        offer.ClientGroupId = NullableText(data["clientGroupId"]);
+        offer.PriceType = Text(data["priceType"]) is { Length: > 0 } pt ? pt : "PVD";
+        offer.PriceCode = Text(basePrice?["code"]);
+        offer.PriceValue = Number(basePrice?["value"]);
+        offer.MinQuantity = Number(data["stock"]);
+        offer.DiscountPercent = firstDiscount is null ? null : Number(firstDiscount["percent"]);
+        offer.FromDate = NullableText(data["fromDate"]);
+        offer.ToDate = NullableText(data["toDate"]);
+        offer.OrderType = NullableText(data["orderType"]);
+        offer.Priority = (int)Number(data["priority"]);
+        offer.PayloadJson = obj.ToJsonString(RawJson);
+        offer.UpdatedAt = DateTime.UtcNow;
     }
 
     private static void UpsertModel(AppDbContext db, string externalId, JsonObject obj)
@@ -82,8 +175,13 @@ public static class CatalogNormalizer
             .FirstOrDefault(a => string.Equals(a.Key, "tallas", StringComparison.OrdinalIgnoreCase))
             .Value?.GetValue<string>();
 
-    private static string Text(JsonNode? node) =>
+    public static string Text(JsonNode? node) =>
         node?.GetValueKind() == System.Text.Json.JsonValueKind.String ? node.GetValue<string>() : "";
+
+    private static string? NullableText(JsonNode? node) => node is null ? null : Text(node);
+
+    private static decimal Number(JsonNode? node) =>
+        node?.GetValueKind() == System.Text.Json.JsonValueKind.Number ? node.GetValue<decimal>() : 0m;
 
     // Campos multiidioma: es_ES como texto principal; si no viene, el primer idioma presente
     private static string SpanishText(JsonNode? node)
