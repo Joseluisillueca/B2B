@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using B2B.Api.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -59,9 +60,10 @@ public static class SyncEndpoints
         using (var reader = new StreamReader(request.Body))
             body = await reader.ReadToEndAsync();
 
+        JsonNode? payload;
         try
         {
-            using var _ = JsonDocument.Parse(body);
+            payload = JsonNode.Parse(body);
         }
         catch (JsonException)
         {
@@ -90,6 +92,9 @@ public static class SyncEndpoints
             doc.ParentId = parentId;
             doc.LastReceivedAt = now;
         }
+
+        // Crudo y normalizado se guardan en el mismo SaveChanges: nunca divergen
+        CatalogNormalizer.Normalize(db, entityType, externalId, payload);
         await db.SaveChangesAsync();
 
         return Results.Ok(new { id = externalId });

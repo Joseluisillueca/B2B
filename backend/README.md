@@ -36,7 +36,10 @@ dotnet run --project src/B2B.Api
 | `PUT /api/clients/{id}/users/admin` y `/shipping-addresses/{id}` (sufijos hardcodeados del conector) | [04](../docs/contrato-api/04-clientes-agentes.md) | ✅ Con tests |
 | `GET /api/catalog/offers` (con body `{"modelId"}`) y `DELETE /api/catalog/offers/{id}` — ciclo GET-comparar-DELETE | [01 §3.4](../docs/contrato-api/01-autenticacion-y-convenciones.md) | ✅ Con tests |
 | `GET|POST /api/orders/search` (con body `{"search":[{"all":true}]}`) | [04 §6](../docs/contrato-api/04-clientes-agentes.md) | ✅ Con tests |
+| `GET /api/admin/sync-documents` (CMS: comunicación recibida, filtro y paginación) | — | ✅ Con tests |
 | `GET /health` | — | ✅ |
+
+Los PUT de modelos y productos además **normalizan** el payload a las tablas de dominio `catalog_models` y `catalog_products` (nombre es_ES, referencia, familia, segmentos, SKU/EAN, talla extraída de `attributes.tallas`, case packs con bundle) en la misma transacción que el crudo — son las tablas que consumirán el CMS y el front de pedidos.
 
 El login acepta `{email, password, type, longDuration}` y devuelve `{token, tokenExpiresIn}` con la fecha absoluta en formato `dd/MM/yyyy HH:mm:ss` que el `Evaluate` de BC-es sabe parsear (ver hallazgo en el contrato §1.3).
 

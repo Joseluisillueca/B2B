@@ -1,4 +1,5 @@
 using System.Text;
+using B2B.Api.Admin;
 using B2B.Api.Auth;
 using B2B.Api.Data;
 using B2B.Api.Sync;
@@ -56,6 +57,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints();
 app.MapSyncEndpoints();
 app.MapQueryEndpoints();
+app.MapAdminEndpoints();
 
 app.Run();
 
