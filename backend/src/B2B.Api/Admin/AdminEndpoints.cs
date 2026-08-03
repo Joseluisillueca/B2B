@@ -33,5 +33,40 @@ public static class AdminEndpoints
 
             return Results.Ok(new { total, items });
         }).RequireAuthorization();
+
+        app.MapGet("/api/admin/summary", async (AppDbContext db) =>
+        {
+            var items = await db.SyncDocuments
+                .GroupBy(d => d.EntityType)
+                .Select(g => new
+                {
+                    EntityType = g.Key,
+                    Count = g.Count(),
+                    LastReceivedAt = g.Max(d => d.LastReceivedAt)
+                })
+                .OrderBy(g => g.EntityType)
+                .ToListAsync();
+
+            return Results.Ok(new { items });
+        }).RequireAuthorization();
+
+        app.MapGet("/api/admin/sync-documents/{entityType}/{externalId}",
+            async (string entityType, string externalId, AppDbContext db) =>
+        {
+            var doc = await db.SyncDocuments
+                .SingleOrDefaultAsync(d => d.EntityType == entityType && d.ExternalId == externalId);
+            if (doc is null)
+                return Results.NotFound(new { error = "Document not found" });
+
+            return Results.Ok(new
+            {
+                entityType = doc.EntityType,
+                externalId = doc.ExternalId,
+                parentId = doc.ParentId,
+                firstReceivedAt = doc.FirstReceivedAt,
+                lastReceivedAt = doc.LastReceivedAt,
+                payload = doc.Payload
+            });
+        }).RequireAuthorization();
     }
 }

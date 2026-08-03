@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,10 +46,11 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+app.MapOpenApi();
+app.MapScalarApiReference("/docs", options => options.WithTitle("B2B Platform API"));
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -60,10 +62,15 @@ app.MapGet("/", () => Results.Content(
     <h1>B2B Platform — API</h1>
     <p>El backend está en marcha. Esta es una API para el conector de Business Central
     y el portal B2B; no tiene interfaz web en esta dirección.</p>
-    <ul><li><a href="/health">/health</a> — estado</li></ul>
+    <ul>
+    <li><a href="/health">/health</a> — estado</li>
+    <li><a href="/docs">/docs</a> — documentación de la API</li>
+    <li><a href="/admin">/admin</a> — panel de administración</li>
+    </ul>
     </body></html>
     """, "text/html"));
 
+app.MapGet("/admin", () => Results.Redirect("/admin.html"));
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints();
 app.MapSyncEndpoints();

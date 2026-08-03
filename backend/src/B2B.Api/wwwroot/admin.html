@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B2B Platform — Admin</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --line:#e3e6ea; --text:#1c2733; --muted:#68737e; --accent:#0b6bcb; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); }
+  header { background:var(--card); border-bottom:1px solid var(--line); padding:.9rem 1.5rem; display:flex; align-items:center; gap:1rem; }
+  header h1 { font-size:1.05rem; margin:0; }
+  header .spacer { flex:1; }
+  main { max-width:75rem; margin:1.5rem auto; padding:0 1.5rem; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:1.25rem; }
+  /* Login */
+  #login { max-width:22rem; margin:14vh auto; display:flex; flex-direction:column; gap:.8rem; }
+  #login h2 { margin:0 0 .4rem; font-size:1.15rem; }
+  input, select, button { font:inherit; padding:.55rem .7rem; border-radius:8px; border:1px solid var(--line); }
+  button { background:var(--accent); border-color:var(--accent); color:#fff; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--accent); }
+  .error { color:#b3261e; font-size:.85rem; min-height:1.1em; margin:0; }
+  /* Dashboard */
+  #dash { display:none; }
+  .chips { display:flex; flex-wrap:wrap; gap:.6rem; margin-bottom:1.2rem; }
+  .chip { background:var(--card); border:1px solid var(--line); border-radius:999px; padding:.35rem .9rem; font-size:.85rem; cursor:pointer; }
+  .chip b { color:var(--accent); }
+  .chip.active { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+  .toolbar { display:flex; gap:.6rem; align-items:center; margin-bottom:.8rem; flex-wrap:wrap; }
+  .toolbar .muted { color:var(--muted); font-size:.85rem; }
+  .grid { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:1rem; align-items:start; }
+  table { width:100%; border-collapse:collapse; font-size:.88rem; }
+  th, td { text-align:left; padding:.5rem .6rem; border-bottom:1px solid var(--line); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:16rem; }
+  th { color:var(--muted); font-weight:600; font-size:.78rem; text-transform:uppercase; letter-spacing:.03em; }
+  tbody tr { cursor:pointer; }
+  tbody tr:hover { background:#eef4fb; }
+  tbody tr.sel { background:#e3eefb; }
+  pre { margin:0; font-size:.8rem; line-height:1.45; white-space:pre-wrap; word-break:break-word; max-height:34rem; overflow:auto; }
+  #detailMeta { color:var(--muted); font-size:.8rem; margin:0 0 .6rem; }
+  @media (max-width:56rem) { .grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>B2B Platform — Admin</h1>
+  <div class="spacer"></div>
+  <span id="who" class="muted" style="color:var(--muted);font-size:.85rem"></span>
+  <button id="logout" class="ghost" style="display:none">Salir</button>
+</header>
+
+<div id="login" class="card">
+  <h2>Iniciar sesión</h2>
+  <input id="email" type="email" placeholder="Email" autocomplete="username">
+  <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password">
+  <button id="doLogin">Entrar</button>
+  <p id="loginError" class="error"></p>
+</div>
+
+<main>
+  <div id="dash">
+    <div class="chips" id="chips"></div>
+    <div class="grid">
+      <div class="card">
+        <div class="toolbar">
+          <button id="refresh" class="ghost">↻ Actualizar</button>
+          <span class="muted" id="count"></span>
+          <div class="spacer" style="flex:1"></div>
+          <button id="prev" class="ghost">←</button>
+          <span class="muted" id="page"></span>
+          <button id="next" class="ghost">→</button>
+        </div>
+        <table>
+          <thead><tr><th>Tipo</th><th>Id externo</th><th>Recibido por última vez</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <p id="detailMeta">Selecciona una fila para ver el JSON recibido de BC.</p>
+        <pre id="payload"></pre>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const PAGE = 25;
+let token = sessionStorage.getItem('b2b_token') || '';
+let filter = '', skip = 0, total = 0;
+
+const $ = id => document.getElementById(id);
+
+async function api(path) {
+  const res = await fetch(path, { headers: { Authorization: 'Bearer ' + token } });
+  if (res.status === 401) { logout(); throw new Error('Sesión caducada'); }
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+function logout() {
+  token = ''; sessionStorage.removeItem('b2b_token');
+  $('dash').style.display = 'none'; $('login').style.display = 'flex';
+  $('logout').style.display = 'none'; $('who').textContent = '';
+}
+
+async function login() {
+  $('loginError').textContent = '';
+  const res = await fetch('/api/auth/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: $('email').value, password: $('password').value, type: 'global', longDuration: true })
+  });
+  if (!res.ok) { $('loginError').textContent = 'Credenciales incorrectas'; return; }
+  token = (await res.json()).token;
+  sessionStorage.setItem('b2b_token', token);
+  enter($('email').value);
+}
+
+function enter(who) {
+  $('login').style.display = 'none'; $('dash').style.display = 'block';
+  $('logout').style.display = 'inline-block';
+  if (who) $('who').textContent = who;
+  loadSummary(); loadRows();
+}
+
+async function loadSummary() {
+  const data = await api('/api/admin/summary');
+  const chips = [`<span class="chip ${filter===''?'active':''}" data-t="">Todo</span>`]
+    .concat(data.items.map(i =>
+      `<span class="chip ${filter===i.entityType?'active':''}" data-t="${i.entityType}">${i.entityType} <b>${i.count}</b></span>`));
+  $('chips').innerHTML = chips.join('');
+  document.querySelectorAll('.chip').forEach(c =>
+    c.onclick = () => { filter = c.dataset.t; skip = 0; loadSummary(); loadRows(); });
+}
+
+async function loadRows() {
+  const q = new URLSearchParams({ skip, take: PAGE });
+  if (filter) q.set('entityType', filter);
+  const data = await api('/api/admin/sync-documents?' + q);
+  total = data.total;
+  $('count').textContent = total + ' documentos';
+  $('page').textContent = (Math.floor(skip / PAGE) + 1) + ' / ' + Math.max(1, Math.ceil(total / PAGE));
+  $('rows').innerHTML = data.items.map(d =>
+    `<tr data-t="${d.entityType}" data-id="${encodeURIComponent(d.externalId)}">
+       <td>${d.entityType}</td><td title="${d.externalId}">${d.externalId}</td>
+       <td>${new Date(d.lastReceivedAt).toLocaleString()}</td></tr>`).join('');
+  document.querySelectorAll('#rows tr').forEach(tr => tr.onclick = () => {
+    document.querySelectorAll('#rows tr').forEach(x => x.classList.remove('sel'));
+    tr.classList.add('sel');
+    showDetail(tr.dataset.t, tr.dataset.id);
+  });
+}
+
+async function showDetail(type, id) {
+  const d = await api(`/api/admin/sync-documents/${type}/${id}`);
+  $('detailMeta').textContent =
+    `${d.entityType} · ${d.externalId} · primera vez ${new Date(d.firstReceivedAt).toLocaleString()} · última ${new Date(d.lastReceivedAt).toLocaleString()}`;
+  try { $('payload').textContent = JSON.stringify(JSON.parse(d.payload), null, 2); }
+  catch { $('payload').textContent = d.payload; }
+}
+
+$('doLogin').onclick = login;
+$('password').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+$('logout').onclick = logout;
+$('refresh').onclick = () => { loadSummary(); loadRows(); };
+$('prev').onclick = () => { if (skip >= PAGE) { skip -= PAGE; loadRows(); } };
+$('next').onclick = () => { if (skip + PAGE < total) { skip += PAGE; loadRows(); } };
+
+if (token) enter('');
+</script>
+</body>
+</html>
