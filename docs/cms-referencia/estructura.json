@@ -1,0 +1,648 @@
+{
+ "/dashboard": {
+  "url": "https://admin-b2b.lejanbrand.com/dashboard",
+  "table_headers": [
+   "POSICIÓN",
+   "NOMBRE",
+   "CANTIDAD",
+   "INGRESOS",
+   "POSICIÓN",
+   "NOMBRE",
+   "CÓDIGO",
+   "INGRESOS",
+   "Nª PEDIDO",
+   "FECHA",
+   "CLIENTE",
+   "ESTADO",
+   "IMPORTE",
+   "FECHA",
+   "CLIENTE",
+   "PAÍS",
+   "PROVINCIA",
+   "TIPO DE PAGO"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "GLOBAL",
+   "AÑO EN CURSO",
+   "MES ACTUAL",
+   "HOY"
+  ],
+  "inputs": []
+ },
+ "/modelos": {
+  "url": "https://admin-b2b.lejanbrand.com/modelos",
+  "table_headers": [
+   "MODELO",
+   "REFERENCIA",
+   "FAMILIA",
+   "ACTIVO"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "BUSCAR",
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "17"
+  ],
+  "inputs": [
+   "Buscar por nombre de modelo o referencia de producto",
+   "brandId"
+  ]
+ },
+ "/productos": {
+  "url": "https://admin-b2b.lejanbrand.com/productos",
+  "table_headers": [
+   "REFERENCIA",
+   "NOMBRE",
+   "MODELO",
+   "ACTIVO"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "BUSCAR",
+   "ID"
+  ],
+  "inputs": [
+   "Buscar por nombre, referencia o modelo",
+   "active"
+  ]
+ },
+ "/atributos": {
+  "url": "https://admin-b2b.lejanbrand.com/atributos",
+  "table_headers": [
+   "ID",
+   "NOMBRE ES_ES",
+   "NOMBRE EN_EN",
+   "NOMBRE FR_FR",
+   "NOMBRE IT_IT",
+   "CODE",
+   "TIPO"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "1",
+   "2"
+  ],
+  "inputs": []
+ },
+ "/familias": {
+  "url": "https://admin-b2b.lejanbrand.com/familias",
+  "table_headers": [],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT"
+  ],
+  "inputs": []
+ },
+ "/categorias": {
+  "url": "https://admin-b2b.lejanbrand.com/categorias",
+  "table_headers": [],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT"
+  ],
+  "inputs": []
+ },
+ "/ofertas": {
+  "url": "https://admin-b2b.lejanbrand.com/ofertas",
+  "table_headers": [
+   "PRODUCTO / MODELO",
+   "CLIENTE / GRUPO",
+   "TIPO PEDIDO",
+   "TIPO PRECIO",
+   "PRECIO BASE",
+   "PRECIO ORIGINAL",
+   "VIGENCIA",
+   "PRIORIDAD",
+   "ULT. ACTUALIZACIÓN",
+   "CAMPOS(JSON)"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "EXPORTAR LISTADO",
+   "BUSCAR",
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "3139"
+  ],
+  "inputs": [
+   "Producto, modelo o cliente",
+   "clientGroupId",
+   "clientId",
+   "modelId"
+  ]
+ },
+ "/stocks": {
+  "url": "https://admin-b2b.lejanbrand.com/stocks",
+  "table_headers": [
+   "REF.",
+   "ALMACÉN.",
+   "NOMBRE",
+   "MODELO",
+   "ÚLT. CAMBIO",
+   "STOCK",
+   "VENTANA DE SERVICIO"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "BUSCAR",
+   "EXPORTAR EXCEL",
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "642"
+  ],
+  "inputs": [
+   "Buscar por nombre o referencia de producto",
+   "available",
+   "stockServiceId"
+  ]
+ },
+ "/stock-services": {
+  "url": "https://admin-b2b.lejanbrand.com/stock-services",
+  "table_headers": [
+   "ID",
+   "NOMBRE",
+   "DESDE",
+   "HASTA",
+   "LÍMITE",
+   "DÍAS LÍMITE",
+   "MOSTRAR HASTA",
+   "INCOTERMS"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "AÑADIR SERVICIO DE STOCK"
+  ],
+  "inputs": []
+ },
+ "/clientes": {
+  "url": "https://admin-b2b.lejanbrand.com/clientes",
+  "table_headers": [
+   "CÓDIGO",
+   "NOMBRE",
+   "PAÍS",
+   "PROVINCIA",
+   "INCOTERM",
+   "ACTIVO",
+   "DROPSHIPPING",
+   "ESTADO",
+   "VALIDACIÓN",
+   "AGENTE",
+   "ACCIONES"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "BUSCAR"
+  ],
+  "inputs": [
+   "Buscar por razón social, nombre, código de cliente",
+   "Buscar por agente",
+   "centralPurchasingId",
+   "isCentralPurchasing"
+  ]
+ },
+ "/clientes-grupos": {
+  "url": "https://admin-b2b.lejanbrand.com/clientes-grupos",
+  "table_headers": [
+   "CÓDIGO",
+   "NOMBRE",
+   "ACTIVO"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "BUSCAR",
+   "SINCRONIZAR"
+  ],
+  "inputs": [
+   "Buscar por código o nombre"
+  ]
+ },
+ "/clientes-usuarios": {
+  "url": "https://admin-b2b.lejanbrand.com/clientes-usuarios",
+  "table_headers": [
+   "NOMBRE",
+   "EMAIL",
+   "CLIENTE",
+   "ROL",
+   "ACTIVO"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "BUSCAR"
+  ],
+  "inputs": [
+   "Buscar por nombre o email",
+   "Buscar por cliente (nombre, código, nombre fiscal)",
+   "active"
+  ]
+ },
+ "/agentes": {
+  "url": "https://admin-b2b.lejanbrand.com/agentes",
+  "table_headers": [
+   "NOMBRE",
+   "EMAIL",
+   "CLIENTES",
+   "CLIENTES ACTIVOS",
+   "ACCIONES"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "BUSCAR",
+   "NUEVO AGENTE"
+  ],
+  "inputs": [
+   "Buscar por nombre o email",
+   "Buscar cliente por id"
+  ]
+ },
+ "/pedidos": {
+  "url": "https://admin-b2b.lejanbrand.com/pedidos",
+  "table_headers": [
+   "Nº DE PEDIDO",
+   "COD. CLIENTE",
+   "NOM. CLIENTE",
+   "FECHA",
+   "REF. CLIENTE",
+   "TIPO",
+   "IMPORTE",
+   "ESTADO"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "BUSCAR",
+   "1",
+   "2",
+   "3"
+  ],
+  "inputs": [
+   "Pedido, referencia o nombre de cliente",
+   "clientId",
+   "saleId",
+   "userId",
+   "createdAtFrom",
+   "type"
+  ]
+ },
+ "/facturas": {
+  "url": "https://admin-b2b.lejanbrand.com/facturas",
+  "table_headers": [
+   "Nº FACTURA",
+   "COD. CLIENTE",
+   "NOM. CLIENTE",
+   "FECHA EMISIÓN",
+   "FORMA DE PAGO",
+   "IMPORTE",
+   "DEUDA",
+   "ESTADO"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "BUSCAR"
+  ],
+  "inputs": [
+   "Buscar por nº de factura",
+   "clientId",
+   "issueDateFrom"
+  ]
+ },
+ "/albaranes": {
+  "url": "https://admin-b2b.lejanbrand.com/albaranes",
+  "table_headers": [
+   "Nº ALBARÁN",
+   "CLIENTE",
+   "FECHA ENTREGA",
+   "TRANSPORTISTA",
+   "IMPORTE",
+   "FACTURADO"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "BUSCAR"
+  ],
+  "inputs": [
+   "clientId",
+   "createdAtFrom"
+  ]
+ },
+ "/sats/return": {
+  "url": "https://admin-b2b.lejanbrand.com/sats/return",
+  "table_headers": [
+   "ESTADO",
+   "CÓDIGO",
+   "CLIENTE",
+   "TIPO",
+   "PRODUCTO",
+   "PEDIDO",
+   "HORARIO",
+   "BULTOS",
+   "ITEMS",
+   "TRANSFERENCIA",
+   "RESOLUCIÓN"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "BUSCAR"
+  ],
+  "inputs": [
+   "Buscar por código, cliente, tipo o motivo",
+   "Buscar cliente",
+   "Buscar producto",
+   "Buscar pedido",
+   "returnTypeId"
+  ]
+ },
+ "/sincronizacion": {
+  "url": "https://admin-b2b.lejanbrand.com/sincronizacion",
+  "table_headers": [],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "SINCRONIZACIÓN",
+   "ELASTICSEARCH",
+   "REFRESCAR CACHE"
+  ],
+  "inputs": []
+ },
+ "/health": {
+  "url": "https://admin-b2b.lejanbrand.com/health",
+  "table_headers": [
+   "STATUS",
+   "FECHA",
+   "ID",
+   "MENSAJE"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "BUSCAR",
+   "REFRESCAR",
+   "COMPROBAR ERRORES",
+   "1",
+   "2"
+  ],
+  "inputs": [
+   "Buscar por mensaje, id...",
+   "status",
+   "Entidad"
+  ]
+ },
+ "/health-queue": {
+  "url": "https://admin-b2b.lejanbrand.com/health-queue",
+  "table_headers": [
+   "ID",
+   "NOMBRE DEL PROCESO",
+   "ERROR"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "REENCOLAR",
+   "LIMPIAR",
+   "1",
+   "2"
+  ],
+  "inputs": []
+ },
+ "/controller-logs": {
+  "url": "https://admin-b2b.lejanbrand.com/controller-logs",
+  "table_headers": [
+   "FECHA",
+   "DIRECCIÓN",
+   "ENDPOINT",
+   "STATUS",
+   "DURACIÓN"
+  ],
+  "buttons": [
+   "Productos",
+   "Inventario y Precios",
+   "Clientes",
+   "Pedidos",
+   "SATs",
+   "Web",
+   "Salud",
+   "Notificaciones",
+   "Conectividad",
+   "Sistema",
+   "LOGOUT",
+   "BUSCAR",
+   "REFRESCAR",
+   "VER DETALLE",
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "834"
+  ],
+  "inputs": [
+   "Buscar por parte del endpoint, controlador, acción, método o request ID",
+   "direction",
+   "statusCode"
+  ]
+ }
+}

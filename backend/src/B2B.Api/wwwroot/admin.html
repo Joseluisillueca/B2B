@@ -5,166 +5,437 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>B2B Platform — Admin</title>
 <style>
-  :root { --bg:#f5f6f8; --card:#fff; --line:#e3e6ea; --text:#1c2733; --muted:#68737e; --accent:#0b6bcb; }
+  :root {
+    --side:#101218; --side-2:#181b23; --side-text:#c8cdd7; --side-active:#ffffff;
+    --bg:#f4f5f8; --card:#ffffff; --line:#e6e8ee; --text:#171c26; --muted:#6b7280;
+    --accent:#2f4bff; --accent-2:#1e34c9; --ok:#127a3d; --ok-bg:#e3f5ea;
+    --warn:#8a6100; --warn-bg:#fdf3d7; --err:#b3261e; --err-bg:#fde7e5;
+    --info:#1d4ed8; --info-bg:#e5edff;
+    --r:12px; --shadow:0 1px 2px rgba(16,18,24,.06), 0 8px 24px -12px rgba(16,18,24,.12);
+  }
   * { box-sizing:border-box; }
-  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); }
-  header { background:var(--card); border-bottom:1px solid var(--line); padding:.9rem 1.5rem; display:flex; align-items:center; gap:1rem; }
-  header h1 { font-size:1.05rem; margin:0; }
-  header .spacer { flex:1; }
-  main { max-width:75rem; margin:1.5rem auto; padding:0 1.5rem; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:1.25rem; }
-  /* Login */
-  #login { max-width:22rem; margin:14vh auto; display:flex; flex-direction:column; gap:.8rem; }
-  #login h2 { margin:0 0 .4rem; font-size:1.15rem; }
-  input, select, button { font:inherit; padding:.55rem .7rem; border-radius:8px; border:1px solid var(--line); }
-  button { background:var(--accent); border-color:var(--accent); color:#fff; cursor:pointer; }
-  button.ghost { background:transparent; color:var(--accent); }
-  .error { color:#b3261e; font-size:.85rem; min-height:1.1em; margin:0; }
-  /* Dashboard */
-  #dash { display:none; }
-  .chips { display:flex; flex-wrap:wrap; gap:.6rem; margin-bottom:1.2rem; }
-  .chip { background:var(--card); border:1px solid var(--line); border-radius:999px; padding:.35rem .9rem; font-size:.85rem; cursor:pointer; }
-  .chip b { color:var(--accent); }
-  .chip.active { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
-  .toolbar { display:flex; gap:.6rem; align-items:center; margin-bottom:.8rem; flex-wrap:wrap; }
-  .toolbar .muted { color:var(--muted); font-size:.85rem; }
-  .grid { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:1rem; align-items:start; }
-  table { width:100%; border-collapse:collapse; font-size:.88rem; }
-  th, td { text-align:left; padding:.5rem .6rem; border-bottom:1px solid var(--line); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:16rem; }
-  th { color:var(--muted); font-weight:600; font-size:.78rem; text-transform:uppercase; letter-spacing:.03em; }
-  tbody tr { cursor:pointer; }
-  tbody tr:hover { background:#eef4fb; }
-  tbody tr.sel { background:#e3eefb; }
-  pre { margin:0; font-size:.8rem; line-height:1.45; white-space:pre-wrap; word-break:break-word; max-height:34rem; overflow:auto; }
-  #detailMeta { color:var(--muted); font-size:.8rem; margin:0 0 .6rem; }
-  @media (max-width:56rem) { .grid { grid-template-columns:1fr; } }
+  html,body { height:100%; }
+  body { margin:0; font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); }
+
+  /* ---------- Login ---------- */
+  #login-screen { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg,#1b2340 0%,#2f4bff 55%,#5a74ff 100%); }
+  .login-card { background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:2.2rem; width:min(22rem,90vw);
+    display:flex; flex-direction:column; gap:.8rem; }
+  .login-card .brand { text-align:center; font-weight:800; font-size:1.5rem; letter-spacing:-.03em; margin-bottom:.6rem; }
+  .login-card .brand span { color:var(--accent); }
+  .login-card input { width:100%; }
+  input, select { font:inherit; padding:.6rem .75rem; border-radius:9px; border:1px solid var(--line); background:#fff; outline:none; }
+  input:focus, select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(47,75,255,.15); }
+  button { font:inherit; font-weight:600; padding:.6rem 1rem; border-radius:9px; border:1px solid transparent; cursor:pointer; }
+  .btn-primary { background:var(--accent); color:#fff; }
+  .btn-primary:hover { background:var(--accent-2); }
+  .btn-ghost { background:transparent; color:var(--accent); border-color:var(--line); }
+  .btn-ghost:hover { border-color:var(--accent); }
+  .error { color:var(--err); font-size:.85rem; min-height:1.2em; margin:0; }
+
+  /* ---------- Shell ---------- */
+  #app { display:none; height:100vh; }
+  #app.on { display:grid; grid-template-columns:15.5rem 1fr; }
+  aside { background:var(--side); color:var(--side-text); overflow-y:auto; display:flex; flex-direction:column; }
+  aside .logo { padding:1.15rem 1.25rem .9rem; font-weight:800; font-size:1.12rem; letter-spacing:-.02em; color:#fff; }
+  aside .logo span { color:#7d92ff; }
+  nav { flex:1; padding:.3rem .6rem 1rem; }
+  .group-title { display:flex; align-items:center; gap:.6rem; width:100%; padding:.55rem .65rem; border-radius:8px;
+    background:none; border:none; color:var(--side-text); font-weight:600; font-size:.82rem; text-align:left; cursor:pointer; }
+  .group-title:hover { background:var(--side-2); color:#fff; }
+  .group-title .chev { margin-left:auto; transition:transform .15s; font-size:.7rem; opacity:.6; }
+  .group.open .chev { transform:rotate(90deg); }
+  .group .items { display:none; }
+  .group.open .items { display:block; }
+  .nav-item { display:flex; align-items:center; gap:.5rem; padding:.42rem .65rem .42rem 2.1rem; border-radius:8px;
+    color:var(--side-text); text-decoration:none; font-size:.86rem; cursor:pointer; }
+  .nav-item:hover { background:var(--side-2); color:#fff; }
+  .nav-item.active { background:var(--accent); color:#fff; font-weight:600; }
+  .nav-item .count { margin-left:auto; font-size:.72rem; background:var(--side-2); border-radius:999px; padding:.05rem .5rem; }
+  .nav-item.active .count { background:rgba(255,255,255,.22); }
+  .nav-item.soon { opacity:.38; cursor:default; }
+  .nav-item.soon:hover { background:none; color:var(--side-text); }
+  aside footer { padding: .9rem 1.25rem; border-top:1px solid #23262f; display:flex; align-items:center; gap:.6rem; }
+  aside footer .who { font-size:.8rem; overflow:hidden; text-overflow:ellipsis; }
+  aside footer button { margin-left:auto; background:#2a1215; color:#ff9d95; border:1px solid #532027; padding:.35rem .7rem; font-size:.78rem; }
+
+  main { overflow-y:auto; padding:1.6rem 2rem 3rem; }
+  .crumb { color:var(--muted); font-size:.8rem; margin-bottom:.2rem; }
+  h1 { margin:.1rem 0 1.1rem; font-size:1.7rem; letter-spacing:-.03em; }
+
+  .toolbar { display:flex; gap:.6rem; align-items:center; flex-wrap:wrap; margin-bottom:.9rem; }
+  .toolbar input[type=search] { min-width:18rem; }
+  .toolbar .spacer { flex:1; }
+  .muted { color:var(--muted); font-size:.85rem; }
+
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(11rem,1fr)); gap:.9rem; margin-bottom:1.4rem; }
+  .kpi { background:var(--card); border-radius:var(--r); box-shadow:var(--shadow); padding:.95rem 1.1rem; border-left:4px solid var(--accent); }
+  .kpi .label { color:var(--muted); font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; }
+  .kpi .value { font-size:1.55rem; font-weight:750; letter-spacing:-.02em; margin-top:.15rem; }
+  .kpi.green { border-left-color:#18a558; } .kpi.yellow { border-left-color:#eab308; } .kpi.red { border-left-color:#dc2626; }
+
+  .card { background:var(--card); border-radius:var(--r); box-shadow:var(--shadow); overflow:hidden; }
+  table { width:100%; border-collapse:collapse; font-size:.87rem; }
+  thead th { position:sticky; top:0; background:linear-gradient(180deg,var(--accent),var(--accent-2)); color:#fff;
+    font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; font-weight:700; text-align:left; padding:.6rem .8rem; }
+  tbody td { padding:.55rem .8rem; border-bottom:1px solid var(--line); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:18rem; }
+  tbody tr:hover { background:#f0f4ff; cursor:pointer; }
+  tbody tr:last-child td { border-bottom:none; }
+  .chip { display:inline-block; padding:.1rem .55rem; border-radius:999px; font-size:.74rem; font-weight:650; }
+  .chip.ok { background:var(--ok-bg); color:var(--ok); } .chip.err { background:var(--err-bg); color:var(--err); }
+  .chip.warn { background:var(--warn-bg); color:var(--warn); } .chip.info { background:var(--info-bg); color:var(--info); }
+  .chip.plain { background:#eef0f4; color:#374151; }
+  .empty { padding:2.4rem; text-align:center; color:var(--muted); }
+  code.id { font:.78rem ui-monospace,Consolas,monospace; color:var(--muted); }
+
+  .pager { display:flex; gap:.5rem; align-items:center; justify-content:flex-end; padding:.6rem .8rem; border-top:1px solid var(--line); }
+  .pager button { padding:.3rem .7rem; }
+
+  /* ---------- Modal ---------- */
+  #modal { position:fixed; inset:0; background:rgba(13,16,24,.45); display:none; align-items:center; justify-content:center; padding:2rem; }
+  #modal.on { display:flex; }
+  #modal .box { background:var(--card); border-radius:14px; box-shadow:var(--shadow); width:min(52rem,95vw); max-height:88vh;
+    display:flex; flex-direction:column; }
+  #modal header { display:flex; align-items:center; gap:.8rem; padding:.9rem 1.2rem; border-bottom:1px solid var(--line); }
+  #modal header h3 { margin:0; font-size:.95rem; }
+  #modal header .muted { font-size:.78rem; }
+  #modal header button { margin-left:auto; }
+  #modal pre { margin:0; padding:1rem 1.2rem; overflow:auto; font-size:.8rem; line-height:1.5; }
 </style>
 </head>
 <body>
-<header>
-  <h1>B2B Platform — Admin</h1>
-  <div class="spacer"></div>
-  <span id="who" class="muted" style="color:var(--muted);font-size:.85rem"></span>
-  <button id="logout" class="ghost" style="display:none">Salir</button>
-</header>
 
-<div id="login" class="card">
-  <h2>Iniciar sesión</h2>
-  <input id="email" type="email" placeholder="Email" autocomplete="username">
-  <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password">
-  <button id="doLogin">Entrar</button>
-  <p id="loginError" class="error"></p>
+<div id="login-screen">
+  <div class="login-card">
+    <div class="brand">B2B <span>Platform</span></div>
+    <input id="email" type="email" placeholder="Email" autocomplete="username">
+    <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password">
+    <button class="btn-primary" id="doLogin">Iniciar sesión</button>
+    <p class="error" id="loginError"></p>
+  </div>
 </div>
 
-<main>
-  <div id="dash">
-    <div class="chips" id="chips"></div>
-    <div class="grid">
-      <div class="card">
-        <div class="toolbar">
-          <button id="refresh" class="ghost">↻ Actualizar</button>
-          <span class="muted" id="count"></span>
-          <div class="spacer" style="flex:1"></div>
-          <button id="prev" class="ghost">←</button>
-          <span class="muted" id="page"></span>
-          <button id="next" class="ghost">→</button>
-        </div>
-        <table>
-          <thead><tr><th>Tipo</th><th>Id externo</th><th>Recibido por última vez</th></tr></thead>
-          <tbody id="rows"></tbody>
-        </table>
-      </div>
-      <div class="card">
-        <p id="detailMeta">Selecciona una fila para ver el JSON recibido de BC.</p>
-        <pre id="payload"></pre>
-      </div>
-    </div>
+<div id="app">
+  <aside>
+    <div class="logo">B2B <span>Platform</span></div>
+    <nav id="nav"></nav>
+    <footer>
+      <div class="who" id="who"></div>
+      <button id="logout">Salir</button>
+    </footer>
+  </aside>
+  <main>
+    <div class="crumb" id="crumb"></div>
+    <h1 id="title"></h1>
+    <div id="content"></div>
+  </main>
+</div>
+
+<div id="modal">
+  <div class="box">
+    <header><h3 id="mTitle"></h3><span class="muted" id="mMeta"></span><button class="btn-ghost" onclick="closeModal()">Cerrar</button></header>
+    <pre id="mBody"></pre>
   </div>
-</main>
+</div>
 
 <script>
+'use strict';
 const PAGE = 25;
 let token = sessionStorage.getItem('b2b_token') || '';
-let filter = '', skip = 0, total = 0;
+let summary = {};        // entityType -> {count,lastReceivedAt}
+let current = null;      // vista activa
+let skip = 0, total = 0, rowsCache = [];
 
 const $ = id => document.getElementById(id);
 
+/* ---------- helpers de payload ---------- */
+function dig(obj, path) {
+  return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+}
+// "name.es_ES|name" → primer valor no vacío
+function pick(payload, paths) {
+  for (const p of paths.split('|')) {
+    const v = dig(payload, p);
+    if (v !== undefined && v !== null && v !== '') return v;
+  }
+  return undefined;
+}
+const shortId = v => typeof v === 'string' && v.length > 20 ? `<code class="id" title="${v}">${v.slice(0,8)}…</code>` : (v ?? '—');
+const fmt = {
+  text: v => v === undefined ? '—' : String(v),
+  id: v => v === undefined ? '—' : shortId(v),
+  bool: v => v === undefined ? '—' : (v ? '<span class="chip ok">Sí</span>' : '<span class="chip err">No</span>'),
+  arr: v => Array.isArray(v) && v.length ? v.map(x => `<span class="chip plain">${x}</span>`).join(' ') : '—',
+  money: (v, row) => v === undefined ? '—' : Number(v).toLocaleString('es-ES', {minimumFractionDigits:2}) + ' ' + (pick(row, 'offerData.basePrice.code|basePrice.code|currency') || '€'),
+  date: v => v ? String(v).slice(0, 10) : '—',
+  status: v => {
+    if (!v) return '—';
+    const map = { open:'info', 'partially-shipped':'warn', shipped:'ok', invoiced:'ok', canceled:'err', SCHEDULED:'info', REPLENISHMENT:'plain', PVD:'info', PVP:'warn' };
+    return `<span class="chip ${map[v] || 'plain'}">${v}</span>`;
+  },
+};
+
+/* ---------- definición de vistas (réplica del CMS actual) ---------- */
+// col: [etiqueta, rutas de payload con |, formateador]
+const VIEWS = {
+  dashboard: { title:'Dashboard', crumb:'Dashboard', dashboard:true },
+
+  modelos:   { title:'Modelos', crumb:'Productos / Modelos', type:'model', cols:[
+    ['Modelo','name.es_ES|name','text'], ['Referencia','externalReference','text'],
+    ['Familia','familyId','text'], ['Segmentos','productSegments','arr'], ['Activo','active','bool']]},
+  productos: { title:'Productos', crumb:'Productos / Productos', type:'product', cols:[
+    ['Referencia','sku|externalReference','text'], ['Nombre','name.es_ES','text'],
+    ['Modelo','modelId','id'], ['Talla','attributes.tallas','text'],
+    ['EAN','ean','text'], ['Activo','active','bool']]},
+  atributos: { title:'Atributos', crumb:'Productos / Atributos', type:'attribute', cols:[
+    ['Code','code','text'], ['Nombre','name.es_ES','text'], ['Tipo','type','text'],
+    ['Formato','visibleFormat','text'], ['Visible web','visibleWeb','bool']]},
+  familias:  { title:'Familias', crumb:'Productos / Familias', type:'family', cols:[
+    ['Código','code','text'], ['Nombre','name.es_ES','text']]},
+  categorias:{ title:'Categorías', crumb:'Productos / Categorías', type:'category', cols:[
+    ['Nombre','name.es_ES','text'], ['Familias','search.familyIds','arr'], ['Activa','active','bool']]},
+  imagenes:  { title:'Imágenes de modelo', crumb:'Productos / Imágenes', type:'model-image', cols:[
+    ['Modelo','images.0.id','id'], ['URI','images.0.image.uri','text']]},
+
+  ofertas:   { title:'Precios / Ofertas', crumb:'Inventario y Precios / Precios', type:'offer', cols:[
+    ['Modelo','offerData.modelId|modelId','id'], ['Producto','offerData.productId|productId','id'],
+    ['Cliente / Grupo','offerData.clientId|offerData.clientGroupId|clientId|clientGroupId','id'],
+    ['Tipo precio','offerData.priceType|priceType','status'],
+    ['Precio','offerData.basePrice.value|basePrice.value','money'],
+    ['Desde uds','offerData.stock|stock','text'],
+    ['Tipo pedido','offerData.orderType|orderType','status']]},
+  stocks:    { title:'Stocks', crumb:'Inventario y Precios / Stocks', type:'inventory', cols:[
+    ['Producto','__externalId','id'], ['Stock','stock','text'],
+    ['Ventana de servicio','stockServiceId','text'], ['Tipo','orderType','status'], ['Fecha','entryDate','date']]},
+  ventanas:  { title:'Servicios de stock', crumb:'Inventario y Precios / Servicios de stock', type:'service-window', cols:[
+    ['Id','id|__externalId','text'], ['Nombre','name.es_ES','text'], ['Desde','from','date'],
+    ['Hasta','to','date'], ['Límite','limit','date'], ['Tipo','orderType','status']]},
+  almacenes: { title:'Almacenes', crumb:'Inventario y Precios / Almacenes', type:'warehouse', cols:[
+    ['Código','code|__externalId','text'], ['Nombre','description.es_ES','text'],
+    ['Ciudad','address.city','text'], ['País','address.countryIsoId','text'], ['Activo','active','bool']]},
+  pagos:     { title:'Formas de pago', crumb:'Inventario y Precios / Formas de pago', type:'payment-method', cols:[
+    ['Id','__externalId','text'], ['Nombre','name.es_ES','text'], ['Orden','order','text'],
+    ['Crédito','allowCredit','bool'], ['Referencia','externalReference','text']]},
+
+  clientes:  { title:'Clientes', crumb:'Clientes / Clientes', type:'client', cols:[
+    ['Código','externalReference|clienteExternalReference','text'],
+    ['Nombre','name.es_ES|name|name2','text'], ['País','address.countryIsoId|countryIsoId','text'],
+    ['Segmentos','productSegments','arr'], ['Grupo','clientGroupId','text'], ['Activo','active','bool']]},
+  grupos:    { title:'Grupos de clientes', crumb:'Clientes / Grupos', type:'client-group', cols:[
+    ['Código','externalReference','text'], ['Nombre','name.es_ES','text'], ['Formas de pago','paymentMethods','arr']]},
+  usuariosCliente: { title:'Usuarios de cliente', crumb:'Clientes / Usuarios', type:'client-user', cols:[
+    ['Cliente','__externalId','id'], ['Email','email|username','text'], ['Cultura','culture','text']]},
+  direcciones: { title:'Direcciones de envío', crumb:'Clientes / Direcciones', type:'shipping-address', cols:[
+    ['Id','__externalId','id'], ['Cliente','__parentId','id'], ['Ciudad','city|address.city','text'],
+    ['CP','zipCode|address.zipCode','text'], ['País','countryIsoId|address.countryIsoId','text']]},
+  agentes:   { title:'Agentes comerciales', crumb:'Clientes / Agentes', type:'agent', cols:[
+    ['Id','__externalId','id'], ['Nombre','name|firstName','text'], ['Email','email','text']]},
+
+  pedidos:   { title:'Pedidos', crumb:'Pedidos / Pedidos', type:'order', cols:[
+    ['Nº','externalReference|reference|__externalId','id'], ['Cliente','clientId','id'],
+    ['Ref. cliente','purchaseOrderId','text'], ['Tipo','type','status'],
+    ['Importe','totals.total.value|totals.totalAmount','money'], ['Estado','status','status']]},
+  facturas:  { title:'Facturas', crumb:'Pedidos / Facturas', type:'invoice', cols:[
+    ['Nº','externalReference|reference|__externalId','id'], ['Cliente','clientId','id'],
+    ['Fecha','date|issueDate|createdAt','date'], ['Importe','totals.total.value|totals.totalAmount|total','money'],
+    ['Estado','status','status']]},
+  albaranes: { title:'Albaranes', crumb:'Pedidos / Albaranes', type:'delivery-note', cols:[
+    ['Nº','externalReference|reference|__externalId','id'], ['Cliente','clientId','id'],
+    ['Fecha','date|deliveryDate|createdAt','date'], ['Tracking','transportUrlTrack','text'],
+    ['Estado','status','status']]},
+
+  comunicacion: { title:'Comunicación BC', crumb:'Salud / Comunicación', type:'', cols:[
+    ['Tipo','__entityType','text'], ['Id externo','__externalId','id'], ['Recibido','__last','text']]},
+};
+
+const NAV = [
+  { title:'Dashboard', items:[['dashboard','Dashboard']] },
+  { title:'Productos', items:[['modelos','Modelos','model'],['productos','Productos','product'],['atributos','Atributos','attribute'],
+      ['familias','Familias','family'],['categorias','Categorías','category'],['imagenes','Imágenes','model-image']] },
+  { title:'Inventario y Precios', items:[['ofertas','Precios','offer'],['stocks','Stocks','inventory'],
+      ['ventanas','Servicios de stock','service-window'],['almacenes','Almacenes','warehouse'],['pagos','Formas de pago','payment-method']] },
+  { title:'Clientes', items:[['clientes','Clientes','client'],['grupos','Grupos de clientes','client-group'],
+      ['usuariosCliente','Usuarios de cliente','client-user'],['direcciones','Direcciones envío','shipping-address'],['agentes','Agentes comerciales','agent']] },
+  { title:'Pedidos', items:[['pedidos','Pedidos','order'],['facturas','Facturas','invoice'],['albaranes','Albaranes','delivery-note']] },
+  { title:'Salud', items:[['comunicacion','Comunicación BC'],['docs','Documentación API']] },
+  { title:'Próximamente', soon:true, items:[[null,'SATs / Devoluciones'],[null,'Web / Contenido'],[null,'Notificaciones'],[null,'Sistema']] },
+];
+
+/* ---------- API ---------- */
 async function api(path) {
   const res = await fetch(path, { headers: { Authorization: 'Bearer ' + token } });
-  if (res.status === 401) { logout(); throw new Error('Sesión caducada'); }
+  if (res.status === 401) { logout(); throw new Error('401'); }
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
 }
 
-function logout() {
-  token = ''; sessionStorage.removeItem('b2b_token');
-  $('dash').style.display = 'none'; $('login').style.display = 'flex';
-  $('logout').style.display = 'none'; $('who').textContent = '';
-}
-
+/* ---------- auth ---------- */
 async function login() {
   $('loginError').textContent = '';
   const res = await fetch('/api/auth/login', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: $('email').value, password: $('password').value, type: 'global', longDuration: true })
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ email: $('email').value, password: $('password').value, type:'global', longDuration:true })
   });
   if (!res.ok) { $('loginError').textContent = 'Credenciales incorrectas'; return; }
   token = (await res.json()).token;
   sessionStorage.setItem('b2b_token', token);
-  enter($('email').value);
+  sessionStorage.setItem('b2b_who', $('email').value);
+  enter();
+}
+function logout() {
+  token = ''; sessionStorage.clear();
+  $('app').classList.remove('on'); $('login-screen').style.display = 'flex';
+}
+function enter() {
+  $('login-screen').style.display = 'none';
+  $('app').classList.add('on');
+  $('who').textContent = sessionStorage.getItem('b2b_who') || '';
+  loadSummary().then(() => show('dashboard'));
 }
 
-function enter(who) {
-  $('login').style.display = 'none'; $('dash').style.display = 'block';
-  $('logout').style.display = 'inline-block';
-  if (who) $('who').textContent = who;
-  loadSummary(); loadRows();
-}
-
+/* ---------- nav ---------- */
 async function loadSummary() {
   const data = await api('/api/admin/summary');
-  const chips = [`<span class="chip ${filter===''?'active':''}" data-t="">Todo</span>`]
-    .concat(data.items.map(i =>
-      `<span class="chip ${filter===i.entityType?'active':''}" data-t="${i.entityType}">${i.entityType} <b>${i.count}</b></span>`));
-  $('chips').innerHTML = chips.join('');
-  document.querySelectorAll('.chip').forEach(c =>
-    c.onclick = () => { filter = c.dataset.t; skip = 0; loadSummary(); loadRows(); });
+  summary = Object.fromEntries(data.items.map(i => [i.entityType, i]));
+  renderNav();
+}
+function renderNav() {
+  $('nav').innerHTML = NAV.map((g, gi) => {
+    const items = g.items.map(([key, label, type]) => {
+      if (g.soon || key === null)
+        return `<span class="nav-item soon">${label}</span>`;
+      if (key === 'docs')
+        return `<a class="nav-item" href="/docs" target="_blank">${label} ↗</a>`;
+      const count = key === 'comunicacion'
+        ? Object.values(summary).reduce((a, s) => a + s.count, 0)
+        : (type && summary[type]?.count);
+      const badge = count ? `<span class="count">${count}</span>` : '';
+      return `<span class="nav-item" data-view="${key}">${label}${badge}</span>`;
+    }).join('');
+    const open = gi < 6 ? 'open' : '';
+    return `<div class="group ${open}">
+      <button class="group-title">${g.title}<span class="chev">▶</span></button>
+      <div class="items">${items}</div></div>`;
+  }).join('');
+  document.querySelectorAll('.group-title').forEach(b =>
+    b.onclick = () => b.parentElement.classList.toggle('open'));
+  document.querySelectorAll('.nav-item[data-view]').forEach(el =>
+    el.onclick = () => show(el.dataset.view));
 }
 
-async function loadRows() {
-  const q = new URLSearchParams({ skip, take: PAGE });
-  if (filter) q.set('entityType', filter);
+/* ---------- vistas ---------- */
+function show(key) {
+  current = key; skip = 0;
+  document.querySelectorAll('.nav-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.view === key));
+  const v = VIEWS[key];
+  $('crumb').textContent = v.crumb;
+  $('title').textContent = v.title;
+  if (v.dashboard) renderDashboard(); else renderList();
+}
+
+async function renderDashboard() {
+  await loadSummary();
+  const count = t => summary[t]?.count || 0;
+  const totalDocs = Object.values(summary).reduce((a, s) => a + s.count, 0);
+  const last = Object.values(summary).map(s => s.lastReceivedAt).sort().pop();
+  $('content').innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="label">Documentos recibidos</div><div class="value">${totalDocs}</div></div>
+      <div class="kpi green"><div class="label">Modelos</div><div class="value">${count('model')}</div></div>
+      <div class="kpi green"><div class="label">Productos</div><div class="value">${count('product')}</div></div>
+      <div class="kpi yellow"><div class="label">Ofertas</div><div class="value">${count('offer')}</div></div>
+      <div class="kpi"><div class="label">Clientes</div><div class="value">${count('client')}</div></div>
+      <div class="kpi red"><div class="label">Pedidos</div><div class="value">${count('order')}</div></div>
+    </div>
+    <p class="muted">Última comunicación de BC: ${last ? new Date(last).toLocaleString() : '— todavía ninguna'}</p>
+    <div class="card"><table>
+      <thead><tr><th>Tipo</th><th>Cantidad</th><th>Última recepción</th></tr></thead>
+      <tbody>${Object.values(summary).sort((a,b)=>b.count-a.count).map(s =>
+        `<tr onclick="showByType('${s.entityType}')"><td>${s.entityType}</td><td>${s.count}</td>
+         <td>${new Date(s.lastReceivedAt).toLocaleString()}</td></tr>`).join('')
+        || '<tr><td colspan="3" class="empty">BC aún no ha enviado nada — lanza una sincronización desde el conector</td></tr>'}</tbody>
+    </table></div>`;
+}
+function showByType(type) {
+  const entry = Object.entries(VIEWS).find(([,v]) => v.type === type);
+  show(entry ? entry[0] : 'comunicacion');
+}
+
+async function renderList() {
+  const v = VIEWS[current];
+  $('content').innerHTML = `
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Filtrar en la página actual…">
+      <button class="btn-ghost" id="reload">↻ Actualizar</button>
+      <div class="spacer"></div><span class="muted" id="count"></span>
+    </div>
+    <div class="card">
+      <div style="overflow-x:auto"><table>
+        <thead><tr>${v.cols.map(c => `<th>${c[0]}</th>`).join('')}<th>Recibido</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="${v.cols.length+1}" class="empty">Cargando…</td></tr></tbody>
+      </table></div>
+      <div class="pager">
+        <button class="btn-ghost" id="prev">←</button><span class="muted" id="page"></span><button class="btn-ghost" id="next">→</button>
+      </div>
+    </div>`;
+  $('reload').onclick = () => { loadSummary(); loadPage(); };
+  $('q').oninput = renderRows;
+  $('prev').onclick = () => { if (skip >= PAGE) { skip -= PAGE; loadPage(); } };
+  $('next').onclick = () => { if (skip + PAGE < total) { skip += PAGE; loadPage(); } };
+  await loadPage();
+}
+
+async function loadPage() {
+  const v = VIEWS[current];
+  const q = new URLSearchParams({ skip, take: PAGE, includePayload: true });
+  if (v.type) q.set('entityType', v.type);
   const data = await api('/api/admin/sync-documents?' + q);
   total = data.total;
-  $('count').textContent = total + ' documentos';
-  $('page').textContent = (Math.floor(skip / PAGE) + 1) + ' / ' + Math.max(1, Math.ceil(total / PAGE));
-  $('rows').innerHTML = data.items.map(d =>
-    `<tr data-t="${d.entityType}" data-id="${encodeURIComponent(d.externalId)}">
-       <td>${d.entityType}</td><td title="${d.externalId}">${d.externalId}</td>
-       <td>${new Date(d.lastReceivedAt).toLocaleString()}</td></tr>`).join('');
-  document.querySelectorAll('#rows tr').forEach(tr => tr.onclick = () => {
-    document.querySelectorAll('#rows tr').forEach(x => x.classList.remove('sel'));
-    tr.classList.add('sel');
-    showDetail(tr.dataset.t, tr.dataset.id);
+  rowsCache = data.items.map(d => {
+    let payload = {};
+    try { payload = JSON.parse(d.payload); } catch {}
+    if (Array.isArray(payload)) payload = payload[0] ?? {};
+    payload.__externalId = d.externalId; payload.__parentId = d.parentId;
+    payload.__entityType = d.entityType; payload.__last = new Date(d.lastReceivedAt).toLocaleString();
+    return { doc: d, payload };
   });
+  $('count').textContent = `${total} registros`;
+  $('page').textContent = `${Math.floor(skip/PAGE)+1} / ${Math.max(1, Math.ceil(total/PAGE))}`;
+  renderRows();
 }
 
-async function showDetail(type, id) {
-  const d = await api(`/api/admin/sync-documents/${type}/${id}`);
-  $('detailMeta').textContent =
-    `${d.entityType} · ${d.externalId} · primera vez ${new Date(d.firstReceivedAt).toLocaleString()} · última ${new Date(d.lastReceivedAt).toLocaleString()}`;
-  try { $('payload').textContent = JSON.stringify(JSON.parse(d.payload), null, 2); }
-  catch { $('payload').textContent = d.payload; }
+function renderRows() {
+  const v = VIEWS[current];
+  const q = ($('q')?.value || '').toLowerCase();
+  const rows = rowsCache.filter(r => !q || JSON.stringify(r.payload).toLowerCase().includes(q));
+  $('rows').innerHTML = rows.map((r, i) => {
+    const cells = v.cols.map(([, path, f]) => `<td>${fmt[f](pick(r.payload, path), r.payload)}</td>`).join('');
+    return `<tr data-i="${i}">${cells}<td class="muted">${r.payload.__last}</td></tr>`;
+  }).join('') || `<tr><td colspan="${v.cols.length+1}" class="empty">
+      ${q ? 'Sin resultados con ese filtro' : 'BC todavía no ha enviado nada de este tipo'}</td></tr>`;
+  document.querySelectorAll('#rows tr[data-i]').forEach(tr =>
+    tr.onclick = () => openDetail(rows[tr.dataset.i]));
 }
 
+/* ---------- detalle ---------- */
+function openDetail(row) {
+  $('mTitle').textContent = `${row.doc.entityType} · ${row.doc.externalId}`;
+  $('mMeta').textContent = `primera vez ${new Date(row.doc.firstReceivedAt).toLocaleString()} · última ${new Date(row.doc.lastReceivedAt).toLocaleString()}`;
+  let pretty = row.doc.payload;
+  try { pretty = JSON.stringify(JSON.parse(row.doc.payload), null, 2); } catch {}
+  $('mBody').textContent = pretty;
+  $('modal').classList.add('on');
+}
+function closeModal() { $('modal').classList.remove('on'); }
+$('modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
+
+/* ---------- init ---------- */
 $('doLogin').onclick = login;
 $('password').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 $('logout').onclick = logout;
-$('refresh').onclick = () => { loadSummary(); loadRows(); };
-$('prev').onclick = () => { if (skip >= PAGE) { skip -= PAGE; loadRows(); } };
-$('next').onclick = () => { if (skip + PAGE < total) { skip += PAGE; loadRows(); } };
-
-if (token) enter('');
+if (token) enter();
 </script>
 </body>
 </html>

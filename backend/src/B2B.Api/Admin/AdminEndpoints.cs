@@ -10,26 +10,30 @@ public static class AdminEndpoints
     public static void MapAdminEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/admin/sync-documents",
-            async (AppDbContext db, string? entityType, int skip = 0, int take = 50) =>
+            async (AppDbContext db, string? entityType, int skip = 0, int take = 50, bool includePayload = false) =>
         {
             var query = db.SyncDocuments.AsQueryable();
             if (!string.IsNullOrEmpty(entityType))
                 query = query.Where(d => d.EntityType == entityType);
 
             var total = await query.CountAsync();
-            var items = await query
+            var page = query
                 .OrderByDescending(d => d.LastReceivedAt)
                 .Skip(Math.Max(skip, 0))
-                .Take(Math.Clamp(take, 1, 200))
-                .Select(d => new
+                .Take(Math.Clamp(take, 1, 200));
+
+            // El CMS pinta columnas por entidad desde el payload; sin includePayload
+            // el listado va ligero (solo metadatos)
+            object items = includePayload
+                ? await page.Select(d => new
                 {
-                    d.EntityType,
-                    d.ExternalId,
-                    d.ParentId,
-                    d.FirstReceivedAt,
-                    d.LastReceivedAt
-                })
-                .ToListAsync();
+                    d.EntityType, d.ExternalId, d.ParentId, d.FirstReceivedAt, d.LastReceivedAt,
+                    Payload = d.Payload
+                }).ToListAsync()
+                : await page.Select(d => new
+                {
+                    d.EntityType, d.ExternalId, d.ParentId, d.FirstReceivedAt, d.LastReceivedAt
+                }).ToListAsync();
 
             return Results.Ok(new { total, items });
         }).RequireAuthorization();
