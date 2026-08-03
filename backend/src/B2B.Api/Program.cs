@@ -53,6 +53,17 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapGet("/", () => Results.Content(
+    """
+    <!doctype html><html lang="es"><head><meta charset="utf-8"><title>B2B Platform</title></head>
+    <body style="font-family:system-ui;max-width:40rem;margin:4rem auto;padding:0 1rem">
+    <h1>B2B Platform — API</h1>
+    <p>El backend está en marcha. Esta es una API para el conector de Business Central
+    y el portal B2B; no tiene interfaz web en esta dirección.</p>
+    <ul><li><a href="/health">/health</a> — estado</li></ul>
+    </body></html>
+    """, "text/html"));
+
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints();
 app.MapSyncEndpoints();
