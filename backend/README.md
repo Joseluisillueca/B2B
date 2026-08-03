@@ -34,6 +34,8 @@ dotnet run --project src/B2B.Api
 | `POST /api/auth/login` | [01 §1](../docs/contrato-api/01-autenticacion-y-convenciones.md) | ✅ Con tests |
 | `PUT` de ingesta (19 rutas: catálogo, stock, maestros, clientes, agentes, pedidos, documentos) | [01 §4.2](../docs/contrato-api/01-autenticacion-y-convenciones.md) | ✅ Con tests |
 | `PUT /api/clients/{id}/users/admin` y `/shipping-addresses/{id}` (sufijos hardcodeados del conector) | [04](../docs/contrato-api/04-clientes-agentes.md) | ✅ Con tests |
+| `GET /api/catalog/offers` (con body `{"modelId"}`) y `DELETE /api/catalog/offers/{id}` — ciclo GET-comparar-DELETE | [01 §3.4](../docs/contrato-api/01-autenticacion-y-convenciones.md) | ✅ Con tests |
+| `GET|POST /api/orders/search` (con body `{"search":[{"all":true}]}`) | [04 §6](../docs/contrato-api/04-clientes-agentes.md) | ✅ Con tests |
 | `GET /health` | — | ✅ |
 
 El login acepta `{email, password, type, longDuration}` y devuelve `{token, tokenExpiresIn}` con la fecha absoluta en formato `dd/MM/yyyy HH:mm:ss` que el `Evaluate` de BC-es sabe parsear (ver hallazgo en el contrato §1.3).
