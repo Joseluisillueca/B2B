@@ -8,14 +8,14 @@ Este proyecto sustituirá al B2B actual implementando **la misma API** que hoy c
 
 | Carpeta | Contenido |
 |---|---|
-| `backend/` | API REST (.NET 8 + PostgreSQL): auth JWT, recepción de maestros desde BC, motor de precios, pedidos |
+| `backend/` | API REST (.NET 10 + PostgreSQL): auth JWT, recepción de maestros desde BC, motor de precios, pedidos |
 | `admin/` | CMS de administración y monitorización (logs de sincronización, catálogo, pedidos, clientes) |
 | `front/` | Portal B2B de clientes: login, catálogo por segmento/tarifa, pedido por matriz de tallas, documentos |
 | `docs/` | Contrato API extraído del conector BC (especificación ejecutable) |
 
 ## Stack
 
-- **Backend:** .NET 8, PostgreSQL
+- **Backend:** .NET 10 (LTS), PostgreSQL
 - **Integración BC:** el conector AL empuja maestros/documentos vía REST (BC → B2B) y el B2B escribe pedidos/clientes vía API pages OData (B2B → BC)
 
 ## Plan de fases

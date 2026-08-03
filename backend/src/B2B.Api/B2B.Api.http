@@ -1,0 +1,6 @@
+@B2B.Api_HostAddress = http://localhost:5045
+
+GET {{B2B.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
