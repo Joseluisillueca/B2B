@@ -1,0 +1,233 @@
+{
+ "dashboard": {
+  "url": "https://b2b.lejanbrand.com/es/es/dashboard",
+  "headings": [
+   "Haz tu pedido"
+  ],
+  "buttons": [],
+  "inputs": [
+   "Búsqueda"
+  ],
+  "selects": []
+ },
+ "home": {
+  "url": "https://b2b.lejanbrand.com/es/es/dashboard",
+  "headings": [
+   "Haz tu pedido"
+  ],
+  "buttons": [],
+  "inputs": [
+   "Búsqueda"
+  ],
+  "selects": []
+ },
+ "orders": {
+  "url": "https://b2b.lejanbrand.com/es/es/orders",
+  "headings": [
+   "Pedidos"
+  ],
+  "buttons": [
+   "EXPORTAR PEDIDOS",
+   "1"
+  ],
+  "inputs": [
+   "Búsqueda",
+   "Buscar..."
+  ],
+  "selects": []
+ },
+ "delivery-notes": {
+  "url": "https://b2b.lejanbrand.com/es/es/delivery-notes",
+  "headings": [
+   "Albaranes"
+  ],
+  "buttons": [
+   "EXPORTAR LISTADO",
+   "1"
+  ],
+  "inputs": [
+   "Búsqueda",
+   "Buscar..."
+  ],
+  "selects": []
+ },
+ "invoices": {
+  "url": "https://b2b.lejanbrand.com/es/es/invoices",
+  "headings": [
+   "Facturas"
+  ],
+  "buttons": [
+   "EXPORTAR LISTADO",
+   "1"
+  ],
+  "inputs": [
+   "Búsqueda",
+   "Buscar..."
+  ],
+  "selects": []
+ },
+ "shopping-carts": {
+  "url": "https://b2b.lejanbrand.com/es/es/shopping-carts",
+  "headings": [
+   "Carritos favoritos"
+  ],
+  "buttons": [
+   "1"
+  ],
+  "inputs": [
+   "Búsqueda"
+  ],
+  "selects": []
+ },
+ "contact": {
+  "url": "https://b2b.lejanbrand.com/es/es/contact",
+  "headings": [
+   "Contacto",
+   "Puedes enviarnos este formulario o escribirnos vía tiendas@lejanbrand.com"
+  ],
+  "buttons": [
+   "ENVIAR SOLICITUD"
+  ],
+  "inputs": [
+   "Búsqueda",
+   "issue",
+   "Email"
+  ],
+  "selects": []
+ },
+ "sat": {
+  "url": "https://b2b.lejanbrand.com/es/es/sat",
+  "headings": [
+   "Devoluciones"
+  ],
+  "buttons": [
+   "1"
+  ],
+  "inputs": [
+   "Búsqueda",
+   "Buscar..."
+  ],
+  "selects": []
+ },
+ "profile": {
+  "url": "https://b2b.lejanbrand.com/es/es/profile",
+  "headings": [
+   "Bienvenido, Jilluecasaus@gmail.com",
+   "Mis datos",
+   "Preferencias",
+   "Cambiar contraseña"
+  ],
+  "buttons": [
+   "EDITAR",
+   "CAMBIAR CONTRASEÑA"
+  ],
+  "inputs": [
+   "Búsqueda",
+   "username",
+   "Contraseña actual",
+   "Nueva contraseña",
+   "Repite la nueva contraseña"
+  ],
+  "selects": []
+ },
+ "business": {
+  "url": "https://b2b.lejanbrand.com/es/es/business",
+  "headings": [
+   "Test 5"
+  ],
+  "buttons": [
+   "EDITAR",
+   "AÑADIR"
+  ],
+  "inputs": [
+   "Búsqueda",
+   "taxIdIsRecargoEquivalencia"
+  ],
+  "selects": []
+ },
+ "statistics": {
+  "url": "https://b2b.lejanbrand.com/es/es/statistics",
+  "headings": [
+   "Estadísticas",
+   "Ventas totales por meses (01/08/2025 - 17/08/2026)"
+  ],
+  "buttons": [],
+  "inputs": [
+   "Búsqueda"
+  ],
+  "selects": []
+ },
+ "es-en-dashboard": {
+  "url": "https://b2b.lejanbrand.com/es/en/dashboard",
+  "headings": [
+   "Place your order"
+  ],
+  "buttons": [],
+  "inputs": [
+   "Search"
+  ],
+  "selects": []
+ },
+ "es-it-dashboard": {
+  "url": "https://b2b.lejanbrand.com/es/it/dashboard",
+  "headings": [
+   "Effettua il tuo ordine"
+  ],
+  "buttons": [],
+  "inputs": [
+   "Ricerca"
+  ],
+  "selects": []
+ },
+ "es-fr-dashboard": {
+  "url": "https://b2b.lejanbrand.com/es/fr/dashboard",
+  "headings": [
+   "Passez votre commande"
+  ],
+  "buttons": [],
+  "inputs": [
+   "Recherche"
+  ],
+  "selects": []
+ },
+ "checkout": {
+  "url": "https://b2b.lejanbrand.com/es/es/checkout",
+  "headings": [],
+  "buttons": [
+   "ELIMINAR CARRITO",
+   "EDITAR",
+   "DESCARGAR EXCEL",
+   "GUARDAR EN FAVORITOS",
+   "TERMINAR PEDIDO"
+  ],
+  "inputs": [
+   "Búsqueda"
+  ],
+  "selects": []
+ },
+ "catalog-catalog": {
+  "url": "https://b2b.lejanbrand.com/es/es/catalog/catalog",
+  "headings": [
+   "Catálogo",
+   "LEJAN MELROSE® - BLACK",
+   "LEJAN MELROSE® - CHOCOLATE",
+   "LEJAN MELROSE® - DENIM",
+   "LEJAN MELROSE® - KAKI",
+   "LEJAN MELROSE® - PINK"
+  ],
+  "buttons": [
+   "Desc. Stock",
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "9"
+  ],
+  "inputs": [
+   "Búsqueda",
+   "Buscar..."
+  ],
+  "selects": []
+ }
+}
