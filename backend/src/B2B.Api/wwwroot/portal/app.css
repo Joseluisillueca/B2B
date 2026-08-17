@@ -338,7 +338,7 @@ table.grid .grid-empty:hover td { background:transparent; }
 .pager button[disabled] { color:#c3c2bc; cursor:default; }
 .pager .pg-gap { color:var(--muted); padding:0 .2rem; }
 .pager .pg-size { flex:1 1 auto; display:flex; justify-content:flex-end; }
-.pager select, .toolbar select { appearance:none; background:#fff; border:1px solid var(--line-control); border-radius:var(--r-sm);
+.pager select, .toolbar select, .doc-tools select { appearance:none; background:#fff; border:1px solid var(--line-control); border-radius:var(--r-sm);
   padding:.5rem 2rem .5rem .7rem; font-size:.86rem; cursor:pointer; }
 
 /* ══════════════ Catálogo (17-catalog-catalog.png) ══════════════ */
@@ -538,6 +538,103 @@ body[data-focus="on"] .cat-count::before { content:none; }
 .ck-terms input:checked::after { content:""; width:.5rem; height:.28rem; border-left:2px solid #fff;
   border-bottom:2px solid #fff; rotate:-45deg; translate:0 -1px; }
 
+/* ══════════════ Listados de documentos (03/04/05-*.png) ══════════════ */
+/* Pedidos, Albaranes y Facturas comparten el mismo esqueleto: título a todo lo
+   ancho, rail de estados a la izquierda separado por un filete vertical, y a la
+   derecha toolbar + tabla + paginación. */
+.page.docs { display:grid; grid-template-columns:12rem minmax(0,1fr); gap:0 2.2rem; align-items:start; }
+.docs-head { grid-column:1 / -1; }
+.docs-rail { border-right:1px solid var(--line); padding:.3rem 1.2rem 3rem 0; }
+.docs-main { min-width:0; }
+
+.srail { display:flex; flex-direction:column; gap:.15rem; }
+.srail-item { display:flex; align-items:center; gap:.7rem; width:100%; text-align:left;
+  padding:.5rem .75rem; border-radius:var(--r-sm); border:1px solid transparent; font-size:.92rem;
+  color:#3f3f46; transition:background .12s var(--ease), border-color .12s var(--ease); }
+.srail-item:hover { background:#efeee9; }
+/* Activo enmarcado en azul, como en la referencia */
+.srail-item.on { border-color:var(--blue); color:var(--ink); font-weight:700; }
+/* "Pendiente De…" no debe partirse en dos líneas: el rail mide lo que mide */
+.srail-label { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.srail-count { color:var(--muted); font-size:.78rem; font-weight:400; }
+.srail-item.on .srail-count { color:var(--ink); }
+
+/* El punto de color nunca es la única pista: la etiqueta va escrita al lado */
+.srail-dot { width:1.05rem; height:1.05rem; border-radius:50%; flex:none;
+  box-shadow:inset 0 0 0 1px rgba(13,13,13,.16); }
+.srail-dot.tone-none { background:#fff; box-shadow:inset 0 0 0 1.5px #b3b2ac; }
+.srail-dot.tone-blue { background:#2f80ed; }
+.srail-dot.tone-lime { background:#58b947; }
+.srail-dot.tone-amber { background:#f2c02e; }
+.srail-dot.tone-red { background:#e53935; }
+.srail-dot.tone-green { background:#1e7c3f; }
+.srail-dot.tone-orange { background:#ef6c2b; }
+
+/* Chip de la columna ESTADO: mismo tono que el punto, en versión legible sobre
+   blanco (fondo tintado + texto oscuro, ≥4,5:1) */
+.chip { display:inline-flex; align-items:center; border-radius:999px; padding:.22rem .65rem;
+  font-size:.72rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; white-space:nowrap; }
+.chip.tone-none { background:#efeeea; color:#4a4a52; }
+.chip.tone-blue { background:#e8eeff; color:#1d3fa8; }
+.chip.tone-lime { background:#e6f5e0; color:#2c6a1f; }
+.chip.tone-amber { background:#fdf3d8; color:#7a5504; }
+.chip.tone-red { background:#fdecea; color:#a3231b; }
+.chip.tone-green { background:#e3f3e9; color:#10653a; }
+.chip.tone-orange { background:#fdeee2; color:#93420a; }
+
+/* Toolbar: Buscar... + selects + botón azul de exportar */
+.doc-tools { display:flex; align-items:flex-end; gap:.9rem; flex-wrap:wrap; margin-bottom:1.2rem; }
+/* La toolbar va empaquetada a la izquierda, como en las capturas: el buscador
+   crece hasta un tope y el espacio sobrante se queda a la derecha. */
+.doc-search { position:relative; flex:1 1 20rem; min-width:11rem; max-width:32rem; }
+.doc-search input { width:100%; background:#fff; border:1px solid var(--line-control);
+  border-radius:var(--r-sm); padding:.62rem 2.7rem .62rem .9rem;
+  transition:border-color .15s var(--ease); }
+.doc-search input:focus { border-color:var(--blue); }
+.doc-search input::placeholder { color:#8a8a90; }
+.doc-search button { position:absolute; right:.4rem; top:50%; translate:0 -50%; color:var(--muted);
+  padding:.35rem; border-radius:6px; display:grid; place-items:center; }
+.doc-search button:hover { color:var(--ink); }
+.doc-tools .btn-primary { padding:.72rem 1.3rem; }
+
+/* Las cifras no se parten de línea; la alineación de la tabla es la de la
+   referencia (todo a la izquierda), y tabular-nums ya cuadra los dígitos. */
+table.grid .num { white-space:nowrap; }
+
+.doc-track { display:inline-flex; align-items:center; gap:.4rem; color:var(--blue);
+  text-decoration:underline; text-underline-offset:3px; }
+.doc-track:hover { color:var(--blue-deep); }
+.doc-track svg { flex:none; }
+
+/* ── Modal de detalle del documento (ui/modal.js) ── */
+.dlg-wide { max-width:min(62rem,94vw); width:62rem; }
+.doc-modal { padding:1.4rem 1.6rem 1.5rem; text-align:left; color:var(--ink); }
+.doc-modal-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem;
+  margin-bottom:1.2rem; }
+.doc-modal-head h2 { font-family:"Archivo Black",sans-serif; font-size:1.25rem; letter-spacing:-.02em;
+  margin:0; text-transform:uppercase; }
+.doc-modal-head p { margin:.25rem 0 0; color:var(--muted); font-size:.88rem; }
+.doc-modal-close { color:var(--muted); padding:.35rem; border-radius:6px; flex:none; }
+.doc-modal-close:hover { color:var(--ink); background:var(--paper); }
+.doc-modal-body { max-height:70vh; overflow-y:auto; }
+
+.doc-facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));
+  gap:.9rem 1.4rem; margin:0 0 1.4rem; }
+.doc-facts dt { font-size:.7rem; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); }
+.doc-facts dd { margin:.32rem 0 0; font-size:.92rem; }
+
+.doc-lines th.num, .doc-lines td.num { text-align:right; }
+.doc-line-ref { display:block; margin-top:.1rem; color:var(--muted); font-size:.78rem; font-weight:400; }
+
+.doc-totals { max-width:20rem; margin:1.3rem 0 0 auto; }
+.doc-totals > div { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  padding:.45rem 0; border-bottom:1px solid var(--line); }
+.doc-totals dt { color:#3f3f46; font-size:.9rem; }
+.doc-totals dd { margin:0; font-weight:600; }
+.doc-totals .grand { border-bottom:none; border-top:1px solid #d8d7d1; padding-top:.75rem; }
+.doc-totals .grand dt, .doc-totals .grand dd { font-weight:700; font-size:1.02rem; color:var(--ink); }
+.doc-error { margin:0; color:var(--muted); }
+
 /* ══════════════ Carrito ══════════════ */
 #cart-drawer { position:fixed; inset:0 0 0 auto; width:min(24rem,94vw); z-index:40; background:var(--card);
   box-shadow:-18px 0 50px -30px rgba(13,13,13,.45); translate:100% 0; transition:translate .3s var(--ease);
@@ -586,6 +683,14 @@ body[data-focus="on"] .cat-count::before { content:none; }
   .rail { position:static; max-height:none; overflow:visible; }
   .ck-grid { grid-template-columns:1fr; }
   .ck-side { position:static; }
+
+  /* Los listados de documentos también se apilan: el rail de estados deja de ser
+     columna y pasa a ser una tira horizontal que se desplaza sobre la tabla. */
+  .page.docs { grid-template-columns:1fr; }
+  .docs-rail { border-right:none; border-bottom:1px solid var(--line);
+    padding:0 0 1rem; margin-bottom:1.2rem; }
+  .srail { flex-direction:row; overflow-x:auto; overscroll-behavior-x:contain; padding-bottom:.2rem; }
+  .srail-item { flex:none; width:auto; }
 }
 @media (max-width:48rem) {
   /* Una sola fila: marca · usuario · carrito. Idioma y vista sin distracciones
@@ -626,7 +731,8 @@ body[data-focus="on"] .cat-count::before { content:none; }
   .ck-actions { width:100%; }
   .ck-actions .btn-ghost, .ck-actions .btn-danger { flex:1 1 auto; }
 
-  /* Carritos: PROPIETARIO/A es el dato prescindible cuando no cabe la tabla */
-  .grid-owner { display:none; }
+  /* Carritos: PROPIETARIO/A es el dato prescindible cuando no cabe la tabla.
+     En albaranes lo es DIRECCIÓN, que además es la columna más larga. */
+  .grid-owner, .grid-hide-sm { display:none; }
   table.grid th, table.grid td { padding:.75rem .6rem; }
 }

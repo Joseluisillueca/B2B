@@ -119,10 +119,20 @@ public static class SyncEndpoints
         return Results.Ok(new { id = externalId });
     }
 
+    // Documentos que pertenecen a un cliente: el conector no los cuelga de nadie en
+    // la URL (el id del recurso es el SystemId del documento), pero el dueño viene
+    // dentro, en `clientId`. Guardarlo en ParentId — el mismo sitio donde ya cuelgan
+    // las direcciones de envío — es lo que permite que el portal filtre por cliente
+    // en SQL en vez de leerse todos los pedidos del mundo (Fase 3).
+    private static readonly string[] ClientOwnedDocuments = ["order", "delivery-note", "invoice"];
+
     private static async Task UpsertDocumentAsync(
         AppDbContext db, string entityType, string externalId, string? parentId,
         string body, JsonNode? payload, DateTime now)
     {
+        if (parentId is null && ClientOwnedDocuments.Contains(entityType))
+            parentId = CatalogNormalizer.Text(payload?["clientId"]) is { Length: > 0 } owner ? owner : null;
+
         var doc = await db.SyncDocuments
             .SingleOrDefaultAsync(d => d.EntityType == entityType && d.ExternalId == externalId);
         if (doc is null)

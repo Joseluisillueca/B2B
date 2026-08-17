@@ -12,10 +12,13 @@ export const eur = value => Number(value ?? 0).toLocaleString(locale(),
 
 export const num = value => Number(value ?? 0).toLocaleString(locale());
 
+// Día y mes con dos cifras: en un listado de documentos las fechas tienen que
+// cuadrar en columna (06/08/2026, no 6/8/2026)
 export const date = value => {
   if (!value) return '';
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? '' : parsed.toLocaleDateString(locale());
+  return Number.isNaN(parsed.getTime()) ? '' : parsed.toLocaleDateString(locale(),
+    { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
 /** Escapa texto que se inyecta con innerHTML (todo lo que venga de la API) */

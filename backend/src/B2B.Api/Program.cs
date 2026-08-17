@@ -88,6 +88,7 @@ app.MapMediaEndpoints();
 app.MapShopEndpoints();
 app.MapPortalEndpoints();
 app.MapCartEndpoints();
+app.MapDocumentEndpoints();
 
 // Portal del cliente: enrutado por History API sobre las rutas reales del portal
 // actual, /{market}/{lang}/{vista} (p.ej. /es/es/orders). Recargar cualquiera de
