@@ -91,9 +91,15 @@ export function linesTable(lines, { delivered = false } = {}) {
  *   columns    [{ label, className }]
  *   cells      item => [htmlDeCadaCelda]
  *   detail     (data, item) => { subtitle, body } para el modal de la fila
+ *   filters    false quita los selects de la toolbar (devoluciones solo busca)
+ *   action     { label, icon, onClick } sustituye al botón azul de exportar
+ *              (en /sat es "⊕ NUEVA DEVOLUCIÓN", que no exporta: crea)
+ *
+ * Devuelve { reload } para que la vista repinte tras crear algo.
  */
 export async function docList(host, config) {
-  const { key, endpoint, crumb, statuses, sorts, columns, cells, detail } = config;
+  const { key, endpoint, crumb, statuses, sorts, columns, cells, detail,
+    filters = true, action = null } = config;
 
   let query = readQuery();
   let data = null;
@@ -213,6 +219,7 @@ export async function docList(host, config) {
           <button type="submit" aria-label="${esc(t('docs.searchLabel'))}">${icons.search(17)}</button>
         </form>
 
+        ${filters ? `
         <label class="tb-field">
           <span class="tb-legend">${esc(t('docs.season'))}</span>
           <span class="tb-select">
@@ -223,9 +230,9 @@ export async function docList(host, config) {
                 ${esc(season)}</option>`).join('')}
             </select>
           </span>
-        </label>
+        </label>` : ''}
 
-        ${sorts ? `
+        ${!filters ? '' : sorts ? `
           <label class="tb-field">
             <span class="tb-legend">${esc(t('docs.sortBy'))}</span>
             <span class="tb-select">
@@ -245,7 +252,8 @@ export async function docList(host, config) {
             </span>
           </label>`}
 
-        <button type="button" class="btn-primary" id="exportBtn">${esc(t(`${key}.export`))}</button>
+        <button type="button" class="btn-primary" id="${action ? 'actionBtn' : 'exportBtn'}">
+          ${action?.icon ?? ''}${esc(action ? action.label : t(`${key}.export`))}</button>
       </div>`;
 
     const form = tools.querySelector('.doc-search');
@@ -255,10 +263,8 @@ export async function docList(host, config) {
       load().then(() => tools.querySelector('.doc-search input')?.focus());
     };
 
-    tools.querySelector('#season').onchange = event => {
-      query = { ...query, season: event.target.value, skip: 0 };
-      load();
-    };
+    const season = tools.querySelector('#season');
+    if (season) season.onchange = () => { query = { ...query, season: season.value, skip: 0 }; load(); };
 
     const dates = tools.querySelector('#dates');
     if (dates) dates.onchange = () => { query = { ...query, dates: dates.value, skip: 0 }; load(); };
@@ -266,7 +272,8 @@ export async function docList(host, config) {
     const sort = tools.querySelector('#sort');
     if (sort) sort.onchange = () => { query = { ...query, sort: sort.value, skip: 0 }; load(); };
 
-    tools.querySelector('#exportBtn').onclick = async event => {
+    const exportBtn = tools.querySelector('#exportBtn');
+    if (exportBtn) exportBtn.onclick = async event => {
       const button = event.currentTarget;
       button.disabled = true;
       try {
@@ -275,6 +282,9 @@ export async function docList(host, config) {
         button.disabled = false;
       }
     };
+
+    const actionBtn = tools.querySelector('#actionBtn');
+    if (actionBtn) actionBtn.onclick = () => action.onClick({ reload: load });
   }
 
   // ── Tabla ───────────────────────────────────────────────────────────────────
@@ -316,4 +326,5 @@ export async function docList(host, config) {
   }
 
   await load();
+  return { reload: load };
 }

@@ -30,6 +30,17 @@ export const icons = {
   right: size => svg('<path d="m10 6 6 6-6 6"/>', size),
   shoe: size => svg('<path d="M3 16c3-1 4-4 6-6s4-3 7-3c2.5 0 5 1.5 5 4 0 2-1.5 3-4 3H3Z"/><path d="M3 16v2.5h18V16"/>', size),
 
+  // Cuenta, empresa, contacto y devoluciones (Fase 4)
+  building: size => svg('<path d="M4 21V4.5A1.5 1.5 0 0 1 5.5 3h7A1.5 1.5 0 0 1 14 4.5V21"/><path d="M14 10h4.5A1.5 1.5 0 0 1 20 11.5V21"/><path d="M3 21h18"/><path d="M7 7h3M7 11h3M7 15h3M17 14h0M17 17.5h0"/>', size),
+  coin: size => svg('<circle cx="12" cy="12" r="9"/><path d="M14.5 9.2A2.6 2.6 0 0 0 12 8c-1.4 0-2.5.8-2.5 1.9s1.1 1.6 2.5 1.9 2.5.8 2.5 1.9S13.4 16 12 16a2.6 2.6 0 0 1-2.5-1.2"/><path d="M12 6.6v10.8"/>', size),
+  upload: size => svg('<path d="M12 16V6m0 0-4 4m4-4 4 4"/><path d="M5 19h14"/>', size),
+  send: size => svg('<path d="M21 3 3 10.5l7 3 3 7Z"/><path d="m10 13.5 4-4"/>', size),
+  plus: size => svg('<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>', size),
+  image: size => svg('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="m4 18 5-5 3.5 3.5L16 13l4 4"/>', size),
+  chart: size => svg('<path d="M4 4v16h16"/><path d="M8 16v-4M12.5 16V8M17 16v-6"/>', size),
+  user: size => svg('<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>', size),
+  lock: size => svg('<rect x="4.5" y="10" width="15" height="10" rx="2"/><path d="M8.5 10V7.5a3.5 3.5 0 0 1 7 0V10"/>', size),
+
   // Redes del footer: trazos simples, mismo peso visual que el resto
   facebook: size => svg('<path d="M14 8h3V4.5h-3A4 4 0 0 0 10 8.5V11H7.5v3.5H10V21h3.5v-6.5H16l.5-3.5H13.5V9a1 1 0 0 1 1-1Z"/>', size),
   instagram: size => svg('<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r=".8" fill="currentColor"/>', size),

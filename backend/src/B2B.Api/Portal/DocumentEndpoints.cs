@@ -161,34 +161,11 @@ public static class DocumentEndpoints
 
     // ══════════════ Ámbito ══════════════
 
-    /// Los documentos del cliente del token y nada más.
-    ///
-    /// El filtro va en SQL por ParentId (el conector lo cuelga del `clientId` del
-    /// propio payload al ingerirlo) y se vuelve a comprobar en memoria contra ese
-    /// mismo campo. Los dos lados son el SystemId de BC en mayúsculas y sin llaves
-    /// (contrato 01), así que coinciden literalmente; si alguna vez no lo hicieran
-    /// el listado saldría vacío — falla cerrado, nunca enseñando lo de otro.
-    private static async Task<List<(string Id, JsonObject Payload)>> ScopedAsync(
-        AppDbContext db, ClaimsPrincipal principal, string entityType)
-    {
-        var actor = await PortalScope.ActorAsync(principal, db);
-        var clientId = actor?.ClientId;
-        if (string.IsNullOrEmpty(clientId))
-            return [];
-
-        var docs = await db.SyncDocuments
-            .Where(d => d.EntityType == entityType && d.ParentId == clientId)
-            .ToListAsync();
-
-        return
-        [
-            .. docs
-                .Select(doc => (doc.ExternalId, Payload: ClientIdentity.Parse(doc.Payload)))
-                .Where(doc => doc.Payload is not null && string.Equals(
-                    DocumentProjections.Text(doc.Payload["clientId"]), clientId, StringComparison.OrdinalIgnoreCase))
-                .Select(doc => (doc.ExternalId, doc.Payload!))
-        ];
-    }
+    /// Los documentos del cliente del token y nada más (PortalScope.DocumentsAsync,
+    /// compartido con las estadísticas de la Fase 4).
+    private static Task<List<(string Id, JsonObject Payload)>> ScopedAsync(
+        AppDbContext db, ClaimsPrincipal principal, string entityType) =>
+        PortalScope.DocumentsAsync(db, principal, entityType);
 
     private static async Task<JsonObject?> DocumentAsync(
         AppDbContext db, ClaimsPrincipal principal, string entityType, string id) =>

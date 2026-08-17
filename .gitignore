@@ -18,3 +18,7 @@ dist/
 # OS
 Thumbs.db
 .DS_Store
+
+# Adjuntos del formulario de contacto: datos de cliente en tiempo de ejecución,
+# fuera de wwwroot y fuera del repositorio
+backend/src/B2B.Api/uploads/

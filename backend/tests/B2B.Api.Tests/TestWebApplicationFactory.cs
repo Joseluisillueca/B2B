@@ -21,6 +21,10 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
     public string MediaRoot { get; } =
         Path.Combine(Path.GetTempPath(), $"b2b-media-{Guid.NewGuid():N}");
 
+    /// Adjuntos del formulario de contacto (fuera de wwwroot, como en producción)
+    public string ContactRoot { get; } =
+        Path.Combine(Path.GetTempPath(), $"b2b-contacto-{Guid.NewGuid():N}");
+
     /// La portada de demostración solo se siembra donde la prueba lo pide
     protected virtual bool SeedPortalContent => false;
 
@@ -41,6 +45,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("Media:Root", MediaRoot);
+        builder.UseSetting("Contact:Root", ContactRoot);
         builder.UseSetting("Seed:PortalContent", SeedPortalContent ? "true" : "false");
 
         builder.ConfigureServices(services =>
@@ -65,7 +70,9 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
-        if (disposing && Directory.Exists(MediaRoot))
-            try { Directory.Delete(MediaRoot, recursive: true); } catch (IOException) { }
+        if (!disposing) return;
+        foreach (var folder in new[] { MediaRoot, ContactRoot })
+            if (Directory.Exists(folder))
+                try { Directory.Delete(folder, recursive: true); } catch (IOException) { }
     }
 }

@@ -32,6 +32,46 @@ public static class PortalScope
         return new PortalActor(user, user.ClientExternalId, await GroupIdsAsync(db, user.ClientExternalId));
     }
 
+    /// Los documentos del conector que son del cliente del token, y nada más.
+    ///
+    /// El filtro va en SQL por ParentId (el conector lo cuelga del `clientId` del
+    /// propio payload al ingerirlo) y se vuelve a comprobar en memoria contra ese
+    /// mismo campo. Los dos lados son el SystemId de BC en mayúsculas y sin llaves
+    /// (contrato 01), así que coinciden literalmente; si alguna vez no lo hicieran
+    /// el listado saldría vacío — falla cerrado, nunca enseñando lo de otro.
+    public static async Task<List<(string Id, JsonObject Payload)>> DocumentsAsync(
+        AppDbContext db, ClaimsPrincipal principal, string entityType)
+    {
+        var actor = await ActorAsync(principal, db);
+        var clientId = actor?.ClientId;
+        if (string.IsNullOrEmpty(clientId))
+            return [];
+
+        var docs = await db.SyncDocuments
+            .Where(d => d.EntityType == entityType && d.ParentId == clientId)
+            .ToListAsync();
+
+        return
+        [
+            .. docs
+                .Select(doc => (doc.ExternalId, Payload: ClientIdentity.Parse(doc.Payload)))
+                .Where(doc => doc.Payload is not null && string.Equals(
+                    ClientIdentity.Text(doc.Payload["clientId"]), clientId, StringComparison.OrdinalIgnoreCase))
+                .Select(doc => (doc.ExternalId, doc.Payload!))
+        ];
+    }
+
+    /// El payload del propio cliente del token (sync_documents "client")
+    public static async Task<JsonObject?> ClientPayloadAsync(AppDbContext db, string? clientId)
+    {
+        if (string.IsNullOrEmpty(clientId))
+            return null;
+
+        var doc = await db.SyncDocuments
+            .SingleOrDefaultAsync(d => d.EntityType == "client" && d.ExternalId == clientId);
+        return doc is null ? null : ClientIdentity.Parse(doc.Payload);
+    }
+
     // Los grupos de tarifa (contrato 04: groupIds del cliente) deciden qué ofertas
     // con clientGroupId aplican. Viven en el payload crudo del sync.
     private static async Task<string[]> GroupIdsAsync(AppDbContext db, string? clientId)

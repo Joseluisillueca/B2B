@@ -18,4 +18,8 @@ public class AppUser
 
     // Cultura del portal en el formato del conector (es_ES, en_EN, fr_FR, it_IT)
     public string Culture { get; set; } = "es_ES";
+
+    // NOMBRE de la tarjeta "Mis datos" de /profile. Llega con el usuario admin del
+    // cliente (payload {email, name, culture}) y el propio usuario puede cambiarlo.
+    public string? Name { get; set; }
 }

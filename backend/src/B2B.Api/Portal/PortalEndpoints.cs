@@ -41,10 +41,14 @@ public static class PortalEndpoints
             return Results.Ok(new
             {
                 email = user.Email,
+                name = string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name,
                 rol = role,
                 culture = user.Culture,
                 credentials,
-                client
+                client,
+                // Preferencias de /profile: el catálogo necesita saber ya en el
+                // arranque si enseña PVD o PVP (plan, Fase 4).
+                prefs = PortalPrefs.Projection(await PortalPrefs.ReadAsync(db, user.Id))
             });
         }).RequireAuthorization();
 

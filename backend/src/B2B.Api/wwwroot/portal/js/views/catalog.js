@@ -18,6 +18,21 @@ import { pager, bindPager } from '../ui/pager.js';
 const AVAILABILITY = ['available', 'consult', 'low'];   // orden de la referencia
 const FACET_PREVIEW = 3;                                // valores antes de "Ver más"
 
+// "MOSTRAR PRECIOS" de /profile (09-profile.png): con PVP el precio recomendado
+// pasa a ser el grande de la fila y el de distribución queda debajo. Si el artículo
+// no trae el precio elegido se enseña el que haya, nunca una fila sin precio.
+const preferred = () => (state.me?.prefs?.showPrices === 'pvp' ? 'pvp' : 'pvd');
+
+const priceOf = (item, kind) =>
+  item?.[kind] == null ? null : { label: kind.toUpperCase(), value: item[kind] };
+
+const main = item => priceOf(item, preferred()) ?? priceOf(item, preferred() === 'pvd' ? 'pvp' : 'pvd');
+
+const second = item => {
+  const other = preferred() === 'pvd' ? 'pvp' : 'pvd';
+  return main(item)?.label === other.toUpperCase() ? null : priceOf(item, other);
+};
+
 // El estado del rail vive en la URL: compartir el enlace comparte el filtro, y el
 // buscador del header entra por ?q= sin que el catálogo tenga que saber de él.
 function readQuery() {
@@ -343,15 +358,17 @@ export default async function catalog(host) {
           ${attributes.length ? `<dl class="item-attrs">${attributes.map(([key, value]) => `
             <div><dt>${esc(key)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>` : ''}
 
-          ${item.pvd != null ? `
-            <p class="item-price"><span>PVD</span><b>${esc(eur(item.pvd))}</b></p>` : ''}
-          ${item.pvp != null ? `<p class="item-pvp">PVP ${esc(eur(item.pvp))}</p>` : ''}
+          ${main(item) ? `
+            <p class="item-price"><span>${main(item).label}</span>
+              <b>${esc(eur(main(item).value))}</b></p>` : ''}
+          ${second(item) ? `<p class="item-pvp">${second(item).label} ${esc(eur(second(item).value))}</p>` : ''}
         </div>
 
         <div class="item-matrix">
           ${sizeMatrix(item, { windowKey: stockWindow, lines })}
-          ${item.pvd != null ? `
-            <p class="item-price matrix-price"><span>PVD</span><b>${esc(eur(item.pvd))}</b>
+          ${main(item) ? `
+            <p class="item-price matrix-price"><span>${main(item).label}</span>
+              <b>${esc(eur(main(item).value))}</b>
               <span class="item-units" hidden></span></p>` : '<p class="item-units" hidden></p>'}
         </div>
       </article>`;

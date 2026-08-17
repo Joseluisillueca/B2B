@@ -14,6 +14,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<PortalContent> PortalContents => Set<PortalContent>();
     public DbSet<Cart> Carts => Set<Cart>();
     public DbSet<PortalFavorite> PortalFavorites => Set<PortalFavorite>();
+    public DbSet<PortalUserPrefs> PortalUserPrefs => Set<PortalUserPrefs>();
+    public DbSet<ReturnRequest> ReturnRequests => Set<ReturnRequest>();
+    public DbSet<BusinessChangeRequest> BusinessChangeRequests => Set<BusinessChangeRequest>();
+    public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,6 +29,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             user.Property(u => u.ClientNumber).HasMaxLength(50);
             user.Property(u => u.Role).HasMaxLength(50);
             user.Property(u => u.Culture).HasMaxLength(10);
+            user.Property(u => u.Name).HasMaxLength(200);
             user.HasIndex(u => u.ClientExternalId);
         });
 
@@ -114,6 +119,61 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             favorite.ToTable("portal_favorites");
             favorite.HasKey(f => new { f.UserId, f.ModelId });
             favorite.Property(f => f.ModelId).HasMaxLength(100);
+        });
+
+        // El plan (§4, Fase 4) nombra esta tabla portal_user_prefs
+        modelBuilder.Entity<PortalUserPrefs>(prefs =>
+        {
+            prefs.ToTable("portal_user_prefs");
+            prefs.HasKey(p => p.UserId);
+            prefs.Property(p => p.ShowPrices).HasMaxLength(10);
+            prefs.Property(p => p.ListDesktop).HasMaxLength(10);
+            prefs.Property(p => p.ListMobile).HasMaxLength(10);
+            prefs.Property(p => p.ShippingAddressId).HasMaxLength(100);
+        });
+
+        // El plan (§4, Fase 4) nombra esta tabla return_requests
+        modelBuilder.Entity<ReturnRequest>(request =>
+        {
+            request.ToTable("return_requests");
+            request.HasKey(r => r.Id);
+            request.Property(r => r.Code).HasMaxLength(30);
+            request.Property(r => r.ClientId).HasMaxLength(100);
+            request.Property(r => r.Type).HasMaxLength(20);
+            request.Property(r => r.PickupSlot).HasMaxLength(20);
+            request.Property(r => r.Status).HasMaxLength(20);
+            request.Property(r => r.Resolution).HasMaxLength(500);
+            request.Property(r => r.PhotoUrl).HasMaxLength(500);
+            request.Property(r => r.Reference).HasMaxLength(120);
+            request.Property(r => r.Notes).HasMaxLength(1000);
+            // El listado siempre entra por (cliente, estado): el índice cubre las dos
+            request.HasIndex(r => new { r.ClientId, r.Status });
+            request.HasIndex(r => r.Code).IsUnique();
+        });
+
+        modelBuilder.Entity<BusinessChangeRequest>(request =>
+        {
+            request.ToTable("business_change_requests");
+            request.HasKey(r => r.Id);
+            request.Property(r => r.ClientId).HasMaxLength(100);
+            request.Property(r => r.Section).HasMaxLength(20);
+            request.Property(r => r.Status).HasMaxLength(20);
+            request.Property(r => r.ChangesJson).HasColumnType("jsonb");
+            request.HasIndex(r => new { r.ClientId, r.Status });
+        });
+
+        modelBuilder.Entity<ContactMessage>(message =>
+        {
+            message.ToTable("contact_messages");
+            message.HasKey(m => m.Id);
+            message.Property(m => m.ClientId).HasMaxLength(100);
+            message.Property(m => m.Subject).HasMaxLength(200);
+            message.Property(m => m.Email).HasMaxLength(320);
+            message.Property(m => m.Message).HasMaxLength(4000);
+            message.Property(m => m.AttachmentName).HasMaxLength(260);
+            message.Property(m => m.AttachmentPath).HasMaxLength(500);
+            message.Property(m => m.DeliveredTo).HasMaxLength(320);
+            message.HasIndex(m => m.ClientId);
         });
     }
 }

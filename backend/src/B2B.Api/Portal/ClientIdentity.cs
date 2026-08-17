@@ -60,6 +60,12 @@ public static class ClientIdentity
         var culture = Text(payload["culture"]);
         if (culture.Length > 0)
             user.Culture = culture;
+
+        // NOMBRE de /profile. El sync solo lo rellena si BC lo trae: un nombre que
+        // el propio usuario haya cambiado en el portal no se pisa con un vacío.
+        var name = Text(payload["name"]).Trim();
+        if (name.Length > 0)
+            user.Name = name;
     }
 
     // El cliente puede llegar (o volver a llegar) después que su usuario admin

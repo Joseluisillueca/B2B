@@ -666,6 +666,159 @@ table.grid .num { white-space:nowrap; }
   pointer-events:none; transition:opacity .3s var(--ease); }
 #veil.on { opacity:1; pointer-events:auto; }
 
+/* ══════════════ Cuenta y empresa (09-profile.png, 10-business.png) ══════════════ */
+/* Dos tarjetas en fila, cada una con su H2 y su botón azul EDITAR por encima del
+   marco; dentro, pares etiqueta/valor separados por filetes. */
+.acc-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1.6rem 3rem; align-items:start; }
+
+.acc-head { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  margin-bottom:1rem; min-height:2.6rem; }
+.acc-head h2 { font-family:"Archivo Black",sans-serif; font-size:1.35rem; letter-spacing:-.025em;
+  margin:0; display:flex; align-items:center; gap:.6rem; }
+.acc-edit { padding:.55rem 1rem; }
+
+.acc-card { min-width:0; }
+.acc-facts, .acc-form { background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm);
+  margin:0; padding:.4rem 1.5rem; }
+.acc-facts > div { padding:1rem 0; border-bottom:1px solid var(--line); }
+.acc-facts > div:last-child { border-bottom:none; }
+.acc-facts dt { font-size:.74rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink); }
+.acc-facts dd { margin:.4rem 0 0; color:#3f3f46; font-size:.95rem; min-height:1.2rem; }
+.acc-none { color:var(--muted-2); }
+
+/* Editar: los mismos huecos, con campos en vez de texto */
+.acc-form { padding:1.2rem 1.5rem 1.4rem; }
+.acc-field { margin:0 0 1rem; }
+.acc-field span, .acc-field > label > span { display:block; font-size:.74rem; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--ink); margin-bottom:.4rem; }
+.acc-field input, .acc-field select, .acc-field textarea { width:100%; border:1px solid var(--line-control);
+  border-radius:var(--r-sm); padding:.6rem .7rem; background:#fff; }
+.acc-field input:focus, .acc-field select:focus, .acc-field textarea:focus { border-color:var(--blue); }
+.acc-field-fixed b { font-weight:400; color:#3f3f46; font-size:.95rem; }
+.acc-actions { display:flex; justify-content:flex-end; gap:.6rem; flex-wrap:wrap; margin-top:1.2rem; }
+
+/* Banda gris de "Cambiar contraseña": ocupa el ancho de la ventana bajo la página */
+.acc-band { background:#f3f2ef; border-top:1px solid var(--line); margin-top:2.5rem; }
+.acc-band-inner { max-width:100rem; margin:0 auto; padding:2.2rem 1.5rem 2.6rem; }
+.acc-band h2 { font-family:"Archivo Black",sans-serif; font-size:1.45rem; letter-spacing:-.025em; margin:0; }
+.acc-band-lead { margin:.25rem 0 1.3rem; color:#3f3f46; }
+.acc-password { display:grid; gap:.9rem; max-width:none; }
+.acc-password input { width:100%; border:1px solid var(--line-control); border-radius:var(--r-sm);
+  padding:.85rem 1rem; background:#fff; }
+.acc-password input:focus { border-color:var(--blue); }
+.acc-password input::placeholder { color:#8a8a90; }
+.acc-password button { justify-self:end; }
+
+/* ── Empresa ── */
+.biz-section { margin-bottom:2.4rem; }
+.biz-head h2 svg { color:var(--ink); flex:none; }
+.biz-card { background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm);
+  padding:.2rem 1.5rem; }
+.biz-row { display:grid; gap:1.2rem 2rem; margin:0; padding:1.15rem 0; border-bottom:1px solid var(--line); }
+.biz-row.one { grid-template-columns:1fr; }
+.biz-row.three { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.biz-row.four { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.biz-row.last, .biz-card > .biz-row:last-of-type { border-bottom:none; }
+.biz-field dt { font-size:.74rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink); }
+.biz-field dd { margin:.4rem 0 0; color:#3f3f46; font-size:.95rem; overflow-wrap:anywhere; }
+
+/* Recargo de equivalencia: en lectura es un checkbox deshabilitado, igual que en
+   la referencia; en edición es el mismo control, ya activo. */
+.biz-check { margin:0; padding:1.15rem 0 1.3rem; }
+.biz-check label { display:flex; align-items:flex-start; gap:.7rem; font-size:.92rem; color:#3f3f46; }
+.biz-check input { appearance:none; width:1.15rem; height:1.15rem; flex:none; margin-top:.1rem;
+  border:1.5px solid var(--line-control); border-radius:3px; background:#fff; display:grid; place-items:center; }
+.biz-check input:checked { background:var(--ink); border-color:var(--ink); }
+.biz-check input:checked::after { content:""; width:.5rem; height:.28rem; border-left:2px solid #fff;
+  border-bottom:2px solid #fff; rotate:-45deg; translate:0 -1px; }
+.biz-check input:disabled { background:#f1f0ec; }
+.biz-check input:disabled:checked { background:var(--muted); border-color:var(--muted); }
+
+.biz-form { background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm);
+  padding:1.3rem 1.5rem 1.4rem; }
+.biz-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0 2rem; }
+.biz-hint { display:flex; align-items:flex-start; gap:.6rem; margin:0 0 1.2rem; color:var(--muted);
+  font-size:.85rem; }
+.biz-hint svg { flex:none; margin-top:.1rem; }
+
+.biz-pending { margin-top:1rem; }
+.biz-pending h2 { font-size:.9rem; text-transform:uppercase; letter-spacing:.05em; margin:0 0 .6rem; }
+.biz-pending ul { list-style:none; margin:0; padding:0; }
+.biz-pending li { display:flex; gap:.9rem; padding:.55rem 0; border-bottom:1px solid var(--line);
+  font-size:.9rem; }
+.biz-pending li:last-child { border-bottom:none; }
+.biz-pending-when { color:var(--muted); flex:none; }
+
+/* ══════════════ Estadísticas (11-statistics.png) ══════════════ */
+.stat-tools { margin-bottom:1.6rem; }
+.stat-tools .tb-select input[type="date"] { border:none; background:#fff; padding:.5rem .7rem .5rem 0;
+  min-width:8rem; }
+.stat-title { font-family:"Archivo Black",sans-serif; font-size:1.7rem; letter-spacing:-.03em;
+  margin:0 0 1.2rem; }
+
+.stat-chart { background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm);
+  padding:1rem .6rem .4rem; }
+.stat-chart svg { width:100%; height:auto; display:block; }
+.stat-tick line { stroke:#eceae5; stroke-width:1; }
+.stat-tick text { fill:var(--muted); font-size:13px; }
+.stat-axis { stroke:var(--ink); stroke-width:1.5; }
+.stat-bar rect { fill:var(--blue); transition:fill .15s var(--ease); }
+.stat-bar:hover rect { fill:var(--blue-deep); }
+.stat-bar.negative rect { fill:var(--out); }
+.stat-month { fill:#3f3f46; font-size:13px; }
+.stat-na { fill:var(--muted); font-size:14px; }
+
+.stat-summary { display:flex; gap:2.4rem; flex-wrap:wrap; margin:1.4rem 0 1.8rem; }
+.stat-summary dt { font-size:.72rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--muted); }
+.stat-summary dd { margin:.3rem 0 0; font-family:"Archivo Black",sans-serif; font-size:1.5rem;
+  letter-spacing:-.02em; }
+.stat-table table.grid td.num, .stat-table table.grid th.num { text-align:right; }
+
+/* ══════════════ Contacto (07-contact.png) ══════════════ */
+.ct-lead { margin:0 0 1.8rem; font-size:1rem; color:#3f3f46; }
+.ct-row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1.2rem 2rem; }
+.ct-field { margin:0 0 1.2rem; }
+.ct-field label, .ct-label { display:block; font-size:.92rem; font-weight:700; color:var(--ink);
+  margin-bottom:.45rem; }
+.ct-req { color:var(--out); margin-left:.1rem; }
+.ct-field input[type="text"], .ct-field input[type="email"], .ct-field textarea { width:100%;
+  border:1px solid var(--line-control); border-radius:var(--r-sm); padding:.7rem .9rem; background:#fff; }
+.ct-field input:focus, .ct-field textarea:focus { border-color:var(--blue); }
+.ct-field input::placeholder, .ct-field textarea::placeholder { color:#8a8a90; }
+.ct-message textarea { min-height:7rem; resize:vertical; }
+
+/* El <input type=file> nativo no se puede vestir: se oculta y su <label> es el
+   botón negro de la referencia, que sigue abriendo el selector sin JavaScript. */
+/* Gana a ".ct-field label" (que pinta las etiquetas en negro sobre el papel): sin
+   el selector completo el rótulo salía negro sobre el botón negro. */
+.ct-field label.ct-file { display:flex; align-items:center; justify-content:center; gap:.6rem;
+  background:var(--ink); color:#fff; border-radius:var(--r-sm); padding:.72rem 1.1rem; font-weight:600;
+  font-size:.85rem; letter-spacing:.03em; text-transform:uppercase; cursor:pointer; margin:0;
+  transition:background .15s var(--ease); }
+.ct-field label.ct-file:hover { background:var(--ink-3); }
+/* El input real está oculto: su foco de teclado se marca sobre el botón visible */
+.ct-file:has(+ input:focus-visible) { outline:2px solid var(--blue); outline-offset:2px; }
+.ct-filename { display:inline-flex; align-items:center; gap:.4rem; margin-top:.45rem; color:var(--muted);
+  font-size:.82rem; overflow-wrap:anywhere; }
+.ct-file-drop { color:var(--muted); border-radius:5px; min-width:22px; min-height:22px;
+  display:inline-grid; place-items:center; }
+.ct-file-drop:hover { color:var(--out); }
+.ct-actions { display:flex; justify-content:flex-end; }
+
+/* ══════════════ Devoluciones (08-sat.png) ══════════════ */
+.sat-img { width:4rem; }
+.sat-thumb { width:2.6rem; height:2.6rem; border-radius:var(--r-sm); object-fit:cover; display:block; }
+.sat-thumb-empty { background:#f0efec; color:var(--muted-2); display:grid; place-items:center; }
+.sat-pending { color:var(--muted); }
+.sat-block { font-size:.74rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--muted); margin:1.3rem 0 .4rem; }
+.sat-text { margin:0; font-size:.95rem; color:#3f3f46; }
+.sat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 1.4rem; }
+.sat-wide { grid-column:1 / -1; }
+.sat-error { margin:0 0 1rem; color:var(--out); font-size:.9rem; }
+.sat-form .acc-actions { margin-top:.4rem; }
+
 /* ══════════════ Responsive ══════════════ */
 @media (max-width:70rem) {
   .h-search { display:none; }
@@ -684,9 +837,17 @@ table.grid .num { white-space:nowrap; }
   .ck-grid { grid-template-columns:1fr; }
   .ck-side { position:static; }
 
+  /* Cuenta, empresa y contacto: las columnas de fichas se apilan mucho antes que
+     el resto del layout, porque cada campo necesita su ancho para leerse. */
+  .acc-grid { grid-template-columns:1fr; gap:2rem; }
+  .biz-row.three, .biz-row.four, .biz-grid, .ct-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
+
   /* Los listados de documentos también se apilan: el rail de estados deja de ser
      columna y pasa a ser una tira horizontal que se desplaza sobre la tabla. */
-  .page.docs { grid-template-columns:1fr; }
+  /* minmax(0,1fr) y no 1fr: el mínimo automático de un track deja que una tabla
+     ancha (las 10 columnas de /sat) estire la página en vez de desplazarse dentro
+     de su .grid-scroll. */
+  .page.docs { grid-template-columns:minmax(0,1fr); }
   .docs-rail { border-right:none; border-bottom:1px solid var(--line);
     padding:0 0 1rem; margin-bottom:1.2rem; }
   .srail { flex-direction:row; overflow-x:auto; overscroll-behavior-x:contain; padding-bottom:.2rem; }
@@ -730,6 +891,15 @@ table.grid .num { white-space:nowrap; }
   .ck-group { padding:1rem; }
   .ck-actions { width:100%; }
   .ck-actions .btn-ghost, .ck-actions .btn-danger { flex:1 1 auto; }
+
+  /* Una sola columna: en 390 px un par etiqueta/valor por línea es lo único legible */
+  .biz-row.three, .biz-row.four, .biz-grid, .ct-row, .sat-grid { grid-template-columns:1fr; }
+  .acc-facts, .acc-form, .biz-card, .biz-form { padding-left:1rem; padding-right:1rem; }
+  .acc-head { flex-wrap:wrap; }
+  .acc-band-inner { padding:1.6rem 1rem 2rem; }
+  .stat-title { font-size:1.25rem; }
+  .stat-summary dd { font-size:1.2rem; }
+  .ct-actions button, .acc-password button { width:100%; }
 
   /* Carritos: PROPIETARIO/A es el dato prescindible cuando no cabe la tabla.
      En albaranes lo es DIRECCIÓN, que además es la columna más larga. */
