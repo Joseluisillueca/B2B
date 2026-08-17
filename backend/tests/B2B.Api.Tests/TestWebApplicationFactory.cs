@@ -17,6 +17,13 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
 
     private readonly string _dbName = $"b2b-tests-{Guid.NewGuid():N}";
 
+    /// Carpeta de medios de esta fábrica: las subidas de prueba no tocan wwwroot
+    public string MediaRoot { get; } =
+        Path.Combine(Path.GetTempPath(), $"b2b-media-{Guid.NewGuid():N}");
+
+    /// La portada de demostración solo se siembra donde la prueba lo pide
+    protected virtual bool SeedPortalContent => false;
+
     public async Task<string> GetTokenAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/auth/login", new
@@ -33,6 +40,9 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseSetting("Media:Root", MediaRoot);
+        builder.UseSetting("Seed:PortalContent", SeedPortalContent ? "true" : "false");
+
         builder.ConfigureServices(services =>
         {
             services.RemoveAll(typeof(DbContextOptions<AppDbContext>));
@@ -50,5 +60,12 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 db.SaveChanges();
             }
         });
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing && Directory.Exists(MediaRoot))
+            try { Directory.Delete(MediaRoot, recursive: true); } catch (IOException) { }
     }
 }

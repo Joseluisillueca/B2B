@@ -47,6 +47,34 @@ public static class PortalEndpoints
                 client
             });
         }).RequireAuthorization();
+
+        // Contenido publicado (plan §3): lo que el CMS ha dejado listo para este
+        // idioma. El portal nunca ve elementos apagados ni fuera de su ventana de
+        // publicación, así que una campaña caducada desaparece sola de la portada.
+        app.MapGet("/api/portal/content/{key}", async (string key, string? locale, AppDbContext db) =>
+        {
+            if (!PortalContentModel.IsKnownKey(key))
+                return Results.BadRequest(new { error = "Clave de contenido desconocida." });
+
+            var requested = PortalContentModel.NormalizeLocale(locale) ?? PortalContentModel.DefaultLocale;
+
+            // Idioma pedido → contenido común (*) → idioma principal
+            var candidates = new[] { requested, PortalContentModel.CommonLocale, PortalContentModel.DefaultLocale }
+                .Distinct().ToArray();
+            var blocks = await db.PortalContents
+                .Where(c => c.Key == key && candidates.Contains(c.Locale))
+                .ToListAsync();
+
+            var block = candidates
+                .Select(candidate => blocks.SingleOrDefault(b => b.Locale == candidate))
+                .FirstOrDefault(found => found is not null);
+
+            var items = block is null
+                ? new JsonArray()
+                : PortalContentModel.Published(block.Json, DateTimeOffset.UtcNow);
+
+            return Results.Ok(new { key, locale = block?.Locale ?? requested, items });
+        }).RequireAuthorization();
     }
 
     private static async Task<AppUser?> CurrentUserAsync(ClaimsPrincipal principal, AppDbContext db)

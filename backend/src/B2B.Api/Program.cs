@@ -46,6 +46,10 @@ using (var scope = app.Services.CreateScope())
         db.Users.Add(user);
         db.SaveChanges();
     }
+
+    // Portada de demostración: solo mientras el CMS no haya publicado nada
+    if (app.Configuration.GetValue("Seed:PortalContent", true))
+        PortalContentSeed.EnsureDemoContent(db);
 }
 
 app.MapOpenApi();
@@ -79,6 +83,8 @@ app.MapAuthEndpoints();
 app.MapSyncEndpoints();
 app.MapQueryEndpoints();
 app.MapAdminEndpoints();
+app.MapContentEndpoints();
+app.MapMediaEndpoints();
 app.MapShopEndpoints();
 app.MapPortalEndpoints();
 

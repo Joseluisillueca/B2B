@@ -22,6 +22,7 @@
 
   "chrome.search": "Búsqueda",
   "chrome.focus": "Vista sin distracciones",
+  "chrome.language": "Idioma",
   "chrome.logout": "Cerrar sesión",
 
   "nav.home": "Inicio",
@@ -46,8 +47,13 @@
   "cart.empty": "El carrito está vacío — indica cantidades por talla en el catálogo.",
 
   "dashboard.title": "Haz tu pedido",
-  "dashboard.soonTitle": "La portada se configura desde el CMS",
-  "dashboard.soonBody": "El carrusel y las tarjetas Reposición y Programación se alimentarán de /admin, sin desplegar.",
+  "dashboard.heroLabel": "Novedades",
+  "carousel.role": "carrusel",
+  "carousel.prev": "Imagen anterior",
+  "carousel.next": "Imagen siguiente",
+  "carousel.goTo": "Ir a la imagen {n}",
+  "carousel.pause": "Pausar el pase automático",
+  "carousel.play": "Reanudar el pase automático",
 
   "catalog.soonTitle": "El catálogo se integra en el portal",
   "catalog.soonBody": "La matriz de tallas, el semáforo de stock y las facetas ya funcionan en la superficie de compra actual.",

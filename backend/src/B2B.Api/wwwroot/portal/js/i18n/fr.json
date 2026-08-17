@@ -17,6 +17,7 @@
 
   "chrome.search": "Recherche",
   "chrome.focus": "Vue sans distractions",
+  "chrome.language": "Langue",
   "chrome.logout": "Se déconnecter",
 
   "nav.home": "Accueil",
@@ -41,8 +42,13 @@
   "cart.empty": "Votre panier est vide — saisissez les quantités par taille dans le catalogue.",
 
   "dashboard.title": "Passez votre commande",
-  "dashboard.soonTitle": "La page d'accueil se configure depuis le CMS",
-  "dashboard.soonBody": "Le carrousel et les vignettes Réassort et Programmation seront alimentés depuis /admin, sans déploiement.",
+  "dashboard.heroLabel": "Nouveautés",
+  "carousel.role": "carrousel",
+  "carousel.prev": "Image précédente",
+  "carousel.next": "Image suivante",
+  "carousel.goTo": "Aller à l'image {n}",
+  "carousel.pause": "Mettre le défilement en pause",
+  "carousel.play": "Reprendre le défilement",
 
   "catalog.soonTitle": "Le catalogue rejoint le portail",
   "catalog.soonBody": "La matrice de tailles, le feu de stock et les facettes fonctionnent déjà sur la surface d'achat actuelle.",

@@ -17,6 +17,7 @@
 
   "chrome.search": "Ricerca",
   "chrome.focus": "Vista senza distrazioni",
+  "chrome.language": "Lingua",
   "chrome.logout": "Esci",
 
   "nav.home": "Home",
@@ -41,8 +42,13 @@
   "cart.empty": "Il carrello è vuoto — inserisci le quantità per taglia nel catalogo.",
 
   "dashboard.title": "Effettua il tuo ordine",
-  "dashboard.soonTitle": "La homepage si configura dal CMS",
-  "dashboard.soonBody": "Il carosello e le schede Riassortimento e Programmazione saranno alimentati da /admin, senza rilasci.",
+  "dashboard.heroLabel": "Novità",
+  "carousel.role": "carosello",
+  "carousel.prev": "Immagine precedente",
+  "carousel.next": "Immagine successiva",
+  "carousel.goTo": "Vai all’immagine {n}",
+  "carousel.pause": "Metti in pausa lo scorrimento",
+  "carousel.play": "Riprendi lo scorrimento",
 
   "catalog.soonTitle": "Il catalogo entra nel portale",
   "catalog.soonBody": "La matrice delle taglie, il semaforo di stock e le faccette funzionano già sulla superficie d'acquisto attuale.",

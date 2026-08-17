@@ -37,13 +37,18 @@ main { flex:1; outline:none; }
 /* ══════════════ Header negro ══════════════ */
 #chrome-header { position:sticky; top:0; z-index:20; background:var(--ink); color:#fff;
   display:flex; align-items:center; gap:1.1rem; padding:0 1.6rem; height:var(--header-h); }
-#chrome-header .brand { font-size:1.75rem; color:#fff; text-decoration:none; line-height:1; }
+/* Interino hasta que llegue el SVG del wordmark: el logo de la referencia mide
+   ~151×39 px dentro de un header de ~72 px, así que el texto se sube a 2.8rem. */
+#chrome-header .brand { font-size:2.8rem; color:#fff; text-decoration:none; line-height:1; }
 
 .h-search { position:relative; width:min(20rem,32vw); }
 .h-search input { width:100%; background:transparent; border:1px solid #4a4a52; border-radius:var(--r-sm);
   padding:.62rem 2.4rem .62rem .8rem; color:#fff; transition:border-color .15s var(--ease); }
 .h-search input::placeholder { color:#8b8b93; }
-.h-search input:focus { border-color:#fff; outline:none; }
+.h-search input:focus { border-color:#fff; }
+/* Sobre el header negro el azul de marca no contrasta: el foco se marca en blanco */
+.h-search input:focus-visible, #chrome-header button:focus-visible, #chrome-header a:focus-visible {
+  outline:2px solid #fff; outline-offset:2px; }
 .h-search button { position:absolute; right:.35rem; top:50%; translate:0 -50%; padding:.35rem;
   color:#cfcfd6; border-radius:6px; display:grid; place-items:center; }
 .h-search button:hover { color:#fff; }
@@ -67,6 +72,10 @@ main { flex:1; outline:none; }
 .h-menu a:hover, .h-menu button:hover { background:var(--paper); }
 .h-menu hr { border:none; border-top:1px solid var(--line); margin:.35rem .3rem; }
 .h-menu .out { color:var(--out); }
+/* Idioma y vista sin distracciones solo cuelgan del menú cuando el header los oculta */
+.h-menu .m-only { display:none; }
+.h-menu .m-title { display:block; padding:.5rem .75rem .15rem; font-size:.72rem; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
 
 .h-icon { color:#e7e7ec; padding:.45rem; border-radius:var(--r-sm); display:grid; place-items:center;
   transition:background .15s var(--ease), color .15s var(--ease); }
@@ -92,7 +101,9 @@ main { flex:1; outline:none; }
 #chrome-nav a[aria-current="page"] { border-bottom-color:var(--blue); font-weight:600; }
 
 /* ══════════════ Footer ══════════════ */
-#chrome-footer { background:#e9e9e6; color:var(--muted); margin-top:3rem;
+/* --muted es global (texto secundario sobre blanco); sobre el gris del footer
+   necesita ser más oscuro para llegar al 4,5:1, así que se fija aquí. */
+#chrome-footer { --footer-ink:#5c5c65; background:#e9e9e6; color:var(--footer-ink); margin-top:3rem;
   display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1.4rem 1.6rem; flex-wrap:wrap; }
 #chrome-footer .social { display:flex; gap:.35rem; }
 #chrome-footer .social a { padding:.4rem; border-radius:50%; color:var(--ink); opacity:.65;
@@ -100,12 +111,12 @@ main { flex:1; outline:none; }
 #chrome-footer .social a:hover { opacity:1; background-color:#dcdcd6; }
 
 /* ══════════════ Vistas con chrome ══════════════ */
-.page { max-width:97rem; margin:0 auto; padding:1.6rem 1.6rem 3rem; }
+.page { max-width:100rem; margin:0 auto; padding:1.6rem 1.5rem 3rem; }
 .crumbs { color:var(--muted); font-size:.82rem; margin:0 0 .6rem; }
 .crumbs a { text-decoration:none; }
 .crumbs a:hover { text-decoration:underline; }
 .crumbs span { color:var(--ink); }
-h1.title { font-family:"Archivo Black",sans-serif; font-size:2.1rem; letter-spacing:-.035em; margin:0 0 1.4rem; }
+h1.title { font-family:"Archivo Black",sans-serif; font-size:2.75rem; letter-spacing:-.035em; margin:0 0 1.75rem; }
 body[data-focus="on"] .crumbs, body[data-focus="on"] h1.title { display:none; }
 
 .panel { background:var(--card); border-radius:var(--r); box-shadow:var(--shadow); padding:2.6rem 2rem;
@@ -116,6 +127,88 @@ body[data-focus="on"] .crumbs, body[data-focus="on"] h1.title { display:none; }
 .panel .cta { display:inline-block; margin-top:1.1rem; background:var(--blue); color:#fff; font-weight:700;
   border-radius:var(--r-sm); padding:.7rem 1.3rem; text-decoration:none; }
 .panel .cta:hover { background:var(--blue-deep); }
+
+/* ══════════════ Portada: carrusel + tarjetas de acceso ══════════════ */
+/* Contenido servido por el CMS (portal_content). Las medidas siguen 01-dashboard.png:
+   carrusel ~3.4:1 a ancho de página y dos tarjetas-imagen bajo el H1. */
+/* La portada va sobre blanco y sin marco (ni radio ni sombra), como la referencia */
+body:has(#hero) { background:#fff; }
+
+.hero { max-width:100rem; margin:0 auto; padding:1.6rem 1.5rem 0; }
+.hero + .page { padding-top:4.7rem; }
+
+.carousel { position:relative; overflow:hidden; border-radius:0; background:var(--ink-2);
+  aspect-ratio:3.4/1; box-shadow:none; }
+.c-track { display:flex; height:100%; transition:transform .55s var(--ease); }
+.c-slide { position:relative; flex:0 0 100%; display:block; color:#fff; text-decoration:none; }
+.c-slide img { width:100%; height:100%; object-fit:cover; display:block; user-select:none; }
+
+.c-caption { position:absolute; left:0; right:0; bottom:0; padding:2.4rem 2.2rem 3.2rem;
+  display:flex; flex-direction:column; align-items:flex-start; gap:.35rem;
+  background:linear-gradient(transparent, rgba(13,13,13,.72)); }
+.c-caption strong { font-family:"Archivo Black",sans-serif; font-size:clamp(1.3rem,2.6vw,2.2rem);
+  letter-spacing:-.03em; line-height:1.1; }
+.c-caption span { font-size:clamp(.9rem,1.2vw,1.05rem); color:#e9e9ee; }
+.c-caption .c-cta { margin-top:.7rem; background:var(--blue); color:#fff; font-weight:700;
+  border-radius:var(--r-sm); padding:.6rem 1.15rem; letter-spacing:.02em; }
+.c-slide:hover .c-cta { background:var(--blue-deep); }
+
+.c-arrow { position:absolute; top:50%; translate:0 -50%; width:2.6rem; height:2.6rem; border-radius:50%;
+  background:rgba(255,255,255,.9); color:var(--ink); display:grid; place-items:center;
+  opacity:0; transition:opacity .2s var(--ease), background .15s var(--ease); }
+.c-arrow.prev { left:1rem; rotate:90deg; }
+.c-arrow.next { right:1rem; rotate:-90deg; }
+.carousel:hover .c-arrow, .c-arrow:focus-visible { opacity:1; }
+.c-arrow:hover { background:#fff; }
+
+/* Los dots miden 24×24 para el dedo; el punto visible es el ::before interior */
+.c-dots { position:absolute; left:0; right:0; bottom:.7rem; display:flex; justify-content:center;
+  align-items:center; gap:.15rem; }
+.c-dots button { width:24px; height:24px; border-radius:50%; display:grid; place-items:center; }
+.c-dots button[data-go]::before { content:""; width:.6rem; height:.6rem; border-radius:50%;
+  background:rgba(255,255,255,.55); transition:background .15s var(--ease), scale .15s var(--ease); }
+.c-dots button[data-go]:hover::before { background:#fff; }
+.c-dots button[aria-current="true"]::before { background:var(--blue); scale:1.15; }
+.c-dots .c-play { width:24px; height:24px; color:#fff; opacity:.8; }
+.c-dots .c-play:hover { opacity:1; }
+.c-dots button:focus-visible { outline:2px solid #fff; outline-offset:1px; }
+
+.hero-skeleton { aspect-ratio:3.4/1; border-radius:0; background:#e9e8e3; }
+.tile-skeleton { aspect-ratio:16/9; border-radius:0; background:#e9e8e3; }
+.hero-skeleton, .tile-skeleton { background-image:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.65) 50%,transparent 80%);
+  background-size:220% 100%; animation:sheen 1.4s var(--ease) infinite; }
+@keyframes sheen { from { background-position:180% 0; } to { background-position:-80% 0; } }
+
+.tiles { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; }
+.tile { position:relative; display:block; overflow:hidden; border-radius:0; aspect-ratio:16/9;
+  background:var(--ink); color:#fff; text-decoration:none; box-shadow:none; }
+/* Sobre la foto el azul se pierde: el foco se marca en blanco con halo azul */
+.tile:focus-visible { outline:3px solid #fff; outline-offset:-3px; box-shadow:0 0 0 3px var(--blue); }
+.tile img, .tile .t-art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+  transition:scale .5s var(--ease); }
+.tile:hover img, .tile:hover .t-art { scale:1.04; }
+/* Sin imagen en el CMS, la tarjeta se sostiene con el color de marca */
+.tile[data-window="replenishment"] .t-art { background:linear-gradient(135deg,#f0dcd6,#c9a49b 70%,#a97f76); }
+.tile[data-window="scheduled"] .t-art { background:linear-gradient(135deg,#2f3138,#16171a 65%,#0d0d0d); }
+/* Orden de capas: imagen/degradado (auto) · velo (1) · rótulos (2).
+   Ojo con .t-art: es el fondo de la tarjeta sin imagen y debe quedar BAJO el velo,
+   y .t-cart/.t-label/.t-sub ya son absolutos, así que solo se les sube el z-index. */
+.tile::after { content:""; position:absolute; inset:0; z-index:1;
+  background:linear-gradient(105deg,rgba(13,13,13,.45),rgba(13,13,13,.05) 45%,rgba(13,13,13,.55));
+  transition:opacity .3s var(--ease); }
+.tile:hover::after { opacity:.82; }
+.tile > .t-cart, .tile > .t-label, .tile > .t-sub { z-index:2; }
+.t-cart { position:absolute; top:1.3rem; left:1.4rem; color:#fff; opacity:.95; }
+.t-label { position:absolute; right:1.6rem; bottom:1.1rem; font-size:clamp(1.5rem,3vw,2.9rem);
+  font-weight:500; letter-spacing:-.03em; line-height:1.1; text-shadow:0 2px 18px rgba(13,13,13,.45); }
+.t-sub { position:absolute; right:1.7rem; bottom:.55rem; font-size:.85rem; color:#e6e6ec; }
+.tile:has(.t-sub) .t-label { bottom:2.1rem; }
+
+@media (prefers-reduced-motion:reduce) {
+  .c-track { transition:none; }
+  .hero-skeleton, .tile-skeleton { animation:none; }
+  .tile img, .tile .t-art { transition:none; }
+}
 
 /* ══════════════ Pantallas sin chrome (login / credenciales) ══════════════ */
 body[data-chrome="off"] { background:linear-gradient(135deg,#3f7fe0 0%,#5a9de8 45%,#7fb2ec 100%); }
@@ -129,7 +222,8 @@ body[data-chrome="credentials"] {
 .login-card { width:min(29rem,100%); }
 .login-card .field { width:100%; border:1px solid #ccc; border-radius:4px; padding:.85rem 1rem;
   margin-bottom:.9rem; transition:border-color .15s var(--ease); }
-.login-card .field:focus { border-color:var(--blue); outline:none; }
+.login-card .field:focus { border-color:var(--blue); }
+.login-card .field:focus-visible { outline:2px solid var(--blue); outline-offset:1px; }
 .login-card .field::placeholder { color:#8a8a90; }
 .login-card .forgot { display:block; text-align:right; font-size:.85rem; color:#2f80ed; margin:.1rem 0 1.4rem; }
 .login-card .submit { width:100%; background:var(--blue); color:#fff; font-weight:700; letter-spacing:.04em;
@@ -180,11 +274,30 @@ body[data-chrome="credentials"] {
   .h-search { display:none; }
   .h-user .who { display:none; }
 }
+@media (max-width:62rem) {
+  /* Las dos tarjetas dejan de caber en fila mucho antes que el resto del layout */
+  .tiles { grid-template-columns:1fr; }
+  .tile { aspect-ratio:2/1; }
+}
 @media (max-width:48rem) {
-  #chrome-header { gap:.7rem; padding:0 1rem; height:auto; min-height:var(--header-h); flex-wrap:wrap; }
-  .h-cart span.label { display:none; }
+  /* Una sola fila: marca · usuario · carrito. Idioma y vista sin distracciones
+     se van al menú de usuario (.m-only), que en móvil los muestra. */
+  #chrome-header { gap:.7rem; padding:0 1rem; height:var(--header-h); flex-wrap:nowrap; }
+  #chrome-header .brand { font-size:2rem; }
+  #chrome-header .sep, .h-lang, .h-icon { display:none; }
+  .h-menu .m-only { display:block; }
+  /* Anclado al avatar el menú se sale por la izquierda: en móvil ocupa el ancho */
+  .h-menu { position:fixed; top:var(--header-h); left:1rem; right:1rem; min-width:0; }
+  .h-cart { padding:.6rem .8rem; font-size:.8rem; }
+  .hero { padding:1rem 1rem 0; }
+  .hero + .page { padding-top:2rem; }
+  .carousel, .hero-skeleton { aspect-ratio:16/9; }
+  .c-arrow { display:none; }
+  .c-caption { padding:1.4rem 1.2rem 2.4rem; }
+  .t-cart { top:1rem; left:1rem; }
+  .t-label { right:1.1rem; bottom:.8rem; }
   .page { padding:1.2rem 1rem 2.4rem; }
-  h1.title { font-size:1.6rem; }
+  h1.title { font-size:1.9rem; }
   .sheet .card { padding:1.8rem 1.3rem; }
   .cred-row { flex-wrap:wrap; }
 }

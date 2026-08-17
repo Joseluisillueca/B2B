@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 470" width="1600" height="470" role="img" aria-label="Composición de campaña sobre fondo de estudio">
+  <defs>
+    <linearGradient id="studio" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4efe6"/>
+      <stop offset=".55" stop-color="#e6dfd3"/>
+      <stop offset="1" stop-color="#cdc3b2"/>
+    </linearGradient>
+    <linearGradient id="sweep" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#2b2bff"/>
+      <stop offset="1" stop-color="#6a6aff"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="470" fill="url(#studio)"/>
+  <circle cx="1210" cy="188" r="240" fill="#fff" opacity=".5"/>
+  <circle cx="366" cy="330" r="150" fill="#0d0d0d" opacity=".05"/>
+
+  <!-- arcos: el gesto de la campaña, sin fotografía de producto -->
+  <g fill="none" stroke-linecap="round">
+    <g stroke="#a99e8c" stroke-opacity=".45" stroke-width="3">
+      <path d="M120 372 C388 372 528 34 992 34 C1284 34 1404 142 1504 202"/>
+      <path d="M120 396 C400 396 540 60 1000 60 C1290 60 1410 168 1510 228"/>
+    </g>
+    <path d="M120 424 C420 424 560 96 1010 96 C1300 96 1420 200 1520 262" stroke="#0d0d0d" stroke-opacity=".82" stroke-width="14"/>
+    <path d="M120 452 C440 452 580 140 1030 140 C1320 140 1440 240 1540 300" stroke="url(#sweep)" stroke-width="26"/>
+  </g>
+
+  <circle cx="1010" cy="96" r="13" fill="#0d0d0d" opacity=".85"/>
+  <circle cx="1030" cy="140" r="9" fill="#2b2bff"/>
+</svg>

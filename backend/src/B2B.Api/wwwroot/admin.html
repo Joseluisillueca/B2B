@@ -25,7 +25,10 @@
   .login-card .brand { text-align:center; font-weight:800; font-size:1.5rem; letter-spacing:-.03em; margin-bottom:.6rem; }
   .login-card .brand span { color:var(--accent); }
   .login-card input { width:100%; }
-  input, select { font:inherit; padding:.6rem .75rem; border-radius:9px; border:1px solid var(--line); background:#fff; outline:none; }
+  input, select { font:inherit; padding:.6rem .75rem; border-radius:9px; border:1px solid var(--line); background:#fff; }
+  input:focus-visible, select:focus-visible, button:focus-visible, .nav-item:focus-visible {
+    outline:2px solid var(--accent); outline-offset:2px; }
+  .nav-item:focus-visible { outline-color:#fff; outline-offset:-2px; }
   input:focus, select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(47,75,255,.15); }
   button { font:inherit; font-weight:600; padding:.6rem 1rem; border-radius:9px; border:1px solid transparent; cursor:pointer; }
   .btn-primary { background:var(--accent); color:#fff; }
@@ -48,10 +51,13 @@
   .group.open .chev { transform:rotate(90deg); }
   .group .items { display:none; }
   .group.open .items { display:block; }
-  .nav-item { display:flex; align-items:center; gap:.5rem; padding:.42rem .65rem .42rem 2.1rem; border-radius:8px;
-    color:var(--side-text); text-decoration:none; font-size:.86rem; cursor:pointer; }
+  /* Los ítems son <button>: font/border/background/width los devuelven al estilo del panel.
+     Ojo con el orden — font:inherit va antes de font-size o se lo lleva por delante. */
+  .nav-item { font:inherit; display:flex; align-items:center; gap:.5rem; padding:.42rem .65rem .42rem 2.1rem;
+    border-radius:8px; color:var(--side-text); text-decoration:none; font-size:.86rem; cursor:pointer;
+    border:none; background:none; width:100%; text-align:left; }
   .nav-item:hover { background:var(--side-2); color:#fff; }
-  .nav-item.active { background:var(--accent); color:#fff; font-weight:600; }
+  .nav-item.active, .nav-item[aria-current="page"] { background:var(--accent); color:#fff; font-weight:600; }
   .nav-item .count { margin-left:auto; font-size:.72rem; background:var(--side-2); border-radius:999px; padding:.05rem .5rem; }
   .nav-item.active .count { background:rgba(255,255,255,.22); }
   .nav-item.soon { opacity:.38; cursor:default; }
@@ -92,6 +98,49 @@
   .pager { display:flex; gap:.5rem; align-items:center; justify-content:flex-end; padding:.6rem .8rem; border-top:1px solid var(--line); }
   .pager button { padding:.3rem .7rem; }
 
+  /* ---------- Web / Portada ---------- */
+  .tabs { display:flex; gap:.3rem; background:#e9ebf1; padding:.25rem; border-radius:10px; }
+  .tabs button { background:none; color:var(--muted); padding:.35rem .9rem; border-radius:8px; font-size:.85rem; }
+  .tabs button.on { background:#fff; color:var(--text); box-shadow:var(--shadow); }
+  .block { margin-bottom:1.4rem; }
+  .block > header { display:flex; align-items:center; gap:.8rem; padding:.9rem 1.1rem; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .block > header h2 { margin:0; font-size:1rem; }
+  .block > header .spacer { flex:1; }
+  .block .help { color:var(--muted); font-size:.8rem; }
+  .c-list { padding:.9rem 1.1rem; display:flex; flex-direction:column; gap:.9rem; }
+  .c-item { display:grid; grid-template-columns:9.5rem 1fr auto; gap:.9rem; align-items:start;
+    border:1px solid var(--line); border-radius:10px; padding:.8rem; background:#fbfcfe; }
+  .c-item.off { opacity:.55; }
+  .c-thumb { aspect-ratio:16/9; border-radius:8px; overflow:hidden; background:#eceef3; display:grid; place-items:center;
+    color:var(--muted); font-size:.72rem; text-align:center; }
+  /* La miniatura enseña el recorte real: el hero del portal es 3,4:1, no 16:9 */
+  .block[data-kind="hero"] .c-thumb { aspect-ratio:3.4/1; }
+  .c-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .c-row { display:flex; gap:.6rem; flex-wrap:wrap; margin-bottom:.55rem; }
+  .c-row:last-child { margin-bottom:0; }
+  .c-item label { display:flex; flex-direction:column; gap:.2rem; font-size:.72rem; color:var(--muted); }
+  .c-item label.grow { flex:1; min-width:9rem; }
+  .c-item label.chk { flex-direction:row; align-items:center; gap:.35rem; font-size:.8rem; color:var(--text); align-self:end; padding-bottom:.5rem; }
+  .c-item input, .c-item select { font-size:.82rem; padding:.4rem .55rem; }
+  .c-actions { display:flex; flex-direction:column; gap:.35rem; }
+  .c-actions button { padding:.3rem .6rem; font-size:.78rem; background:#fff; border:1px solid var(--line); color:var(--muted); }
+  .c-actions button:hover { border-color:var(--accent); color:var(--accent); }
+  .c-actions button.del:hover { border-color:var(--err); color:var(--err); }
+  .c-actions button[disabled] { opacity:.35; cursor:default; }
+  .c-actions button[disabled]:hover { border-color:var(--line); color:var(--muted); }
+  .badge { font-size:.72rem; color:var(--muted); }
+  .media { display:flex; gap:.6rem; flex-wrap:wrap; padding:.9rem 1.1rem; }
+  .media figure { margin:0; width:8.5rem; }
+  .media img { width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:8px; border:1px solid var(--line); background:#fff; }
+  .media figcaption { display:flex; gap:.3rem; align-items:center; margin-top:.25rem; }
+  .media figcaption code { flex:1; font:.68rem ui-monospace,Consolas,monospace; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .media figcaption button { padding:.1rem .4rem; font-size:.72rem; background:none; color:var(--muted); border:1px solid var(--line); }
+  #flash { position:fixed; left:50%; bottom:1.4rem; translate:-50% 0; z-index:20; padding:.6rem 1.1rem; border-radius:10px;
+    box-shadow:var(--shadow); font-size:.85rem; display:none; max-width:min(46rem,90vw); }
+  #flash.on { display:block; }
+  #flash.ok { background:var(--ok-bg); color:var(--ok); }
+  #flash.err { background:var(--err-bg); color:var(--err); }
+
   /* ---------- Modal ---------- */
   #modal { position:fixed; inset:0; background:rgba(13,16,24,.45); display:none; align-items:center; justify-content:center; padding:2rem; }
   #modal.on { display:flex; }
@@ -131,6 +180,8 @@
     <div id="content"></div>
   </main>
 </div>
+
+<div id="flash"></div>
 
 <div id="modal">
   <div class="box">
@@ -245,6 +296,8 @@ const VIEWS = {
     ['Fecha','date|deliveryDate|createdAt','date'], ['Tracking','transportUrlTrack','text'],
     ['Estado','status','status']]},
 
+  portada:   { title:'Portada del portal', crumb:'Web / Portada', content:true },
+
   comunicacion: { title:'Comunicación BC', crumb:'Salud / Comunicación', type:'', cols:[
     ['Tipo','__entityType','text'], ['Id externo','__externalId','id'], ['Recibido','__last','text']]},
 };
@@ -258,8 +311,9 @@ const NAV = [
   { title:'Clientes', items:[['clientes','Clientes','client'],['grupos','Grupos de clientes','client-group'],
       ['usuariosCliente','Usuarios de cliente','client-user'],['direcciones','Direcciones envío','shipping-address'],['agentes','Agentes comerciales','agent']] },
   { title:'Pedidos', items:[['pedidos','Pedidos','order'],['facturas','Facturas','invoice'],['albaranes','Albaranes','delivery-note']] },
+  { title:'Web', items:[['portada','Portada'],['portal','Ver el portal']] },
   { title:'Salud', items:[['comunicacion','Comunicación BC'],['docs','Documentación API']] },
-  { title:'Próximamente', soon:true, items:[[null,'SATs / Devoluciones'],[null,'Web / Contenido'],[null,'Notificaciones'],[null,'Sistema']] },
+  { title:'Próximamente', soon:true, items:[[null,'SATs / Devoluciones'],[null,'Notificaciones'],[null,'Sistema']] },
 ];
 
 /* ---------- API ---------- */
@@ -301,19 +355,21 @@ async function loadSummary() {
   renderNav();
 }
 function renderNav() {
-  $('nav').innerHTML = NAV.map((g, gi) => {
+  $('nav').innerHTML = NAV.map(g => {
     const items = g.items.map(([key, label, type]) => {
       if (g.soon || key === null)
-        return `<span class="nav-item soon">${label}</span>`;
+        return `<button type="button" class="nav-item soon" disabled>${label}</button>`;
       if (key === 'docs')
         return `<a class="nav-item" href="/docs" target="_blank">${label} ↗</a>`;
+      if (key === 'portal')
+        return `<a class="nav-item" href="/es/es/dashboard" target="_blank">${label} ↗</a>`;
       const count = key === 'comunicacion'
         ? Object.values(summary).reduce((a, s) => a + s.count, 0)
         : (type && summary[type]?.count);
       const badge = count ? `<span class="count">${count}</span>` : '';
-      return `<span class="nav-item" data-view="${key}">${label}${badge}</span>`;
+      return `<button type="button" class="nav-item" data-view="${key}">${label}${badge}</button>`;
     }).join('');
-    const open = gi < 6 ? 'open' : '';
+    const open = g.soon ? '' : 'open';
     return `<div class="group ${open}">
       <button class="group-title">${g.title}<span class="chev">▶</span></button>
       <div class="items">${items}</div></div>`;
@@ -322,17 +378,28 @@ function renderNav() {
     b.onclick = () => b.parentElement.classList.toggle('open'));
   document.querySelectorAll('.nav-item[data-view]').forEach(el =>
     el.onclick = () => show(el.dataset.view));
+  markNav();   // el dashboard repinta la nav después de show(): hay que remarcarla
+}
+
+// La vista activa se anuncia con aria-current, no solo con color
+function markNav() {
+  document.querySelectorAll('.nav-item').forEach(el => {
+    const on = !!current && el.dataset.view === current;
+    el.classList.toggle('active', on);
+    if (on) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
+  });
 }
 
 /* ---------- vistas ---------- */
 function show(key) {
   current = key; skip = 0;
-  document.querySelectorAll('.nav-item').forEach(el =>
-    el.classList.toggle('active', el.dataset.view === key));
+  markNav();
   const v = VIEWS[key];
   $('crumb').textContent = v.crumb;
   $('title').textContent = v.title;
-  if (v.dashboard) renderDashboard(); else renderList();
+  if (v.dashboard) renderDashboard();
+  else if (v.content) renderContent();
+  else renderList();
 }
 
 async function renderDashboard() {
@@ -417,6 +484,277 @@ function renderRows() {
       ${q ? 'Sin resultados con ese filtro' : 'BC todavía no ha enviado nada de este tipo'}</td></tr>`;
   document.querySelectorAll('#rows tr[data-i]').forEach(tr =>
     tr.onclick = () => openDetail(rows[tr.dataset.i]));
+}
+
+/* ---------- Web / Portada (portal_content) ---------- */
+// Editor de la portada del portal: carrusel y tarjetas de acceso, por idioma.
+// Lo que se publica aquí lo lee el portal en /api/portal/content/{clave}.
+const LOCALES = [['*','Común'],['es','ES'],['en','EN'],['fr','FR'],['it','IT']];
+const BLOCKS = [
+  { key:'dashboard.hero', title:'Carrusel de portada', kind:'hero',
+    help:'Imágenes a ancho completo sobre el H1. Se pasan solas cada 6,5 s. Medida recomendada: 1600×470 px (3,4:1).' },
+  { key:'dashboard.tiles', title:'Tarjetas de acceso', kind:'tiles',
+    help:'Reposición y Programación: fijan la ventana de servicio del carrito y llevan al catálogo. Medida recomendada: 1200×675 px (16:9).' },
+];
+const WINDOWS = [['replenishment','Reposición'],['scheduled','Programación']];
+
+let locale = '*';
+let blocks = {};   // clave -> { items, updatedAt, updatedBy }
+let mediaFiles = [];
+
+const esc = v => String(v ?? '').replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function flash(message, kind = 'ok') {
+  const box = $('flash');
+  box.className = 'on ' + kind;
+  box.textContent = message;
+  clearTimeout(flash.timer);
+  flash.timer = setTimeout(() => box.className = '', kind === 'ok' ? 3000 : 7000);
+}
+
+async function apiSend(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: { Authorization:'Bearer ' + token, ...(body ? {'Content-Type':'application/json'} : {}) },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (res.status === 401) { logout(); throw new Error('Sesión caducada'); }
+  const data = res.status === 204 ? null : await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.error || 'HTTP ' + res.status);
+  return data;
+}
+
+// El backend guarda las fechas en ISO; el input las quiere en hora local sin zona
+const toInput = iso => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+const fromInput = value => value ? new Date(value).toISOString() : '';
+
+async function renderContent() {
+  $('content').innerHTML = '<p class="muted">Cargando la portada…</p>';
+  await Promise.all([loadBlocks(), loadMedia()]);
+  paintContent();
+}
+
+async function loadBlocks() {
+  blocks = {};
+  for (const block of BLOCKS) {
+    try {
+      const data = await api(`/api/admin/content/${block.key}?locale=${encodeURIComponent(locale)}`);
+      blocks[block.key] = { items: data.items || [], updatedAt: data.updatedAt, updatedBy: data.updatedBy };
+    } catch {
+      blocks[block.key] = { items: [], updatedAt: null, updatedBy: null };   // bloque aún sin publicar
+    }
+  }
+}
+
+async function loadMedia() {
+  try { mediaFiles = (await api('/api/admin/media')).items || []; }
+  catch { mediaFiles = []; }
+}
+
+function paintContent() {
+  $('content').innerHTML = `
+    <div class="toolbar">
+      <div class="tabs">${LOCALES.map(([code, label]) =>
+        `<button data-locale="${code}" class="${code === locale ? 'on' : ''}">${label}</button>`).join('')}</div>
+      <span class="muted">El portal usa el idioma pedido y, si no lo tiene, el contenido <b>Común</b>.</span>
+      <div class="spacer"></div>
+      <a class="btn-ghost" href="/es/es/dashboard" target="_blank" style="text-decoration:none">Ver la portada ↗</a>
+    </div>
+    ${BLOCKS.map(paintBlock).join('')}
+    <div class="card block">
+      <header><h2>Imágenes subidas</h2><span class="help">Se guardan en /media/portal y las sirve el propio portal.</span></header>
+      ${mediaFiles.length ? `<div class="media">${mediaFiles.map(f => `
+        <figure>
+          <img src="${esc(f.url)}" alt="">
+          <figcaption>
+            <code title="${esc(f.url)}">${esc(f.name)}</code>
+            <button data-media-del="${esc(f.name)}" title="Eliminar">✕</button>
+          </figcaption>
+        </figure>`).join('')}</div>` : '<div class="empty">Todavía no has subido ninguna imagen</div>'}
+    </div>`;
+
+  document.querySelectorAll('[data-locale]').forEach(b =>
+    b.onclick = () => { locale = b.dataset.locale; renderContent(); });
+  document.querySelectorAll('[data-media-del]').forEach(b =>
+    b.onclick = () => deleteMedia(b.dataset.mediaDel));
+  BLOCKS.forEach(wireBlock);
+}
+
+function paintBlock(block) {
+  const data = blocks[block.key];
+  const stamp = data.updatedAt
+    ? `Publicado el ${new Date(data.updatedAt).toLocaleString()}${data.updatedBy ? ' por ' + esc(data.updatedBy) : ''}`
+    : 'Sin publicar en este idioma';
+
+  return `
+    <div class="card block" data-block="${block.key}" data-kind="${block.kind}">
+      <header>
+        <h2>${block.title}</h2>
+        <span class="help">${block.help}</span>
+        <div class="spacer"></div>
+        <span class="badge">${stamp}</span>
+        <button class="btn-ghost" data-action="add">+ Añadir</button>
+        <button class="btn-ghost" data-action="clear">Vaciar</button>
+        <button class="btn-primary" data-action="save">Publicar</button>
+      </header>
+      ${data.items.length
+        ? `<div class="c-list">${data.items.map((item, i) => paintItem(block, item, i, data.items.length)).join('')}</div>`
+        : `<div class="empty">Sin elementos. Pulsa <b>+ Añadir</b> — mientras tanto el portal
+             ${block.kind === 'hero' ? 'no muestra carrusel' : 'pinta las dos tarjetas con el color de marca'}.</div>`}
+    </div>`;
+}
+
+// La miniatura vacía recuerda la medida que espera el portal
+const emptyThumb = kind => `<span>sin imagen<br>${kind === 'hero' ? '1600×470' : '1200×675'}</span>`;
+
+function paintItem(block, item, index, total) {
+  const field = (name, label, type = 'text', extra = '') => `
+    <label class="grow">${label}
+      <input type="${type}" data-field="${name}" value="${esc(type === 'datetime-local' ? toInput(item[name]) : item[name] || '')}" ${extra}>
+    </label>`;
+
+  return `
+    <div class="c-item ${item.active === false ? 'off' : ''}" data-index="${index}">
+      <div class="c-thumb">${item.imageUrl
+        ? `<img src="${esc(item.imageUrl)}" alt="">`
+        : emptyThumb(block.kind)}</div>
+      <div>
+        <div class="c-row">
+          ${field('imageUrl', 'Imagen (URL)')}
+          <button class="btn-ghost" data-action="upload" style="align-self:end">Subir…</button>
+          ${block.kind === 'tiles' ? `
+            <label>Ventana
+              <select data-field="window">${WINDOWS.map(([value, label]) =>
+                `<option value="${value}" ${item.window === value ? 'selected' : ''}>${label}</option>`).join('')}</select>
+            </label>` : ''}
+          <label class="chk"><input type="checkbox" data-field="active" ${item.active === false ? '' : 'checked'}> Activo</label>
+        </div>
+        <div class="c-row">
+          ${field('title', block.kind === 'tiles' ? 'Rótulo (vacío = el del idioma)' : 'Título')}
+          ${field('subtitle', 'Subtítulo')}
+          ${field('alt', 'Texto alternativo')}
+        </div>
+        <div class="c-row">
+          ${field('ctaText', 'Texto del botón')}
+          ${field('ctaHref', 'Enlace', 'text', 'placeholder="/es/es/catalog/catalog"')}
+          ${field('imageUrlMobile', 'Imagen móvil (opcional)')}
+        </div>
+        <div class="c-row">
+          ${field('publishFrom', 'Publicar desde', 'datetime-local')}
+          ${field('publishTo', 'Publicar hasta', 'datetime-local')}
+        </div>
+      </div>
+      <div class="c-actions">
+        <button data-action="up" ${index === 0 ? 'disabled' : ''} title="Subir">↑</button>
+        <button data-action="down" ${index === total - 1 ? 'disabled' : ''} title="Bajar">↓</button>
+        <button class="del" data-action="del">Eliminar</button>
+      </div>
+    </div>`;
+}
+
+function wireBlock(block) {
+  const root = document.querySelector(`[data-block="${block.key}"]`);
+  const items = blocks[block.key].items;
+  const indexOf = el => Number(el.closest('.c-item').dataset.index);
+
+  // Escribir no repinta (se perdería el foco); solo actualiza el modelo
+  root.oninput = event => {
+    const input = event.target.closest('[data-field]');
+    if (!input) return;
+    const item = items[indexOf(input)];
+    const name = input.dataset.field;
+    if (name === 'active') { item.active = input.checked; input.closest('.c-item').classList.toggle('off', !input.checked); }
+    else if (name === 'publishFrom' || name === 'publishTo') item[name] = fromInput(input.value);
+    else item[name] = input.value;
+    if (name === 'imageUrl') {
+      const thumb = input.closest('.c-item').querySelector('.c-thumb');
+      thumb.innerHTML = item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt="">` : emptyThumb(block.kind);
+    }
+  };
+
+  root.onclick = event => {
+    const button = event.target.closest('[data-action]');
+    if (!button) return;
+    const action = button.dataset.action;
+
+    if (action === 'add') {
+      items.push({ imageUrl:'', title:'', active:true, window: block.kind === 'tiles' ? nextWindow(items) : undefined });
+      return paintContent();
+    }
+    if (action === 'save') return saveBlock(block);
+    if (action === 'clear') {
+      if (!items.length || confirm('¿Vaciar el bloque en este idioma? El portal dejará de mostrarlo.')) deleteBlock(block);
+      return;
+    }
+
+    const index = indexOf(button);
+    if (action === 'del') items.splice(index, 1);
+    if (action === 'up' && index > 0) items.splice(index - 1, 0, items.splice(index, 1)[0]);
+    if (action === 'down' && index < items.length - 1) items.splice(index + 1, 0, items.splice(index, 1)[0]);
+    if (action === 'upload') return pickImage(items[index]);
+    paintContent();
+  };
+}
+
+const nextWindow = items => items.some(i => i.window === 'replenishment') ? 'scheduled' : 'replenishment';
+
+function pickImage(item) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/png,image/jpeg,image/webp,image/avif,image/gif';
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/admin/media', { method:'POST', headers:{ Authorization:'Bearer ' + token }, body: form });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'HTTP ' + res.status);
+      item.imageUrl = data.url;
+      flash(`Imagen subida: ${data.name}`);
+      await loadMedia();
+      paintContent();
+    } catch (e) { flash(e.message, 'err'); }
+  };
+  input.click();
+}
+
+async function saveBlock(block) {
+  // El orden de la lista manda; el backend valida y normaliza el resto
+  const items = blocks[block.key].items.map((item, order) => ({ ...item, order }));
+  try {
+    const saved = await apiSend('PUT', `/api/admin/content/${block.key}?locale=${encodeURIComponent(locale)}`, { items });
+    blocks[block.key] = { items: saved.items, updatedAt: saved.updatedAt, updatedBy: saved.updatedBy };
+    flash(`${block.title}: publicado. Recarga el portal para verlo.`);
+    paintContent();
+  } catch (e) { flash(`${block.title}: ${e.message}`, 'err'); }
+}
+
+async function deleteBlock(block) {
+  try {
+    await apiSend('DELETE', `/api/admin/content/${block.key}?locale=${encodeURIComponent(locale)}`);
+  } catch { /* si no existía, ya está vacío */ }
+  blocks[block.key] = { items: [], updatedAt: null, updatedBy: null };
+  flash(`${block.title}: bloque vaciado en este idioma.`);
+  paintContent();
+}
+
+async function deleteMedia(name) {
+  if (!confirm(`¿Eliminar ${name}? Los bloques que la usen se quedarán sin imagen.`)) return;
+  try {
+    await apiSend('DELETE', `/api/admin/media/${encodeURIComponent(name)}`);
+    await loadMedia();
+    paintContent();
+    flash('Imagen eliminada.');
+  } catch (e) { flash(e.message, 'err'); }
 }
 
 /* ---------- detalle ---------- */

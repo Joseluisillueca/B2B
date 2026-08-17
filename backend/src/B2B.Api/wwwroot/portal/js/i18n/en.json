@@ -17,6 +17,7 @@
 
   "chrome.search": "Search",
   "chrome.focus": "Distraction-free view",
+  "chrome.language": "Language",
   "chrome.logout": "Sign out",
 
   "nav.home": "Home",
@@ -41,8 +42,13 @@
   "cart.empty": "Your cart is empty — enter quantities per size in the catalogue.",
 
   "dashboard.title": "Place your order",
-  "dashboard.soonTitle": "The homepage is configured from the CMS",
-  "dashboard.soonBody": "The carousel and the Replenishment and Scheduled tiles will be fed from /admin, with no deployment.",
+  "dashboard.heroLabel": "What’s new",
+  "carousel.role": "carousel",
+  "carousel.prev": "Previous image",
+  "carousel.next": "Next image",
+  "carousel.goTo": "Go to image {n}",
+  "carousel.pause": "Pause the slideshow",
+  "carousel.play": "Resume the slideshow",
 
   "catalog.soonTitle": "The catalogue moves into the portal",
   "catalog.soonBody": "The size matrix, the stock traffic light and the facets already work on the current shopping surface.",

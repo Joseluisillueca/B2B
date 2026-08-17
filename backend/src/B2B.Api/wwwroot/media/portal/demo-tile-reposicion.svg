@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" width="800" height="520" role="img" aria-label="Reposición: stock disponible para servir">
+  <defs>
+    <linearGradient id="blush" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8e4de"/>
+      <stop offset=".55" stop-color="#e7c2b9"/>
+      <stop offset="1" stop-color="#c7978e"/>
+    </linearGradient>
+    <radialGradient id="halo" cx=".72" cy=".2" r=".6">
+      <stop offset="0" stop-color="#fff" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="800" height="520" fill="url(#blush)"/>
+  <rect width="800" height="520" fill="url(#halo)"/>
+
+  <!-- anillos y flecha de ciclo: reponer lo que se vende -->
+  <g fill="none" stroke="#7d4a41">
+    <circle cx="288" cy="252" r="186" stroke-opacity=".12" stroke-width="2"/>
+    <circle cx="288" cy="252" r="152" stroke-opacity=".16" stroke-width="2"/>
+  </g>
+  <g fill="none" stroke-width="26" stroke-linecap="round">
+    <path d="M176 252 A112 112 0 0 0 236 351" stroke="#7d4a41" stroke-opacity=".22"/>
+    <path d="M288 140 A112 112 0 1 1 176 252" stroke="#fdf1ee"/>
+  </g>
+  <path d="M288 116 L332 140 L288 164 Z" fill="#fdf1ee"/>
+</svg>

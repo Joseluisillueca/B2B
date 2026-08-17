@@ -88,23 +88,35 @@ function paintHeader() {
     go(`${href('catalog/catalog')}${term ? `?q=${encodeURIComponent(term)}` : ''}`);
   };
 
-  header().querySelector('#focusBtn').onclick = () => {
-    state.prefs = { ...state.prefs, focus: !state.prefs.focus };
-    paintHeader();
-    document.body.dataset.focus = state.prefs.focus ? 'on' : 'off';
-  };
+  header().querySelector('#focusBtn').onclick = toggleFocus;
 
   header().querySelector('#userBtn').onclick = event => togglePopup(event.currentTarget, userMenu);
   header().querySelector('#langBtn').onclick = event => togglePopup(event.currentTarget, langMenu);
   header().querySelector('#cartBtn').onclick = openCart;
 }
 
+// En móvil el header solo deja sitio a marca, usuario y carrito: idioma y vista
+// sin distracciones se recogen aquí (.m-only, que el CSS solo muestra ≤48rem).
 const userMenu = () => `
   <div class="h-menu" role="menu">
     ${MENU.map(view => `<a role="menuitem" href="${href(view)}">${esc(t(`nav.${view}`))}</a>`).join('')}
+    <hr class="m-only">
+    <div class="m-only" role="group" aria-label="${esc(t('chrome.language'))}">
+      <span class="m-title" aria-hidden="true">${esc(t('chrome.language'))}</span>
+      ${LANGS.map(code => `<a role="menuitem" href="/${current.market}/${code}/${current.view}"
+        ${code === lang() ? 'aria-current="true"' : ''}>${esc(t(`lang.${code}`))}</a>`).join('')}
+    </div>
+    <button type="button" role="menuitem" class="m-only" data-focus-toggle
+      aria-pressed="${state.prefs.focus}">${esc(t('chrome.focus'))}</button>
     <hr>
     <button type="button" role="menuitem" class="out" data-logout>${esc(t('chrome.logout'))}</button>
   </div>`;
+
+function toggleFocus() {
+  state.prefs = { ...state.prefs, focus: !state.prefs.focus };
+  paintHeader();
+  document.body.dataset.focus = state.prefs.focus ? 'on' : 'off';
+}
 
 const langMenu = () => `
   <div class="h-menu" role="menu">
@@ -124,6 +136,10 @@ function togglePopup(button, template) {
   host.querySelector('[data-logout]')?.addEventListener('click', () => {
     state.clear();
     go('/login', { replace: true });
+  });
+  host.querySelector('[data-focus-toggle]')?.addEventListener('click', () => {
+    closePopups();
+    toggleFocus();
   });
   setTimeout(() => addEventListener('click', onOutside, { once: true }));
 }

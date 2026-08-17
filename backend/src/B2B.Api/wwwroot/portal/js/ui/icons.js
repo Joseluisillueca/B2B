@@ -12,6 +12,8 @@ export const icons = {
   cart: size => svg('<path d="M6 7h14l-1.5 9.5a2 2 0 0 1-2 1.5H9a2 2 0 0 1-2-1.6L5 3H2"/><circle cx="10" cy="21" r="1"/><circle cx="17" cy="21" r="1"/>', size),
   close: size => svg('<path d="M6 6l12 12M18 6 6 18"/>', size),
   login: size => svg('<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/>', size),
+  pause: size => svg('<path d="M9 5v14M15 5v14"/>', size),
+  play: size => svg('<path d="M7 4.8v14.4L19.5 12Z"/>', size),
 
   // Redes del footer: trazos simples, mismo peso visual que el resto
   facebook: size => svg('<path d="M14 8h3V4.5h-3A4 4 0 0 0 10 8.5V11H7.5v3.5H10V21h3.5v-6.5H16l.5-3.5H13.5V9a1 1 0 0 1 1-1Z"/>', size),

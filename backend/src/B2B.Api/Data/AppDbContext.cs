@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<StockLevel> StockLevels => Set<StockLevel>();
     public DbSet<Offer> Offers => Set<Offer>();
     public DbSet<ServiceWindow> ServiceWindows => Set<ServiceWindow>();
+    public DbSet<PortalContent> PortalContents => Set<PortalContent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -76,6 +77,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             window.HasKey(w => w.ExternalId);
             window.Property(w => w.ExternalId).HasMaxLength(50);
             window.Property(w => w.PayloadJson).HasColumnType("jsonb");
+        });
+
+        // El plan (§3) nombra esta tabla portal_content; se respeta el nombre para
+        // que el CMS y la documentación hablen del mismo objeto.
+        modelBuilder.Entity<PortalContent>(content =>
+        {
+            content.ToTable("portal_content");
+            content.HasKey(c => new { c.Key, c.Locale });
+            content.Property(c => c.Key).HasMaxLength(100);
+            content.Property(c => c.Locale).HasMaxLength(10);
+            content.Property(c => c.Json).HasColumnType("jsonb");
+            content.Property(c => c.UpdatedBy).HasMaxLength(320);
         });
     }
 }
