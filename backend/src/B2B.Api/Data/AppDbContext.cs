@@ -18,6 +18,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             user.HasIndex(u => u.Email).IsUnique();
             user.Property(u => u.Email).HasMaxLength(320);
+            user.Property(u => u.ClientExternalId).HasMaxLength(100);
+            user.Property(u => u.ClientNumber).HasMaxLength(50);
+            user.Property(u => u.Role).HasMaxLength(50);
+            user.Property(u => u.Culture).HasMaxLength(10);
+            user.HasIndex(u => u.ClientExternalId);
         });
 
         modelBuilder.Entity<SyncDocument>(doc =>

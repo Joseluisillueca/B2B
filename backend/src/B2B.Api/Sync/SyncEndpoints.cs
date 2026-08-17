@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using B2B.Api.Data;
+using B2B.Api.Portal;
 using Microsoft.EntityFrameworkCore;
 
 namespace B2B.Api.Sync;
@@ -87,6 +88,7 @@ public static class SyncEndpoints
         }).RequireAuthorization();
 
         // Rutas que el conector deriva de la URL de clientes con sufijos hardcodeados (contrato 04)
+        // El usuario admin, además de guardarse crudo, provisiona el AppUser del portal.
         app.MapPut("/api/clients/{clientId}/users/admin", (HttpRequest request, string clientId, AppDbContext db) =>
             UpsertAsync(db, request, "client-user", clientId, parentId: clientId)).RequireAuthorization();
 
@@ -145,5 +147,6 @@ public static class SyncEndpoints
 
         // Crudo y normalizado se guardan en el mismo SaveChanges: nunca divergen
         CatalogNormalizer.Normalize(db, entityType, externalId, payload);
+        await ClientIdentity.ApplyAsync(db, entityType, externalId, payload);
     }
 }

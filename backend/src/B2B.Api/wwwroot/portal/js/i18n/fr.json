@@ -1,0 +1,56 @@
+{
+  "login.email": "Email",
+  "login.password": "Mot de passe",
+  "login.forgot": "Mot de passe oublié ?",
+  "login.submit": "SE CONNECTER",
+  "login.noAccountTitle": "VOUS N'AVEZ PAS DE COMPTE ?",
+  "login.help": "Si vous avez des difficultés à accéder au B2B, écrivez-nous à : tiendas@lejanbrand.com",
+  "login.create": "Créer un compte",
+  "login.legal": "Conformément aux accords conclus avec les fabricants que nous représentons, Lejan vend exclusivement aux distributeurs et professionnels du secteur. Pour commencer à travailler avec nous, remplissez les données suivantes et nous activerons votre compte sous 24 heures ouvrées.",
+  "login.required": "Saisissez votre email et votre mot de passe.",
+  "login.badCredentials": "Email ou mot de passe incorrect.",
+  "login.serverError": "Connexion impossible. Réessayez dans quelques secondes.",
+
+  "credentials.title": "SÉLECTIONNEZ MAINTENANT VOS IDENTIFIANTS :",
+  "credentials.select": "SÉLECTIONNER",
+  "credentials.none": "Votre utilisateur n'est encore associé à aucun client. Écrivez-nous à tiendas@lejanbrand.com et nous l'activerons.",
+
+  "chrome.search": "Recherche",
+  "chrome.focus": "Vue sans distractions",
+  "chrome.logout": "Se déconnecter",
+
+  "nav.home": "Accueil",
+  "nav.catalog": "Catalogue",
+  "nav.dashboard": "Accueil",
+  "nav.checkout": "Commande",
+  "nav.shopping-carts": "Paniers favoris",
+  "nav.orders": "Commandes",
+  "nav.delivery-notes": "Bons de livraison",
+  "nav.invoices": "Factures",
+  "nav.sat": "Retours",
+  "nav.statistics": "Statistiques",
+  "nav.business": "Entreprise",
+  "nav.profile": "Profil",
+  "nav.contact": "Contact",
+
+  "window.replenishment": "Réassort",
+  "window.scheduled": "Programmation",
+
+  "cart.title": "Panier",
+  "cart.close": "Fermer le panier",
+  "cart.empty": "Votre panier est vide — saisissez les quantités par taille dans le catalogue.",
+
+  "dashboard.title": "Passez votre commande",
+  "dashboard.soonTitle": "La page d'accueil se configure depuis le CMS",
+  "dashboard.soonBody": "Le carrousel et les vignettes Réassort et Programmation seront alimentés depuis /admin, sans déploiement.",
+
+  "catalog.soonTitle": "Le catalogue rejoint le portail",
+  "catalog.soonBody": "La matrice de tailles, le feu de stock et les facettes fonctionnent déjà sur la surface d'achat actuelle.",
+  "catalog.openShop": "Ouvrir le catalogue actuel",
+
+  "stub.title": "Section en construction",
+  "stub.body": "La navigation, la langue et la session sont déjà définitives ; le contenu arrive à la phase indiquée.",
+  "stub.phase": "PHASE {n}",
+
+  "footer.copyright": "© 2026 | LEJAN BRAND"
+}

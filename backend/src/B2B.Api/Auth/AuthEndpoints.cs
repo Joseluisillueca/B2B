@@ -39,14 +39,25 @@ public static class AuthEndpoints
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:SigningKey"]
                 ?? throw new InvalidOperationException("Jwt:SigningKey is not configured")));
+
+            // El portal filtra todo por el cliente del token; el usuario de integración
+            // de BC no lleva estos claims porque no está vinculado a ningún cliente.
+            List<Claim> claims =
+            [
+                new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new(JwtRegisteredClaimNames.Email, user.Email),
+                new("role", user.Role),
+                new("culture", user.Culture)
+            ];
+            if (!string.IsNullOrEmpty(user.ClientExternalId))
+                claims.Add(new Claim("clientId", user.ClientExternalId));
+            if (!string.IsNullOrEmpty(user.ClientNumber))
+                claims.Add(new Claim("clientNumber", user.ClientNumber));
+
             var jwt = new JwtSecurityToken(
                 issuer: config["Jwt:Issuer"],
                 audience: config["Jwt:Audience"],
-                claims:
-                [
-                    new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                    new Claim(JwtRegisteredClaimNames.Email, user.Email)
-                ],
+                claims: claims,
                 expires: expiresAt.ToUniversalTime(),
                 signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
 

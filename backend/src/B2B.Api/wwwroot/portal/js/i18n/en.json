@@ -1,0 +1,56 @@
+{
+  "login.email": "Email",
+  "login.password": "Password",
+  "login.forgot": "Forgot your password?",
+  "login.submit": "SIGN IN",
+  "login.noAccountTitle": "DON'T HAVE AN ACCOUNT?",
+  "login.help": "If you have trouble accessing the B2B, email us at: tiendas@lejanbrand.com",
+  "login.create": "Create an account",
+  "login.legal": "Under the agreements with the manufacturers we represent, Lejan sells exclusively to distributors and professionals in the sector. To start working with us, fill in the following details and we will activate your account within 24 working hours.",
+  "login.required": "Enter your email and password.",
+  "login.badCredentials": "Wrong email or password.",
+  "login.serverError": "We could not connect. Please try again in a few seconds.",
+
+  "credentials.title": "SELECT YOUR CREDENTIALS NOW:",
+  "credentials.select": "SELECT",
+  "credentials.none": "Your user is not linked to any customer yet. Write to tiendas@lejanbrand.com and we will activate it.",
+
+  "chrome.search": "Search",
+  "chrome.focus": "Distraction-free view",
+  "chrome.logout": "Sign out",
+
+  "nav.home": "Home",
+  "nav.catalog": "Catalogue",
+  "nav.dashboard": "Home",
+  "nav.checkout": "Checkout",
+  "nav.shopping-carts": "Saved carts",
+  "nav.orders": "Orders",
+  "nav.delivery-notes": "Delivery notes",
+  "nav.invoices": "Invoices",
+  "nav.sat": "Returns",
+  "nav.statistics": "Statistics",
+  "nav.business": "Company",
+  "nav.profile": "Profile",
+  "nav.contact": "Contact",
+
+  "window.replenishment": "Replenishment",
+  "window.scheduled": "Scheduled",
+
+  "cart.title": "Cart",
+  "cart.close": "Close cart",
+  "cart.empty": "Your cart is empty — enter quantities per size in the catalogue.",
+
+  "dashboard.title": "Place your order",
+  "dashboard.soonTitle": "The homepage is configured from the CMS",
+  "dashboard.soonBody": "The carousel and the Replenishment and Scheduled tiles will be fed from /admin, with no deployment.",
+
+  "catalog.soonTitle": "The catalogue moves into the portal",
+  "catalog.soonBody": "The size matrix, the stock traffic light and the facets already work on the current shopping surface.",
+  "catalog.openShop": "Open the current catalogue",
+
+  "stub.title": "Section under construction",
+  "stub.body": "Navigation, language and session are already final; the content arrives in the phase shown.",
+  "stub.phase": "PHASE {n}",
+
+  "footer.copyright": "© 2026 | LEJAN BRAND"
+}

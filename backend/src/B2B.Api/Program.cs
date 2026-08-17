@@ -2,6 +2,7 @@ using System.Text;
 using B2B.Api.Admin;
 using B2B.Api.Auth;
 using B2B.Api.Data;
+using B2B.Api.Portal;
 using B2B.Api.Shop;
 using B2B.Api.Sync;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -79,6 +80,21 @@ app.MapSyncEndpoints();
 app.MapQueryEndpoints();
 app.MapAdminEndpoints();
 app.MapShopEndpoints();
+app.MapPortalEndpoints();
+
+// Portal del cliente: enrutado por History API sobre las rutas reales del portal
+// actual, /{market}/{lang}/{vista} (p.ej. /es/es/orders). Recargar cualquiera de
+// ellas debe servir el cascarón, así que van por MapFallbackToFile con los
+// segmentos de mercado e idioma acotados a dos letras para no tragarse /api ni /docs.
+const string PortalShell = "portal/index.html";
+// Sin cuantificador {2}: las llaves colisionan con la sintaxis de plantilla de ruta
+const string Locale = "^[a-z][a-z]$";
+
+app.MapGet("/portal", () => Results.Redirect("/es/es/dashboard"));
+app.MapFallbackToFile($"/{{market:regex({Locale})}}/{{lang:regex({Locale})}}", PortalShell);
+app.MapFallbackToFile($"/{{market:regex({Locale})}}/{{lang:regex({Locale})}}/{{view}}", PortalShell);
+app.MapFallbackToFile($"/{{market:regex({Locale})}}/{{lang:regex({Locale})}}/{{view}}/{{subview}}", PortalShell);
+app.MapFallbackToFile("/login", PortalShell);
 
 app.Run();
 

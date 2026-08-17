@@ -1,0 +1,56 @@
+{
+  "login.email": "Email",
+  "login.password": "Password",
+  "login.forgot": "Hai dimenticato la password?",
+  "login.submit": "ACCEDI",
+  "login.noAccountTitle": "NON HAI UN ACCOUNT?",
+  "login.help": "Se hai difficoltà ad accedere al B2B, scrivici a: tiendas@lejanbrand.com",
+  "login.create": "Crea un account",
+  "login.legal": "In base agli accordi con i produttori che rappresentiamo, Lejan vende esclusivamente a distributori e professionisti del settore. Per iniziare a lavorare con noi, compila i seguenti dati e attiveremo il tuo account entro 24 ore lavorative.",
+  "login.required": "Inserisci email e password.",
+  "login.badCredentials": "Email o password errate.",
+  "login.serverError": "Non siamo riusciti a connetterci. Riprova tra qualche secondo.",
+
+  "credentials.title": "SELEZIONA ORA LE TUE CREDENZIALI:",
+  "credentials.select": "SELEZIONA",
+  "credentials.none": "Il tuo utente non è ancora associato ad alcun cliente. Scrivici a tiendas@lejanbrand.com e lo attiveremo.",
+
+  "chrome.search": "Ricerca",
+  "chrome.focus": "Vista senza distrazioni",
+  "chrome.logout": "Esci",
+
+  "nav.home": "Home",
+  "nav.catalog": "Catalogo",
+  "nav.dashboard": "Home",
+  "nav.checkout": "Checkout",
+  "nav.shopping-carts": "Carrelli preferiti",
+  "nav.orders": "Ordini",
+  "nav.delivery-notes": "Bolle di consegna",
+  "nav.invoices": "Fatture",
+  "nav.sat": "Resi",
+  "nav.statistics": "Statistiche",
+  "nav.business": "Azienda",
+  "nav.profile": "Profilo",
+  "nav.contact": "Contatti",
+
+  "window.replenishment": "Riassortimento",
+  "window.scheduled": "Programmazione",
+
+  "cart.title": "Carrello",
+  "cart.close": "Chiudi carrello",
+  "cart.empty": "Il carrello è vuoto — inserisci le quantità per taglia nel catalogo.",
+
+  "dashboard.title": "Effettua il tuo ordine",
+  "dashboard.soonTitle": "La homepage si configura dal CMS",
+  "dashboard.soonBody": "Il carosello e le schede Riassortimento e Programmazione saranno alimentati da /admin, senza rilasci.",
+
+  "catalog.soonTitle": "Il catalogo entra nel portale",
+  "catalog.soonBody": "La matrice delle taglie, il semaforo di stock e le faccette funzionano già sulla superficie d'acquisto attuale.",
+  "catalog.openShop": "Apri il catalogo attuale",
+
+  "stub.title": "Sezione in costruzione",
+  "stub.body": "Navigazione, lingua e sessione sono già definitive; il contenuto arriva nella fase indicata.",
+  "stub.phase": "FASE {n}",
+
+  "footer.copyright": "© 2026 | LEJAN BRAND"
+}
