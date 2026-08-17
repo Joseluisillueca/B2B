@@ -2,6 +2,7 @@ using System.Text;
 using B2B.Api.Admin;
 using B2B.Api.Auth;
 using B2B.Api.Data;
+using B2B.Api.Shop;
 using B2B.Api.Sync;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -71,11 +72,13 @@ app.MapGet("/", () => Results.Content(
     """, "text/html"));
 
 app.MapGet("/admin", () => Results.Redirect("/admin.html"));
+app.MapGet("/shop", () => Results.Redirect("/shop.html"));
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints();
 app.MapSyncEndpoints();
 app.MapQueryEndpoints();
 app.MapAdminEndpoints();
+app.MapShopEndpoints();
 
 app.Run();
 
