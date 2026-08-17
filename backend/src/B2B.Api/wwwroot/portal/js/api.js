@@ -56,5 +56,30 @@ export const api = {
     return response.json();
   },
 
-  me: () => request('GET', '/api/portal/me')
+  me: () => request('GET', '/api/portal/me'),
+
+  /** Descarga autenticada: los CSV van con Bearer, así que no valen enlaces sueltos */
+  async download(path, fallbackName) {
+    const response = await fetch(path, {
+      headers: state.token ? { Authorization: `Bearer ${state.token}` } : {}
+    });
+    if (response.status === 401) {
+      state.clear();
+      onUnauthorized();
+      throw new ApiError(401, { error: 'Unauthorized' });
+    }
+    if (!response.ok) throw new ApiError(response.status, null);
+
+    const disposition = response.headers.get('content-disposition') || '';
+    const named = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = named ? decodeURIComponent(named[1]) : fallbackName;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    // Revocar en el mismo tick cancela la descarga en algunos navegadores
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  }
 };

@@ -12,6 +12,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Offer> Offers => Set<Offer>();
     public DbSet<ServiceWindow> ServiceWindows => Set<ServiceWindow>();
     public DbSet<PortalContent> PortalContents => Set<PortalContent>();
+    public DbSet<Cart> Carts => Set<Cart>();
+    public DbSet<PortalFavorite> PortalFavorites => Set<PortalFavorite>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -89,6 +91,29 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             content.Property(c => c.Locale).HasMaxLength(10);
             content.Property(c => c.Json).HasColumnType("jsonb");
             content.Property(c => c.UpdatedBy).HasMaxLength(320);
+        });
+
+        // El plan (§4, Fase 2) nombra esta tabla carts
+        modelBuilder.Entity<Cart>(cart =>
+        {
+            cart.ToTable("carts");
+            cart.HasKey(c => c.Id);
+            cart.Property(c => c.ClientId).HasMaxLength(100);
+            cart.Property(c => c.Name).HasMaxLength(120);
+            cart.Property(c => c.ServiceWindowId).HasMaxLength(50);
+            cart.Property(c => c.Status).HasMaxLength(20);
+            cart.Property(c => c.Reference).HasMaxLength(120);
+            cart.Property(c => c.LinesJson).HasColumnType("jsonb");
+            // El listado siempre entra por (cliente, estado): el índice cubre las dos
+            cart.HasIndex(c => new { c.ClientId, c.Status });
+            cart.HasIndex(c => c.UserId);
+        });
+
+        modelBuilder.Entity<PortalFavorite>(favorite =>
+        {
+            favorite.ToTable("portal_favorites");
+            favorite.HasKey(f => new { f.UserId, f.ModelId });
+            favorite.Property(f => f.ModelId).HasMaxLength(100);
         });
     }
 }

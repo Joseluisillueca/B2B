@@ -4,7 +4,10 @@
 :root {
   --ink:#0d0d0d; --ink-2:#1c1c1e; --ink-3:#2e2e33;
   --paper:#f6f6f3; --card:#ffffff; --line:#e7e6e1;
-  --muted:#71717a; --muted-2:#9a9aa2;
+  /* --muted es texto secundario sobre blanco/papel: #6b6b74 llega a 4,5:1 sobre
+     ambos. --line y los filetes de tabla siguen siendo decorativos (no son bordes
+     de control) y se quedan claros. Los bordes de CONTROL usan --line-control. */
+  --muted:#6b6b74; --muted-2:#9a9aa2; --line-control:#8f8e88;
   --blue:#2b2bff; --blue-deep:#1f1fd6; --blue-soft:#eaeaff;
   --ok:#12813d; --low:#b97d10; --out:#c62b21;
   --r:14px; --r-sm:8px;
@@ -117,7 +120,9 @@ main { flex:1; outline:none; }
 .crumbs a:hover { text-decoration:underline; }
 .crumbs span { color:var(--ink); }
 h1.title { font-family:"Archivo Black",sans-serif; font-size:2.75rem; letter-spacing:-.035em; margin:0 0 1.75rem; }
-body[data-focus="on"] .crumbs, body[data-focus="on"] h1.title { display:none; }
+.cat-headline { display:flex; align-items:baseline; gap:.8rem; flex-wrap:wrap; }
+/* Vista sin distracciones: se va el H1 y las migas se quedan en "Inicio" (20-header-ojo.png) */
+body[data-focus="on"] .crumb, body[data-focus="on"] h1.title { display:none; }
 
 .panel { background:var(--card); border-radius:var(--r); box-shadow:var(--shadow); padding:2.6rem 2rem;
   text-align:center; color:var(--muted); }
@@ -253,6 +258,286 @@ body[data-chrome="credentials"] {
 .cred-empty { color:var(--muted); border-top:1px solid var(--line); padding-top:1.2rem; }
 .cred-empty a { color:var(--blue); }
 
+/* ══════════════ Piezas comunes (Fase 2) ══════════════ */
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+  clip-path:inset(50%); white-space:nowrap; }
+
+.btn-primary, .btn-ghost, .btn-danger { display:inline-flex; align-items:center; justify-content:center;
+  gap:.5rem; border-radius:var(--r-sm); padding:.72rem 1.15rem; font-weight:700; font-size:.82rem;
+  letter-spacing:.045em; text-transform:uppercase; white-space:nowrap;
+  transition:background .15s var(--ease), border-color .15s var(--ease), color .15s var(--ease); }
+.btn-primary { background:var(--blue); color:#fff; }
+.btn-primary:hover:not([disabled]) { background:var(--blue-deep); }
+.btn-ghost { background:#fff; color:var(--ink); border:1px solid var(--line-control); }
+.btn-ghost:hover:not([disabled]) { border-color:var(--ink); }
+.btn-danger { background:#fff; color:var(--out); border:1px solid var(--out); }
+.btn-danger:hover:not([disabled]) { background:#fdf1f0; }
+.btn-primary[disabled], .btn-ghost[disabled], .btn-danger[disabled] {
+  background:#e6e5e0; color:#75746e; border-color:transparent; cursor:not-allowed; }
+.block { width:100%; }
+.link { color:var(--blue); text-decoration:underline; text-underline-offset:3px; }
+
+.skeleton { height:11rem; border-radius:var(--r); margin-bottom:.9rem; background:#eeede9;
+  background-image:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.7) 50%,transparent 80%);
+  background-size:220% 100%; animation:sheen 1.4s var(--ease) infinite; }
+.skeleton.short { height:6rem; }
+
+.notice { display:flex; gap:.7rem; border-radius:var(--r-sm); padding:.9rem 1rem; margin-bottom:1rem; }
+.notice b { display:block; font-size:.92rem; }
+.notice span { font-size:.85rem; }
+.notice svg { flex:none; margin-top:.1rem; }
+.notice-error { background:#fdeceb; color:#8f2019; }
+.notice-ok { background:#e8f6ed; color:#0f6b34; }
+
+/* Diálogo del portal (js/ui/dialog.js): sustituye a confirm()/prompt() del
+   navegador, que no se pueden traducir ni vestir. <dialog> nativo: Esc cierra y
+   el foco vuelve solo al botón que lo abrió. */
+.dlg { border:none; padding:0; background:transparent; max-width:min(28rem,92vw); }
+.dlg::backdrop { background:rgba(13,13,13,.45); }
+.dlg .panel { text-align:left; padding:1.5rem 1.6rem 1.3rem; box-shadow:var(--shadow-card); }
+.dlg h2 { font-family:"Archivo Black",sans-serif; font-size:1.15rem; letter-spacing:-.02em;
+  margin:0 0 .5rem; color:var(--ink); text-transform:uppercase; }
+.dlg p { margin:0; color:#3f3f46; font-size:.95rem; }
+.dlg label { display:block; margin-top:1rem; }
+.dlg label span { display:block; font-size:.72rem; font-weight:700; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--ink); margin-bottom:.35rem; }
+.dlg input { width:100%; border:1px solid var(--line-control); border-radius:var(--r-sm);
+  padding:.55rem .7rem; background:#fff; }
+.dlg input:focus { border-color:var(--blue); }
+.dlg .dlg-actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1.4rem; flex-wrap:wrap; }
+
+/* Tabla de listado: cabecera negra en mayúsculas, como el portal actual */
+table.grid { width:100%; border-collapse:collapse; background:var(--card); }
+table.grid th { background:var(--ink); color:#fff; text-align:left; font-size:.74rem; letter-spacing:.07em;
+  text-transform:uppercase; padding:.85rem 1rem; font-weight:700; }
+table.grid td { padding:.9rem 1rem; border-bottom:1px solid var(--line); font-size:.9rem; }
+table.grid tbody tr:hover td { background:#fbfbf9; }
+table.grid .grid-empty td { text-align:center; color:var(--muted); padding:1.6rem 1rem; }
+table.grid .grid-empty:hover td { background:transparent; }
+.grid-actions { width:3.5rem; text-align:right; }
+.grid-link { font-weight:600; text-align:left; }
+.grid-link:hover { color:var(--blue); text-decoration:underline; text-underline-offset:3px; }
+.grid-drop { color:var(--muted); padding:.3rem; border-radius:6px; }
+.grid-drop:hover { color:var(--out); background:#fdf1f0; }
+
+/* La tabla no encoge por debajo de sus columnas: en pantallas estrechas se
+   desplaza dentro de su caja en vez de estirar el documento entero. */
+.grid-scroll { overflow-x:auto; overscroll-behavior-x:contain; }
+
+/* Paginación «‹ 1 ›» + Mostrar N.
+   "Mostrar N" era absoluto y se superponía a los números en cuanto había muchas
+   páginas: ahora es un ítem flex más. Los dos extremos crecen por igual, así que
+   los números siguen centrados y el selector se va a la derecha (o baja de línea). */
+.pager { display:flex; align-items:center; justify-content:center; gap:.3rem;
+  padding:1.6rem 0; flex-wrap:wrap; }
+.pager::before { content:""; flex:1 1 0; }
+.pager button { min-width:2.1rem; height:2.1rem; border-radius:var(--r-sm); display:grid; place-items:center;
+  color:var(--ink); font-size:.86rem; transition:background .15s var(--ease); }
+.pager button:hover:not([disabled]) { background:#eceae5; }
+.pager .pg-num.on { background:var(--blue); color:#fff; }
+.pager button[disabled] { color:#c3c2bc; cursor:default; }
+.pager .pg-gap { color:var(--muted); padding:0 .2rem; }
+.pager .pg-size { flex:1 1 auto; display:flex; justify-content:flex-end; }
+.pager select, .toolbar select { appearance:none; background:#fff; border:1px solid var(--line-control); border-radius:var(--r-sm);
+  padding:.5rem 2rem .5rem .7rem; font-size:.86rem; cursor:pointer; }
+
+/* ══════════════ Catálogo (17-catalog-catalog.png) ══════════════ */
+.page.catalog { display:grid; grid-template-columns:13.5rem minmax(0,1fr); gap:2.4rem; align-items:start; }
+.cat-main { min-width:0; }
+
+.rail { position:sticky; top:calc(var(--header-h) + 1rem); align-self:start; max-height:calc(100vh - 6rem);
+  overflow-y:auto; overscroll-behavior:contain; padding-bottom:1rem; }
+.rail section { margin-bottom:1.7rem; }
+.rail h2 { font-size:.78rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  margin:0 0 .7rem; color:var(--ink); }
+.rail-line { display:block; width:100%; text-align:left; padding:.24rem 0; font-size:.92rem; color:#3f3f46; }
+.rail-line:hover { color:var(--blue); }
+.rail-line.on { font-weight:700; color:var(--ink); }
+.rail-model { display:flex; flex-wrap:wrap; align-items:center; gap:.7rem; }
+.rail-model h2 { margin:0; }
+.rail-model input { flex:1; min-width:6rem; border:1px solid var(--line-control); border-radius:var(--r-sm);
+  padding:.5rem .7rem; background:#fff; }
+.rail-model input:focus { border-color:var(--blue); }
+
+.rail-check { display:flex; align-items:center; gap:.6rem; padding:.27rem 0; cursor:pointer; font-size:.92rem; }
+.rail-check input { appearance:none; width:1.15rem; height:1.15rem; flex:none; border:1.5px solid var(--line-control);
+  border-radius:3px; display:grid; place-items:center; background:#fff; transition:all .12s var(--ease); }
+.rail-check input:checked { background:var(--ink); border-color:var(--ink); }
+.rail-check input:checked::after { content:""; width:.5rem; height:.28rem; border-left:2px solid #fff;
+  border-bottom:2px solid #fff; rotate:-45deg; translate:0 -1px; }
+.rail-check span:first-of-type { flex:1; }
+.rail-count { color:var(--muted); font-size:.78rem; }
+.rail-more { margin-top:.35rem; font-size:.86rem; color:var(--ink); text-decoration:underline;
+  text-underline-offset:3px; }
+.rail-more:hover { color:var(--blue); }
+/* Vista sin distracciones (20-header-ojo.png): se van LÍNEAS y MODELO con el H1 */
+body[data-focus="on"] .rail-lines, body[data-focus="on"] .rail-model { display:none; }
+
+/* "Catálogo · 99 artículos" a la izquierda y la toolbar a la derecha, en la misma
+   línea. Con el ojo activo desaparece el H1 y el recuento ocupa su sitio. */
+.cat-bar { display:flex; align-items:flex-end; justify-content:space-between; gap:1.5rem;
+  flex-wrap:wrap; margin-bottom:1.4rem; }
+.cat-title { min-width:0; }
+.cat-title .cat-headline { min-height:2.9rem; margin-bottom:.4rem; }
+.cat-title h1.title { margin:0; }
+/* "Catálogo · 99 artículos": el punto solo tiene sentido si el H1 está delante */
+.cat-count { color:var(--muted); font-size:1rem; white-space:nowrap; }
+.cat-count::before { content:"· "; }
+body[data-focus="on"] .cat-count::before { content:none; }
+
+.toolbar { display:flex; align-items:flex-end; gap:.9rem; flex-wrap:wrap; }
+.tb-export { display:inline-flex; align-items:center; gap:.5rem; padding:.5rem .4rem; font-size:.95rem;
+  border-radius:var(--r-sm); }
+.tb-export:hover:not([disabled]) { color:var(--blue); }
+.tb-export[disabled] { color:var(--muted); cursor:progress; }
+.tb-field { display:block; position:relative; }
+.tb-legend { position:absolute; top:-.55rem; left:.6rem; background:var(--paper); padding:0 .3rem;
+  font-size:.7rem; color:var(--muted); z-index:1; }
+.tb-select { display:flex; align-items:center; gap:.5rem; border:1px solid var(--line-control); border-radius:var(--r-sm);
+  padding-left:.7rem; background:#fff; }
+.tb-select svg { color:var(--muted); flex:none; }
+.tb-select select { border:none; padding-right:1.6rem; min-width:8.5rem;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b6b74' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right .55rem center; }
+/* Vista: mientras solo exista Listado el selector entero va deshabilitado (con
+   title explicativo) en vez de dejar una única opción elegible que no hace nada. */
+.tb-select:has(select[disabled]) { background:#f1f0ec; border-color:#c9c8c2; color:var(--muted); }
+.tb-select select[disabled] { background-color:transparent; cursor:not-allowed; color:var(--muted); }
+
+/* Filtrar recarga el listado: mientras llega la respuesta las filas se apagan y
+   dejan de aceptar clics, y #count anuncia "Cargando…" (role="status"). */
+.cat-list.is-loading { opacity:.45; pointer-events:none; transition:opacity .15s var(--ease); }
+
+/* Fila de artículo */
+.item { display:grid; grid-template-columns:15rem minmax(12rem,17rem) minmax(0,1fr); gap:2rem;
+  align-items:start; padding:1.6rem 0; border-bottom:1px solid var(--line); }
+.item:first-child { padding-top:.4rem; }
+.item-photo { aspect-ratio:4/3; background:#f0efec; display:grid; place-items:center; overflow:hidden; }
+.item-photo img { width:100%; height:100%; object-fit:cover; }
+.item-art { color:var(--ink); opacity:.2; }
+
+.item-title { display:flex; align-items:flex-start; gap:1rem; }
+.item h2 { font-family:"Archivo Black",sans-serif; font-size:1.3rem; line-height:1.15; letter-spacing:-.02em;
+  margin:0; text-transform:uppercase; flex:1; }
+.item-fav { color:var(--ink); padding:.15rem; border-radius:6px; flex:none;
+  transition:color .15s var(--ease), scale .15s var(--ease); }
+.item-fav:hover { scale:1.1; }
+.item-fav[aria-pressed="true"] { color:var(--blue); }
+
+.item-ref { margin:.85rem 0 0; font-size:.92rem; color:#3f3f46; }
+.item-ref b { font-weight:600; color:var(--ink); }
+/* En rejilla los pares dt/dd quedan alineados entre artículos, en vez de bailar
+   según la longitud del valor anterior (flex + wrap) */
+.item-attrs { display:grid; grid-template-columns:repeat(auto-fit,minmax(6.5rem,1fr));
+  gap:.6rem 1.2rem; margin:.9rem 0 0; }
+.item-attrs dt { font-size:.7rem; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); }
+.item-attrs dd { margin:.15rem 0 0; font-size:.82rem; font-weight:700; letter-spacing:.03em;
+  text-transform:uppercase; }
+/* En la ficha el rótulo PVD va encima del precio; junto a la matriz, en línea */
+.item-price { display:flex; align-items:baseline; gap:.7rem; margin:1.1rem 0 0; }
+.item-info .item-price { flex-direction:column; align-items:flex-start; gap:.1rem; }
+.item-price span { font-size:.9rem; color:#3f3f46; }
+.item-price b { font-family:"Archivo Black",sans-serif; font-size:1.7rem; letter-spacing:-.02em; }
+.item-pvp { margin:.2rem 0 0; color:var(--muted); font-size:.85rem; }
+.item-matrix .matrix-price { margin-top:1rem; }
+.item-matrix .matrix-price b { font-size:1.35rem; }
+.item-units { background:var(--blue-soft); color:var(--blue-deep); border-radius:999px;
+  padding:.2rem .7rem; font-size:.75rem; font-weight:700; }
+
+/* Matriz de tallas: 8 celdas por fila con cabecera negra */
+/* El ancho mínimo lo marca la celda más ancha posible: "0" + "(+99)" */
+.matrix { display:grid; grid-template-columns:repeat(auto-fill,minmax(5.1rem,1fr)); gap:.4rem;
+  max-width:45rem; }
+.matrix.wide { grid-template-columns:repeat(auto-fill,minmax(6.6rem,1fr)); }
+.sz { border:1px solid var(--line); background:#fff; overflow:hidden;
+  transition:border-color .12s var(--ease), box-shadow .12s var(--ease); }
+.sz:focus-within { border-color:var(--blue); box-shadow:0 0 0 3px rgba(43,43,255,.14); }
+.sz-head { background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center;
+  gap:.35rem; padding:.22rem .3rem; font-size:.76rem; font-weight:700; }
+.sz-price { font-weight:600; font-size:.72rem; white-space:nowrap; }
+.sz-body { display:flex; align-items:center; justify-content:space-between; gap:.2rem; padding:.28rem .35rem; }
+.sz-qty { width:2.1rem; border:none; background:transparent; padding:.1rem 0; font-weight:600;
+  -moz-appearance:textfield; }
+.sz-qty::-webkit-outer-spin-button, .sz-qty::-webkit-inner-spin-button { appearance:none; margin:0; }
+/* El teclado tiene que ver DÓNDE está dentro de la matriz: el foco se marca en la
+   celda (halo azul) y en el propio campo, sin desbordar la caja de la talla. */
+.sz-qty:focus-visible { outline:2px solid var(--blue); outline-offset:-2px; border-radius:3px; }
+.sz:has(.sz-qty:focus-visible) { border-color:var(--blue); box-shadow:0 0 0 2px var(--blue); }
+.sz-stock { display:inline-flex; align-items:center; gap:.22rem; font-size:.76rem; color:var(--muted); }
+.sz-stock i { width:.42rem; height:.42rem; border-radius:50%; flex:none; }
+.sz.low .sz-stock i { background:var(--low); }
+.sz.out .sz-stock i { background:var(--out); }
+.sz.out .sz-qty { color:#8f8e88; background:transparent; }
+.sz.inf .sz-stock { color:var(--blue); font-weight:700; }
+.sz.has { border-color:var(--blue); }
+.sz.has .sz-head { background:var(--blue); }
+.sz.has .sz-qty { color:var(--blue); font-weight:700; }
+
+/* ══════════════ Checkout (16-checkout.png) ══════════════ */
+/* La referencia no enseña el H1 "Checkout" (las migas y "Cliente: …" ya sitúan la
+   página), pero el documento necesita su encabezado: se oculta solo visualmente. */
+.page.checkout > .cat-headline > h1.title { position:absolute; width:1px; height:1px; padding:0;
+  margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+
+.ck-grid { display:grid; grid-template-columns:minmax(0,1fr) 22rem; gap:1.6rem; align-items:start; }
+.ck-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
+  margin-bottom:1.1rem; }
+.ck-client { font-size:1.25rem; font-weight:400; margin:0; }
+.ck-client b { font-weight:700; }
+.ck-actions { display:flex; gap:.6rem; flex-wrap:wrap; }
+
+.ck-card { background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm); padding:1.4rem 1.6rem; }
+.ck-row { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1.4rem; margin:0;
+  padding-bottom:1.2rem; border-bottom:1px solid var(--line); }
+.ck-row.two { grid-template-columns:repeat(2,minmax(0,1fr)); padding-top:1.2rem; }
+.ck-row.one { grid-template-columns:1fr; padding-top:1.2rem; padding-bottom:0; border-bottom:none; }
+.ck-field dt { font-size:.72rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--ink); }
+.ck-field dd { margin:.45rem 0 0; color:#3f3f46; font-size:.95rem; min-height:1.2rem; }
+.ck-field input, .ck-field select, .ck-field textarea { width:100%; border:1px solid var(--line-control);
+  border-radius:var(--r-sm); padding:.5rem .65rem; background:#fff; }
+.ck-field input:focus, .ck-field select:focus, .ck-field textarea:focus { border-color:var(--blue); }
+
+.ck-lines-head { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  flex-wrap:wrap; margin:2rem 0 .9rem; }
+.ck-lines-head h2 { font-family:"Archivo Black",sans-serif; font-size:1.4rem; letter-spacing:-.02em; margin:0; }
+.ck-empty { background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm);
+  padding:1.3rem 1.5rem; margin:0; font-size:1.05rem; font-weight:700; }
+
+.ck-group { background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm);
+  padding:1.1rem 1.4rem; margin-bottom:.9rem; }
+.ck-group header { display:flex; align-items:baseline; gap:1rem; flex-wrap:wrap; margin-bottom:.6rem; }
+.ck-group h3 { font-size:1rem; text-transform:uppercase; margin:0; letter-spacing:-.01em; }
+.ck-group header p { margin:0; color:var(--muted); font-size:.85rem; }
+.ck-group-total { margin-left:auto; font-weight:700; font-size:.9rem; }
+.ck-table { width:100%; border-collapse:collapse; }
+.ck-table th { text-align:left; font-size:.7rem; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--muted); padding:.35rem .5rem; font-weight:700; border-bottom:1px solid var(--line); }
+.ck-table td { padding:.45rem .5rem; border-bottom:1px solid #f2f1ed; font-size:.9rem; }
+.ck-table tr:last-child td { border-bottom:none; }
+.ck-size { display:inline-block; min-width:2rem; text-align:center; background:var(--ink); color:#fff;
+  border-radius:4px; padding:.1rem .4rem; font-size:.76rem; font-weight:700; }
+/* Objetivo táctil mínimo de 24×24 CSS aunque el icono mida 14 */
+.ck-drop { color:var(--muted); border-radius:5px; min-width:24px; min-height:24px;
+  display:inline-grid; place-items:center; }
+.ck-drop:hover { color:var(--out); }
+
+.ck-side { background:#f3f2ef; border-radius:var(--r-sm); padding:1.2rem; position:sticky;
+  top:calc(var(--header-h) + 1rem); }
+.ck-totals { margin:1.2rem 0 0; }
+.ck-totals > div { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  padding:.6rem 0; border-bottom:1px solid #e2e1dc; }
+.ck-totals dt { color:#3f3f46; font-size:.92rem; display:flex; align-items:center; gap:.4rem; }
+.ck-totals dd { margin:0; font-weight:600; }
+.ck-totals .ck-ship { border-bottom:none; }
+.ck-totals .ck-grand { border-bottom:none; border-top:1px solid #d8d7d1; padding-top:.9rem; }
+.ck-totals .ck-grand dt { font-weight:700; font-size:1.05rem; color:var(--ink); }
+.ck-totals .ck-grand dd { font-weight:700; font-size:1.05rem; }
+.ck-terms { display:flex; align-items:flex-start; gap:.6rem; margin-top:1rem; font-size:.88rem; cursor:pointer; }
+.ck-terms input { appearance:none; width:1.15rem; height:1.15rem; flex:none; border:1.5px solid var(--line-control);
+  border-radius:3px; background:#fff; display:grid; place-items:center; }
+.ck-terms input:checked { background:var(--ink); border-color:var(--ink); }
+.ck-terms input:checked::after { content:""; width:.5rem; height:.28rem; border-left:2px solid #fff;
+  border-bottom:2px solid #fff; rotate:-45deg; translate:0 -1px; }
+
 /* ══════════════ Carrito ══════════════ */
 #cart-drawer { position:fixed; inset:0 0 0 auto; width:min(24rem,94vw); z-index:40; background:var(--card);
   box-shadow:-18px 0 50px -30px rgba(13,13,13,.45); translate:100% 0; transition:translate .3s var(--ease);
@@ -264,7 +549,22 @@ body[data-chrome="credentials"] {
 #cart-drawer .top .win { color:var(--muted-2); font-size:.78rem; }
 #cart-drawer .top button { margin-left:auto; color:var(--muted-2); }
 #cart-drawer .top button:hover { color:#fff; }
-#cart-drawer .body { flex:1; overflow-y:auto; padding:1.2rem; color:var(--muted); text-align:center; }
+#cart-drawer .body { flex:1; overflow-y:auto; padding:1.2rem; }
+#cart-drawer .body.is-empty { display:grid; place-items:center; color:var(--muted); text-align:center; }
+#cart-drawer .foot { border-top:1px solid var(--line); padding:1rem 1.2rem 1.2rem; }
+.cart-group + .cart-group { margin-top:1.1rem; padding-top:1.1rem; border-top:1px solid var(--line); }
+.cart-group h3 { font-size:.9rem; text-transform:uppercase; margin:0; letter-spacing:-.01em; }
+.cart-ref { margin:.1rem 0 .5rem; color:var(--muted); font-size:.78rem; }
+.cart-line { display:flex; align-items:center; gap:.55rem; padding:.3rem 0; font-size:.85rem; }
+.cart-size { background:var(--ink); color:#fff; border-radius:4px; padding:.1rem .4rem; font-size:.72rem;
+  font-weight:700; min-width:1.9rem; text-align:center; }
+.cart-qty { color:var(--muted); flex:1; }
+.cart-amount { font-weight:600; }
+.cart-drop { color:var(--muted); padding:.15rem; border-radius:5px; }
+.cart-drop:hover { color:var(--out); }
+.cart-total { display:flex; justify-content:space-between; font-size:1.05rem; margin-bottom:.9rem; }
+.cart-total b { font-family:"Archivo Black",sans-serif; letter-spacing:-.02em; }
+.cart-note { margin:.6rem 0 0; text-align:center; color:var(--muted); font-size:.78rem; }
 #veil { position:fixed; inset:0; z-index:39; background:rgba(13,13,13,.35); opacity:0;
   pointer-events:none; transition:opacity .3s var(--ease); }
 #veil.on { opacity:1; pointer-events:auto; }
@@ -278,6 +578,14 @@ body[data-chrome="credentials"] {
   /* Las dos tarjetas dejan de caber en fila mucho antes que el resto del layout */
   .tiles { grid-template-columns:1fr; }
   .tile { aspect-ratio:2/1; }
+
+  /* El rail de facetas y el panel de totales dejan de ser columnas: el catálogo y
+     el checkout se apilan. Sin esto la columna de contenido se quedaba sin ancho
+     (la matriz colapsaba a 0) y el panel del checkout se montaba encima. */
+  .page.catalog { grid-template-columns:1fr; gap:1.2rem; }
+  .rail { position:static; max-height:none; overflow:visible; }
+  .ck-grid { grid-template-columns:1fr; }
+  .ck-side { position:static; }
 }
 @media (max-width:48rem) {
   /* Una sola fila: marca · usuario · carrito. Idioma y vista sin distracciones
@@ -300,4 +608,25 @@ body[data-chrome="credentials"] {
   h1.title { font-size:1.9rem; }
   .sheet .card { padding:1.8rem 1.3rem; }
   .cred-row { flex-wrap:wrap; }
+
+  /* Artículo del catálogo: miniatura + datos arriba, matriz a lo ancho debajo.
+     Las tres columnas de escritorio no caben en 390 px sin dejar la matriz en 0. */
+  .item { grid-template-columns:5.5rem minmax(0,1fr); gap:1rem;
+    grid-template-areas:"photo info" "matrix matrix"; }
+  .item-photo { grid-area:photo; aspect-ratio:1; }
+  .item-info { grid-area:info; }
+  .item-matrix { grid-area:matrix; }
+  .item h2 { font-size:1.05rem; }
+  .matrix, .matrix.wide { max-width:none; grid-template-columns:repeat(auto-fill,minmax(4.6rem,1fr)); }
+
+  /* Checkout: los campos en una columna y los botones de la cabecera repartidos */
+  .ck-row, .ck-row.two { grid-template-columns:1fr; gap:.9rem; }
+  .ck-card { padding:1.1rem 1rem; }
+  .ck-group { padding:1rem; }
+  .ck-actions { width:100%; }
+  .ck-actions .btn-ghost, .ck-actions .btn-danger { flex:1 1 auto; }
+
+  /* Carritos: PROPIETARIO/A es el dato prescindible cuando no cabe la tabla */
+  .grid-owner { display:none; }
+  table.grid th, table.grid td { padding:.75rem .6rem; }
 }

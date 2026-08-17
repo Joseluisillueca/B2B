@@ -92,7 +92,7 @@ public static class PortalEndpoints
     // métodos de pago para precios y checkout, direcciones para el envío).
     private sealed record ClientCard(
         string id, string? number, string name, JsonNode? fiscalInfo, bool canShop,
-        string[] productSegments, string[] payMethods, JsonNode? creditInfo,
+        string[] productSegments, string[] payMethods, string[] groupIds, JsonNode? creditInfo,
         IReadOnlyList<object> shippingAddresses);
 
     private static async Task<ClientCard?> ClientCardAsync(AppDbContext db, string? clientId)
@@ -132,6 +132,7 @@ public static class PortalEndpoints
             canShop: Bool(payload["canShop"], fallback: true),
             productSegments: Strings(payload["productSegments"]),
             payMethods: Strings(payload["payMethods"]),
+            groupIds: Strings(payload["groupIds"]),
             creditInfo: Detach(payload["creditInfo"]),
             shippingAddresses: addresses);
     }

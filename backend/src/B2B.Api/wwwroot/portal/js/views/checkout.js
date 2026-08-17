@@ -1,5 +1,293 @@
-// Vista de /{market}/{lang}/checkout — pendiente de la Fase 2 del plan.
+// Vista 5 — /{market}/{lang}/checkout (16-checkout.png).
+//
+// Cabecera con el cliente y sus tres botones, ficha de siete campos, líneas del
+// pedido agrupadas por artículo y panel derecho con los cuatro totales, el aviso
+// de bloqueo, el checkbox de condiciones y TERMINAR PEDIDO.
+//
+// El envío real a Business Central es la Fase BC del plan: TERMINAR PEDIDO deja el
+// pedido registrado y pendiente de envío, y vacía el carrito.
 
-import { stub } from './stub.js';
+import { api } from '../api.js';
+import { t } from '../i18n.js';
+import { esc, eur, date } from '../format.js';
+import { state, lineKey } from '../state.js';
+import { href, go } from '../router.js';
+import { icons } from '../ui/icons.js';
+import { pageHead } from '../ui/chrome.js';
+import { groupLines } from '../ui/cart.js';
+import { confirmDialog, promptDialog } from '../ui/dialog.js';
 
-export default stub('checkout', 2);
+const IVA = 0.21;   // Tipo general: el desglose real por línea llega con el pedido de BC
+
+export default function checkout(host) {
+  const me = state.me || {};
+  const client = me.client || {};
+  const credential = state.credential || {};
+
+  let editing = false;
+  let accepted = false;
+  let sent = null;
+  let error = '';   // fallo de la última acción, en línea junto a los totales
+  const form = {
+    reference: '',
+    payMethod: (client.payMethods || [])[0] || '',
+    shippingAddressId: (client.shippingAddresses || [])[0]?.id || '',
+    notes: ''
+  };
+
+  const clientName = credential.name || client.name || '';
+  const clientNumber = credential.clientNumber || client.number || '';
+
+  function render() {
+    const lines = state.cartLines();
+    const units = state.cartUnits();
+    const subtotal = state.cartTotal();
+    const tax = Math.round(subtotal * IVA * 100) / 100;
+
+    // TERMINAR PEDIDO se deshabilita por dos motivos distintos y el aviso tiene que
+    // decir cuál: sin líneas, o con líneas y las condiciones sin aceptar. Antes el
+    // segundo caso dejaba el botón apagado y sin explicación.
+    const blocked = sent ? '' : !units ? t('checkout.blockedEmpty')
+      : !accepted ? t('checkout.blockedTerms') : '';
+
+    host.innerHTML = `
+      <div class="page checkout">
+        ${pageHead(t('nav.checkout'), [t('nav.catalog'), t('nav.checkout')])}
+
+        <div class="ck-grid">
+          <div class="ck-main">
+            <div class="ck-head">
+              <h2 class="ck-client">${esc(t('checkout.client'))}
+                <b>${esc(clientName)}${clientNumber ? ` (${esc(clientNumber)})` : ''}</b></h2>
+              <div class="ck-actions">
+                <button type="button" class="btn-danger" id="dropCart" ${units ? '' : 'disabled'}>
+                  ${icons.trash(16)} ${esc(t('checkout.dropCart'))}</button>
+                <button type="button" class="btn-ghost" id="edit" aria-pressed="${editing}">
+                  ${icons.pencil(16)} ${esc(t('checkout.edit'))}</button>
+                <button type="button" class="btn-ghost" id="excel" ${units ? '' : 'disabled'}>
+                  ${icons.fileDown(16)} ${esc(t('checkout.excel'))}</button>
+              </div>
+            </div>
+
+            ${card()}
+
+            <div class="ck-lines-head">
+              <h2>${esc(t('checkout.products', { n: units }))}</h2>
+              <button type="button" class="btn-ghost" id="favorite" ${units ? '' : 'disabled'}>
+                ${icons.heart(16)} ${esc(t('checkout.saveFavorite'))}</button>
+            </div>
+
+            ${lines.length ? groups(lines) : `<p class="ck-empty">${esc(t('checkout.noProducts'))}</p>`}
+          </div>
+
+          <aside class="ck-side">
+            ${error ? `
+              <div class="notice notice-error" role="alert">
+                ${icons.alert(18)}<div><span>${esc(error)}</span></div>
+              </div>` : ''}
+            ${sent ? sentNotice() : blocked ? blockedNotice(blocked) : ''}
+
+            <button type="button" class="btn-primary block" id="submit"
+              ${blocked ? 'aria-describedby="ckBlocked"' : ''}
+              ${units && accepted && !sent ? '' : 'disabled'}>${esc(t('checkout.submit'))}</button>
+
+            <dl class="ck-totals">
+              <div><dt>${esc(t('checkout.subtotal'))}</dt><dd>${esc(eur(subtotal))}</dd></div>
+              <div><dt>${esc(t('checkout.totalNet'))}</dt><dd>${esc(eur(subtotal))}</dd></div>
+              <div class="ck-ship"><dt>${esc(t('checkout.shipping'))} ${icons.truck(16)}</dt>
+                <dd>${esc(t('checkout.freeShipping'))}</dd></div>
+              <div class="ck-grand"><dt>${esc(t('checkout.totalGross'))}</dt>
+                <dd>${esc(eur(subtotal + tax))}</dd></div>
+            </dl>
+
+            <label class="ck-terms">
+              <input type="checkbox" id="terms" ${accepted ? 'checked' : ''}>
+              <span>${esc(t('checkout.terms'))}</span>
+            </label>
+          </aside>
+        </div>
+      </div>`;
+
+    bind();
+  }
+
+  const blockedNotice = reason => `
+    <div class="notice notice-error" id="ckBlocked">
+      ${icons.alert(18)}
+      <div><b>${esc(t('checkout.blockedTitle'))}</b><span>${esc(reason)}</span></div>
+    </div>`;
+
+  const sentNotice = () => `
+    <div class="notice notice-ok">
+      ${icons.check(18)}
+      <div><b>${esc(t('checkout.sentTitle', { n: sent.reference || sent.name }))}</b>
+        <span>${esc(t('checkout.sentBody'))}</span></div>
+    </div>`;
+
+  // Los 7 campos de la ficha (16-checkout.png). Con EDITAR los cuatro que el cliente
+  // decide se vuelven campos de formulario; los otros tres son informativos.
+  function card() {
+    const address = (client.shippingAddresses || [])
+      .find(a => a.id === form.shippingAddressId) || (client.shippingAddresses || [])[0];
+    const fiscal = client.fiscalInfo || {};
+
+    return `
+      <div class="ck-card">
+        <dl class="ck-row">
+          ${field(t('checkout.date'), date(new Date()))}
+          ${field(t('checkout.reference'), editing
+            ? `<input type="text" id="reference" value="${esc(form.reference)}" maxlength="60">`
+            : esc(form.reference) || '—', true)}
+          ${field(t('checkout.payMethod'), editing
+            ? `<select id="payMethod">${(client.payMethods || []).map(method =>
+                `<option value="${esc(method)}"${method === form.payMethod ? ' selected' : ''}>
+                   ${esc(method)}</option>`).join('')}</select>`
+            : esc(form.payMethod) || '—', true)}
+          ${field(t('checkout.type'), t(`window.${state.prefs.window}`).toUpperCase())}
+        </dl>
+
+        <dl class="ck-row two">
+          ${field(t('checkout.shipTo'), editing && (client.shippingAddresses || []).length
+            ? `<select id="shipTo">${(client.shippingAddresses || []).map(a =>
+                `<option value="${esc(a.id)}"${a.id === form.shippingAddressId ? ' selected' : ''}>
+                   ${esc(addressText(a))}</option>`).join('')}</select>`
+            : esc(address ? addressText(address) : '—'), true)}
+          ${field(t('checkout.billing'),
+            `${fiscal.fiscalName || clientName}${fiscal.fiscalId?.document ? ` (${fiscal.fiscalId.document})` : ''}`)}
+        </dl>
+
+        <dl class="ck-row one">
+          ${field(t('checkout.notes'), editing
+            ? `<textarea id="notes" rows="3" maxlength="500">${esc(form.notes)}</textarea>`
+            : esc(form.notes), true)}
+        </dl>
+      </div>`;
+  }
+
+  const field = (label, value, raw = false) => `
+    <div class="ck-field"><dt>${esc(label)}</dt><dd>${raw ? value : esc(value)}</dd></div>`;
+
+  const addressText = address => {
+    const a = address?.address || {};
+    return [a.streetAddress && `${a.streetAddress}${a.num ? ` ${a.num}` : ''}`, a.city, a.province, a.zipCode,
+      a.countryIsoId && `(${a.countryIsoId})`].filter(Boolean).join(', ');
+  };
+
+  function groups(lines) {
+    return `<div class="ck-lines">${groupLines(lines).map(group => `
+      <section class="ck-group">
+        <header>
+          <h3>${esc(group.name || '')}</h3>
+          <p>${esc(t('catalog.reference'))} <b>${esc(group.reference || '')}</b></p>
+          <span class="ck-group-total">${esc(t('checkout.units', { n: group.units }))} · ${esc(eur(group.total))}</span>
+        </header>
+        <table class="ck-table">
+          <thead><tr>
+            <th>${esc(t('checkout.size'))}</th><th>${esc(t('checkout.qty'))}</th>
+            <th>${esc(t('checkout.price'))}</th><th>${esc(t('checkout.amount'))}</th><th></th>
+          </tr></thead>
+          <tbody>${group.lines.map(line => `
+            <tr>
+              <td><span class="ck-size">${esc(line.size ?? '')}</span></td>
+              <td>${esc(String(line.qty))}</td>
+              <td>${esc(eur(line.price))}</td>
+              <td>${esc(eur((Number(line.qty) || 0) * (Number(line.price) || 0)))}</td>
+              <td><button type="button" class="ck-drop" data-key="${esc(lineKey(line))}"
+                aria-label="${esc(t('cart.remove'))}">${icons.close(14)}</button></td>
+            </tr>`).join('')}</tbody>
+        </table>
+      </section>`).join('')}</div>`;
+  }
+
+  function bind() {
+    const $ = id => host.querySelector(`#${id}`);
+
+    $('edit').onclick = () => { editing = !editing; render(); };
+    $('terms').onchange = event => { accepted = event.target.checked; render(); };
+
+    if (editing) {
+      $('reference')?.addEventListener('input', e => { form.reference = e.target.value; });
+      $('payMethod')?.addEventListener('change', e => { form.payMethod = e.target.value; });
+      $('shipTo')?.addEventListener('change', e => { form.shippingAddressId = e.target.value; });
+      $('notes')?.addEventListener('input', e => { form.notes = e.target.value; });
+    }
+
+    host.querySelectorAll('.ck-drop').forEach(button => {
+      button.onclick = () => { state.removeCartLine(button.dataset.key); render(); };
+    });
+
+    // Vaciar el carrito no tiene vuelta atrás: se confirma en el diálogo del portal
+    $('dropCart').onclick = async () => {
+      const ok = await confirmDialog({
+        title: t('checkout.dropCart'), message: t('checkout.dropConfirm'),
+        confirmLabel: t('checkout.dropCart')
+      });
+      if (!ok) return;
+      state.clearCart();
+      sent = null;
+      error = '';
+      render();
+    };
+
+    $('excel').onclick = async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        // El CSV lo genera el backend: se guarda el carrito de paso y se descarga
+        const cart = await api.post('/api/portal/carts', payload(t('checkout.excelName')));
+        await api.download(`/api/portal/carts/${cart.id}/export.csv`, 'pedido.csv');
+        await api.del(`/api/portal/carts/${cart.id}`);
+        button.disabled = false;
+        if (error) { error = ''; render(); }
+      } catch {
+        // Antes la descarga fallaba en silencio (promesa rechazada y nada en pantalla)
+        error = t('checkout.excelError');
+        render();
+      }
+    };
+
+    $('favorite').onclick = async event => {
+      const button = event.currentTarget;
+      const name = await promptDialog({
+        title: t('checkout.saveFavorite'), label: t('checkout.favoriteName'), value: defaultName()
+      });
+      if (name === null) return;
+      button.disabled = true;
+      try {
+        await api.post('/api/portal/carts', payload(name.trim() || defaultName()));
+        go(href('shopping-carts'));
+      } catch {
+        button.disabled = false;
+        error = t('checkout.favoriteError');
+        render();
+      }
+    };
+
+    $('submit').onclick = async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        sent = await api.post('/api/portal/orders', payload(defaultName()));
+        state.clearCart();
+        accepted = false;
+        error = '';
+        render();
+      } catch {
+        button.disabled = false;
+        error = t('checkout.submitError');
+        render();
+      }
+    };
+  }
+
+  const defaultName = () => `${t(`window.${state.prefs.window}`)} ${date(new Date())}`;
+
+  const payload = name => ({
+    name,
+    windowId: state.prefs.window,
+    reference: form.reference || null,
+    lines: state.cartLines()
+  });
+
+  render();
+}

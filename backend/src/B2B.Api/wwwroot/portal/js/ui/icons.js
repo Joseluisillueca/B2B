@@ -15,6 +15,21 @@ export const icons = {
   pause: size => svg('<path d="M9 5v14M15 5v14"/>', size),
   play: size => svg('<path d="M7 4.8v14.4L19.5 12Z"/>', size),
 
+  // Catálogo, checkout y carritos (Fase 2)
+  heart: size => svg('<path d="M12 20s-7.5-4.6-7.5-9.7A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.9C19.5 15.4 12 20 12 20Z"/>', size),
+  heartOn: size => svg('<path d="M12 20s-7.5-4.6-7.5-9.7A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.9C19.5 15.4 12 20 12 20Z" fill="currentColor"/>', size),
+  download: size => svg('<path d="M12 4v10m0 0 4-4m-4 4-4-4"/><path d="M5 18h14"/>', size),
+  list: size => svg('<path d="M4 6h16M4 12h16M4 18h16"/>', size),
+  trash: size => svg('<path d="M4 7h16M9 7V5h6v2M6 7l1 12.2A1.8 1.8 0 0 0 8.8 21h6.4a1.8 1.8 0 0 0 1.8-1.8L18 7"/>', size),
+  pencil: size => svg('<path d="M4 20h4L20 8a2.1 2.1 0 0 0-3-3L5 17Z"/><path d="M15 5.5 18.5 9"/>', size),
+  fileDown: size => svg('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M12 11v5m0 0 2-2m-2 2-2-2"/>', size),
+  alert: size => svg('<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16v.5"/>', size),
+  check: size => svg('<path d="m5 12.5 4.5 4.5L19 7.5"/>', size),
+  truck: size => svg('<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/>', size),
+  left: size => svg('<path d="m14 6-6 6 6 6"/>', size),
+  right: size => svg('<path d="m10 6 6 6-6 6"/>', size),
+  shoe: size => svg('<path d="M3 16c3-1 4-4 6-6s4-3 7-3c2.5 0 5 1.5 5 4 0 2-1.5 3-4 3H3Z"/><path d="M3 16v2.5h18V16"/>', size),
+
   // Redes del footer: trazos simples, mismo peso visual que el resto
   facebook: size => svg('<path d="M14 8h3V4.5h-3A4 4 0 0 0 10 8.5V11H7.5v3.5H10V21h3.5v-6.5H16l.5-3.5H13.5V9a1 1 0 0 1 1-1Z"/>', size),
   instagram: size => svg('<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r=".8" fill="currentColor"/>', size),

@@ -17,6 +17,15 @@ const write = (store, key, value) => {
   else store.setItem(key, JSON.stringify(value));
 };
 
+// El contador del header y el drawer se repintan solos cuando cambia el carrito o
+// la ventana de servicio; nadie tiene que acordarse de avisar al chrome.
+const listeners = new Set();
+export const onCartChange = fn => { listeners.add(fn); return () => listeners.delete(fn); };
+const emit = () => { for (const fn of [...listeners]) fn(); };
+
+/** Clave de línea del carrito: un modelo puede repetir talla entre ventanas, no dentro */
+export const lineKey = line => `${line.modelId}|${line.size}`;
+
 export const state = {
   get token() { return sessionStorage.getItem(TOKEN) || ''; },
   set token(value) {
@@ -34,15 +43,57 @@ export const state = {
 
   /** Preferencias locales: ventana de servicio activa y toggle del ojo */
   get prefs() { return read(localStorage, PREFS, { window: 'replenishment', focus: false }); },
-  set prefs(value) { write(localStorage, PREFS, value); },
+  set prefs(value) { write(localStorage, PREFS, value); emit(); },
 
   /** Carrito por ventana de servicio: { [windowKey]: { [lineKey]: linea } } */
   get cart() { return read(localStorage, CART, {}); },
-  set cart(value) { write(localStorage, CART, value); },
+  set cart(value) { write(localStorage, CART, value); emit(); },
+
+  /** Ventana activa: 'replenishment' | 'scheduled' — la que cuenta el botón azul */
+  get window() { return state.prefs.window; },
+
+  cartLines(windowKey = state.prefs.window) {
+    return Object.values(state.cart[windowKey] || {});
+  },
 
   cartUnits(windowKey = state.prefs.window) {
-    return Object.values(state.cart[windowKey] || {})
-      .reduce((total, line) => total + (Number(line.qty) || 0), 0);
+    return state.cartLines(windowKey).reduce((total, line) => total + (Number(line.qty) || 0), 0);
+  },
+
+  cartTotal(windowKey = state.prefs.window) {
+    return state.cartLines(windowKey)
+      .reduce((total, line) => total + (Number(line.qty) || 0) * (Number(line.price) || 0), 0);
+  },
+
+  /** Cantidad de una talla; 0 la quita del carrito */
+  setCartLine(line, windowKey = state.prefs.window) {
+    const cart = state.cart;
+    const bucket = { ...(cart[windowKey] || {}) };
+    const key = lineKey(line);
+    if (Number(line.qty) > 0) bucket[key] = { ...line, qty: Number(line.qty) };
+    else delete bucket[key];
+    state.cart = { ...cart, [windowKey]: bucket };
+  },
+
+  removeCartLine(key, windowKey = state.prefs.window) {
+    const cart = state.cart;
+    const bucket = { ...(cart[windowKey] || {}) };
+    delete bucket[key];
+    state.cart = { ...cart, [windowKey]: bucket };
+  },
+
+  clearCart(windowKey = state.prefs.window) {
+    state.cart = { ...state.cart, [windowKey]: {} };
+  },
+
+  /** Vuelca un carrito guardado sobre la ventana activa (sustituye, no acumula) */
+  loadCart(lines, windowKey = state.prefs.window) {
+    const bucket = {};
+    for (const line of lines || []) {
+      if (!(Number(line.qty) > 0)) continue;
+      bucket[lineKey(line)] = { ...line, qty: Number(line.qty) };
+    }
+    state.cart = { ...state.cart, [windowKey]: bucket };
   },
 
   clear() {

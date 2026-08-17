@@ -4,10 +4,11 @@
 // el portal actual.
 
 import { t, LANGS, lang } from '../i18n.js';
-import { state } from '../state.js';
+import { state, onCartChange } from '../state.js';
 import { esc, initial } from '../format.js';
 import { href, go, current } from '../router.js';
 import { icons } from './icons.js';
+import { paintCartBody } from './cart.js';
 
 const header = () => document.getElementById('chrome-header');
 const nav = () => document.getElementById('chrome-nav');
@@ -78,9 +79,7 @@ function paintHeader() {
       ${esc(lang())} ${icons.chevron(14)}
     </button>
 
-    <button type="button" class="h-cart" id="cartBtn">
-      ${icons.cart(16)}<span class="label">${esc(windowLabel())}</span> (${state.cartUnits()})
-    </button>`;
+    <button type="button" class="h-cart" id="cartBtn">${cartButtonInner()}</button>`;
 
   header().querySelector('.h-search').onsubmit = event => {
     event.preventDefault();
@@ -116,6 +115,8 @@ function toggleFocus() {
   state.prefs = { ...state.prefs, focus: !state.prefs.focus };
   paintHeader();
   document.body.dataset.focus = state.prefs.focus ? 'on' : 'off';
+  // El catálogo reacciona cambiando el orden a "Relevancia" (plan §5)
+  dispatchEvent(new CustomEvent('portal:focus'));
 }
 
 const langMenu = () => `
@@ -172,10 +173,26 @@ function paintDrawer() {
       <span class="win">${esc(t(`window.${state.prefs.window}`))}</span>
       <button type="button" id="cartClose" aria-label="${esc(t('cart.close'))}">${icons.close(16)}</button>
     </div>
-    <div class="body">${esc(t('cart.empty'))}</div>`;
+    <div class="body"></div>
+    <div class="foot"></div>`;
   drawer().querySelector('#cartClose').onclick = closeCart;
   veil().onclick = closeCart;
+  paintCartBody(drawer(), { onClose: closeCart });
 }
+
+// El contador del botón azul y el contenido del drawer siguen al carrito: cualquier
+// celda de la matriz de tallas los actualiza sin que la vista tenga que avisar.
+onCartChange(() => {
+  if (document.body.dataset.chrome !== 'on') return;
+  const button = header().querySelector('#cartBtn');
+  if (button) button.innerHTML = cartButtonInner();
+  if (!drawer().hidden) paintCartBody(drawer(), { onClose: closeCart });
+  const win = drawer().querySelector('.win');
+  if (win) win.textContent = t(`window.${state.prefs.window}`);
+});
+
+const cartButtonInner = () =>
+  `${icons.cart(16)}<span class="label">${esc(windowLabel())} (${state.cartUnits()})</span>`;
 
 function openCart() {
   drawer().hidden = false;
@@ -189,10 +206,14 @@ function closeCart() {
   veil().classList.remove('on');
 }
 
-/** Cabecera de vista: migas + H1, ocultables con el ojo del header */
-export const pageHead = (title, crumbs = []) => `
+/**
+ * Cabecera de vista: migas + H1. Con el ojo activo solo sobrevive "Inicio"
+ * (20-header-ojo.png). `aside` es HTML que acompaña al título en su misma línea —
+ * el catálogo cuelga ahí el recuento de artículos, que el ojo NO oculta.
+ */
+export const pageHead = (title, crumbs = [], aside = '') => `
   <p class="crumbs">
     <a href="${href('dashboard')}">${esc(t('nav.home'))}</a>
-    ${crumbs.map(c => ` / <span>${esc(c)}</span>`).join('')}
+    ${crumbs.map(c => `<span class="crumb"> / <span>${esc(c)}</span></span>`).join('')}
   </p>
-  <h1 class="title">${esc(title)}</h1>`;
+  <div class="cat-headline"><h1 class="title">${esc(title)}</h1>${aside}</div>`;
