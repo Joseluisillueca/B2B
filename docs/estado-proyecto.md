@@ -106,14 +106,24 @@ Método usado (pedido por el cliente): subagentes Opus por fase
    preload completo del hero (requiere inlinar primer slide), modo Grid del
    catálogo (select deshabilitado a propósito).
 
-## MCP "lejan-b2b" — consulta en lenguaje natural (carpeta `mcp/`)
+## Consultas en lenguaje natural (dos vías)
 
-Servidor MCP en Python (FastMCP) para conectar un chat (Claude Desktop, etc.) con los
-datos del cliente y preguntar "¿cuánto he vendido este mes?", "¿qué pedidos he hecho?",
-"¿cuánto debo?". Se autentica en la API del portal con `B2B_EMAIL`/`B2B_PASSWORD` (el
-token filtra por cliente; solo lectura). Herramientas: `resumen_ventas`, `pedidos`,
-`facturas`, `ventas_por_mes`, `mi_cuenta`. Instalación y config para Claude Desktop en
-`mcp/README.md`. Verificado en vivo contra el portal.
+**A) Chat "Asistente" DENTRO del portal** (lo que pidió el cliente para no ir pedido a
+pedido). FAB flotante en todas las vistas → panel de chat. Backend en
+`Portal/AssistantEndpoints.cs`:
+- `GET /api/portal/purchases`: agrega el historial de pedidos por artículo (top más
+  comprados) y por talla, excluyendo devoluciones. Acotado por el clientId del token.
+- `POST /api/portal/assistant`: foto compacta de los datos del cliente → responde. Si
+  `Assistant:ApiKey` (clave Anthropic) está configurada, usa el modelo
+  (`Assistant:Model`, por defecto `claude-haiku-4-5-20251001`) para respuesta libre; si
+  no, responde de forma **determinista** a las preguntas frecuentes (artículo más
+  comprado, unidades por talla, deuda, ventas, pedidos). **Funciona sin clave.**
+  Front: `wwwroot/portal/js/ui/assistant.js`.
+
+**B) MCP "lejan-b2b"** (carpeta `mcp/`, Python FastMCP) para conectar un chat EXTERNO
+(Claude Desktop) con los datos del cliente. Herramientas: `resumen_ventas`, `pedidos`,
+`facturas`, `ventas_por_mes`, `mi_cuenta`. Config en `mcp/README.md`. Ambas vías se
+autentican con las credenciales del cliente (token filtra por cliente; solo lectura).
 
 ## Cómo arrancar todo (dev)
 
