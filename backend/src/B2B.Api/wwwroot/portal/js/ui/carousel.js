@@ -17,7 +17,17 @@ const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').match
 // Un medio del CMS que ya no está en disco dejaba el icono de "imagen rota" en
 // mitad del hero. Si la imagen no carga se retira y el slide se queda con su fondo
 // y su rótulo, que es lo que el visitante necesita ver.
-const picture = (slide, eager) => {
+const isVideo = url => /\.(mp4|webm|mov)(\?|$)/i.test(url || '');
+
+// Un slide puede ser vídeo (videoUrl, o un imageUrl que apunte a .mp4/.webm) o imagen.
+// El vídeo del hero va silenciado, en bucle y con autoplay, como en las webs de moda.
+const media = (slide, eager) => {
+  const video = slide.videoUrl || (isVideo(slide.imageUrl) ? slide.imageUrl : '');
+  if (video) {
+    const poster = slide.imageUrl && !isVideo(slide.imageUrl) ? ` poster="${esc(slide.imageUrl)}"` : '';
+    return `<video class="c-video" autoplay muted loop playsinline preload="auto"${poster}
+      src="${esc(video)}" aria-label="${esc(slide.alt || '')}"></video>`;
+  }
   const img = `<img src="${esc(slide.imageUrl)}" alt="${esc(slide.alt || '')}"
     loading="${eager ? 'eager' : 'lazy'}" ${eager ? 'fetchpriority="high"' : ''}
     decoding="async" draggable="false" onerror="this.remove()">`;
@@ -53,7 +63,7 @@ const caption = slide => {
 };
 
 const slideHtml = (slide, index) => {
-  const inner = `${picture(slide, index === 0)}${caption(slide)}`;
+  const inner = `${media(slide, index === 0)}${caption(slide)}`;
   return slide.ctaHref
     ? `<a class="c-slide" href="${esc(slide.ctaHref)}">${inner}</a>`
     : `<div class="c-slide">${inner}</div>`;
@@ -64,7 +74,7 @@ const slideHtml = (slide, index) => {
  * documento (el router sustituye el contenido de la vista sin avisar).
  */
 export function carousel(host, slides, { label = '' } = {}) {
-  const items = slides.filter(slide => slide?.imageUrl);
+  const items = slides.filter(slide => slide?.imageUrl || slide?.videoUrl);
   if (!items.length) return;
 
   const many = items.length > 1;

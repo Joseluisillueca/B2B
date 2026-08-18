@@ -23,13 +23,16 @@ public static class MediaEndpoints
         [".webp"] = ["image/webp"],
         [".avif"] = ["image/avif"],
         [".gif"] = ["image/gif"],
-        [".svg"] = ["image/svg+xml"]
+        [".svg"] = ["image/svg+xml"],
+        // Vídeo para el hero de la portada (autoplay/muted/loop en el portal)
+        [".mp4"] = ["video/mp4"],
+        [".webm"] = ["video/webm"]
     };
 
     // El listado sí enseña los SVG que van con el producto (la portada de demo):
     // están en la carpeta, y el CMS tiene que poder verlos y borrarlos.
     private static readonly string[] Listable =
-        [".jpg", ".jpeg", ".png", ".webp", ".avif", ".gif", ".svg"];
+        [".jpg", ".jpeg", ".png", ".webp", ".avif", ".gif", ".svg", ".mp4", ".webm"];
 
     public static string MediaRoot(IConfiguration config, IWebHostEnvironment env) =>
         config["Media:Root"] is { Length: > 0 } configured

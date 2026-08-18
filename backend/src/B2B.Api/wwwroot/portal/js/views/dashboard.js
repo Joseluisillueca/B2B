@@ -93,13 +93,20 @@ async function paintKpis(node) {
 
 export default function dashboard(host) {
   host.innerHTML = `
-    <section class="hero" id="hero" aria-busy="true">
-      <div class="hero-skeleton"></div>
+    <section class="hero-full">
+      <div class="hero-media" id="hero" aria-busy="true">
+        <div class="hero-skeleton"></div>
+      </div>
+      <div class="hero-overlay">
+        <span class="hero-kicker">${esc(greeting())}</span>
+        <h1 class="hero-title">${esc(t('dashboard.title'))}</h1>
+        <a class="hero-cta" href="${href('catalog/catalog')}">
+          ${esc(t('dashboard.explore'))} <span aria-hidden="true">→</span>
+        </a>
+      </div>
     </section>
     <div class="page dash">
-      <p class="dash-greet">${esc(greeting())}</p>
       <div class="kpis" id="kpis" hidden></div>
-      <h1 class="title">${esc(t('dashboard.title'))}</h1>
       <div class="tiles" id="tiles" aria-busy="true">
         <span class="tile-skeleton"></span><span class="tile-skeleton"></span>
       </div>

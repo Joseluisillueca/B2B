@@ -166,8 +166,42 @@ body[data-focus="on"] .crumb, body[data-focus="on"] h1.title { display:none; }
    editoriales con radio y sombra suave (antes iban a sangre y sin marco). */
 body:has(#hero) { background:var(--paper); }
 
-.hero { max-width:var(--maxw); margin:0 auto; padding:2.4rem var(--gutter) 0; }
-.hero + .page { padding-top:2.4rem; }
+/* Hero a sangre estilo editorial de moda (ref. thehoffbrand.com): vídeo o imagen a
+   pantalla completa, título grande superpuesto y CTA mínimo. */
+.hero-full { position:relative; width:100%; height:clamp(26rem, 74vh, 46rem); overflow:hidden; background:var(--ink); }
+.hero-media { position:absolute; inset:0; }
+.hero-media .carousel { position:absolute; inset:0; aspect-ratio:auto; height:100%; border-radius:0; box-shadow:none; }
+.hero-media .c-track, .hero-media .c-slide { height:100%; }
+.hero-media .c-slide img, .hero-media .c-video { width:100%; height:100%; object-fit:cover; }
+.hero-media .hero-skeleton { position:absolute; inset:0; aspect-ratio:auto; border-radius:0; }
+/* Movimiento cinematográfico lento en las imágenes hasta que haya vídeo real */
+.hero-media .c-slide img { animation:kenburns 20s ease-in-out infinite alternate; }
+@keyframes kenburns { from { transform:scale(1); } to { transform:scale(1.09) translate(-1.5%,-1%); } }
+/* El texto per-slide del CMS se calla en el hero a sangre: manda el rótulo grande */
+.hero-media .c-caption { display:none; }
+.hero-media .c-dots, .hero-media .c-arrow { z-index:4; }
+.hero-media .c-dots { bottom:1.3rem; }
+/* Velo para que el título blanco lea sobre cualquier imagen o vídeo */
+.hero-full::after { content:""; position:absolute; inset:0; z-index:1; pointer-events:none;
+  background:linear-gradient(to top, rgba(16,18,14,.74), rgba(16,18,14,.12) 46%, rgba(16,18,14,.30)); }
+
+.hero-overlay { position:absolute; left:0; right:0; bottom:0; z-index:2; color:#fff;
+  max-width:var(--maxw); margin:0 auto; padding:0 var(--gutter) clamp(2rem,5vw,3.6rem);
+  display:flex; flex-direction:column; align-items:flex-start; gap:.3rem; }
+.hero-kicker { font-size:.82rem; letter-spacing:.16em; text-transform:uppercase; opacity:.92;
+  font-style:italic; font-family:var(--display); }
+.hero-title { font-family:var(--display); font-weight:500; font-size:clamp(2.6rem,7vw,5.5rem);
+  line-height:.98; letter-spacing:-.02em; margin:.1rem 0 .8rem; text-wrap:balance;
+  text-shadow:0 2px 30px rgba(0,0,0,.35); }
+.hero-cta { display:inline-flex; align-items:center; gap:.6rem; color:#fff; text-decoration:none;
+  font-weight:600; font-size:.92rem; letter-spacing:.02em; border:1px solid rgba(255,255,255,.6);
+  border-radius:999px; padding:.72rem 1.5rem; transition:background .18s var(--ease), color .18s var(--ease), border-color .18s var(--ease); }
+.hero-cta:hover { background:#fff; color:var(--ink); border-color:#fff; }
+.hero-cta:focus-visible { outline:2px solid #fff; outline-offset:3px; }
+
+.hero-full + .page { padding-top:2.8rem; }
+@media (prefers-reduced-motion:reduce) { .hero-media .c-slide img { animation:none; } }
+@media (max-width:48rem) { .hero-full { height:clamp(22rem,82vh,34rem); } }
 
 /* ── Portada: saludo editorial + bento de KPIs ── */
 .dash-greet { font-family:var(--display); font-weight:500; font-style:italic;
@@ -461,11 +495,13 @@ body[data-focus="on"] .cat-count::before { content:none; }
 .cat-list.is-loading { opacity:.45; pointer-events:none; transition:opacity .15s var(--ease); }
 
 /* Fila de artículo */
-.item { display:grid; grid-template-columns:15rem minmax(12rem,17rem) minmax(0,1fr); gap:2rem;
-  align-items:start; padding:1.6rem 0; border-bottom:1px solid var(--line); }
-.item:first-child { padding-top:.4rem; }
-.item-photo { aspect-ratio:4/3; background:#f0efec; display:grid; place-items:center; overflow:hidden; }
-.item-photo img { width:100%; height:100%; object-fit:cover; }
+.item { display:grid; grid-template-columns:17rem minmax(12rem,16rem) minmax(0,1fr); gap:2.4rem;
+  align-items:start; padding:2.4rem 0; border-bottom:1px solid var(--line); }
+.item:first-child { padding-top:.6rem; }
+.item-photo { aspect-ratio:4/5; background:var(--surface); border-radius:var(--r); display:grid;
+  place-items:center; overflow:hidden; }
+.item-photo img { width:100%; height:100%; object-fit:cover; transition:scale .5s var(--ease); }
+.item:hover .item-photo img { scale:1.04; }
 .item-art { color:var(--ink); opacity:.2; }
 
 .item-title { display:flex; align-items:flex-start; gap:1rem; }

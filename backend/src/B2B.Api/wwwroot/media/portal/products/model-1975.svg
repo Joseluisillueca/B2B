@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="400" height="500" role="img" aria-label="Zapatilla lejan">
+  <rect width="400" height="500" fill="#efe7d7"/>
+  <circle cx="205" cy="250" r="150" fill="#e2d2b3"/>
+  <g transform="translate(30 60)">
+    <!-- suela -->
+    <path d="M20 300 Q10 330 45 336 L305 336 Q335 334 330 306 L322 292 Q250 300 150 296 Q70 292 40 288 Z" fill="#efe7d6"/>
+    <path d="M20 300 L330 306" stroke="#b79b6a" stroke-width="2" opacity=".18"/>
+    <!-- cuerpo -->
+    <path d="M40 290 Q35 210 120 195 Q175 185 210 210 Q245 235 300 240 Q330 244 326 292 Q250 300 150 296 Q80 292 40 290 Z" fill="#b79b6a"/>
+    <!-- puntera -->
+    <path d="M300 240 Q332 244 326 292 Q300 296 285 294 Q280 262 300 240 Z" fill="#b79b6a" opacity=".85"/>
+    <!-- talon -->
+    <path d="M40 290 Q35 232 78 210 L96 292 Z" fill="#b79b6a" opacity=".9"/>
+    <!-- banda de acento (swoosh) -->
+    <path d="M96 285 Q170 250 250 262 Q210 278 150 282 Q118 286 96 285 Z" fill="#2a2a2a"/>
+    <!-- cordones -->
+    <g stroke="#f4efe4" stroke-width="7" stroke-linecap="round" opacity=".95">
+      <path d="M120 214 l40 14 M132 232 l40 12 M146 250 l38 11"/>
+    </g>
+    <!-- ojal / collar -->
+    <path d="M112 200 Q150 188 190 204" fill="none" stroke="#f4efe4" stroke-width="5" opacity=".55"/>
+    <ellipse cx="150" cy="250" rx="10" ry="7.0" fill="#3a2f22" opacity=".55"/><ellipse cx="190" cy="235" rx="7" ry="4.8999999999999995" fill="#3a2f22" opacity=".55"/><ellipse cx="230" cy="255" rx="9" ry="6.3" fill="#3a2f22" opacity=".55"/><ellipse cx="265" cy="240" rx="6" ry="4.199999999999999" fill="#3a2f22" opacity=".55"/><ellipse cx="300" cy="258" rx="8" ry="5.6" fill="#3a2f22" opacity=".55"/><ellipse cx="210" cy="275" rx="6" ry="4.199999999999999" fill="#3a2f22" opacity=".55"/><ellipse cx="275" cy="272" rx="7" ry="4.8999999999999995" fill="#3a2f22" opacity=".55"/>
+  </g>
+</svg>

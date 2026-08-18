@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="400" height="500" role="img" aria-label="Zapatilla lejan">
+  <rect width="400" height="500" fill="#f2ebe0"/>
+  <circle cx="205" cy="250" r="150" fill="#e6d6bf"/>
+  <g transform="translate(30 60)">
+    <!-- suela -->
+    <path d="M20 300 Q10 330 45 336 L305 336 Q335 334 330 306 L322 292 Q250 300 150 296 Q70 292 40 288 Z" fill="#efe7d6"/>
+    <path d="M20 300 L330 306" stroke="#5a4030" stroke-width="2" opacity=".18"/>
+    <!-- cuerpo -->
+    <path d="M40 290 Q35 210 120 195 Q175 185 210 210 Q245 235 300 240 Q330 244 326 292 Q250 300 150 296 Q80 292 40 290 Z" fill="#5a4030"/>
+    <!-- puntera -->
+    <path d="M300 240 Q332 244 326 292 Q300 296 285 294 Q280 262 300 240 Z" fill="#5a4030" opacity=".85"/>
+    <!-- talon -->
+    <path d="M40 290 Q35 232 78 210 L96 292 Z" fill="#5a4030" opacity=".9"/>
+    <!-- banda de acento (swoosh) -->
+    <path d="M96 285 Q170 250 250 262 Q210 278 150 282 Q118 286 96 285 Z" fill="#a4502c"/>
+    <!-- cordones -->
+    <g stroke="#f4efe4" stroke-width="7" stroke-linecap="round" opacity=".95">
+      <path d="M120 214 l40 14 M132 232 l40 12 M146 250 l38 11"/>
+    </g>
+    <!-- ojal / collar -->
+    <path d="M112 200 Q150 188 190 204" fill="none" stroke="#f4efe4" stroke-width="5" opacity=".55"/>
+    
+  </g>
+</svg>
