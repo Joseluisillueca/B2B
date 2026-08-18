@@ -135,6 +135,19 @@
   .media figcaption { display:flex; gap:.3rem; align-items:center; margin-top:.25rem; }
   .media figcaption code { flex:1; font:.68rem ui-monospace,Consolas,monospace; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .media figcaption button { padding:.1rem .4rem; font-size:.72rem; background:none; color:var(--muted); border:1px solid var(--line); }
+  /* Gestor de imágenes de modelo (marketing) */
+  .mi table td { white-space:normal; overflow:visible; max-width:none; vertical-align:middle; }
+  .mi tbody tr:hover { background:transparent; cursor:default; }
+  .mi-thumb { width:5.5rem; }
+  .mi-thumb img { width:5rem; aspect-ratio:1/1; object-fit:cover; border-radius:8px; border:1px solid var(--line); background:#fff; display:block; }
+  .mi-thumb .ph { width:5rem; aspect-ratio:1/1; border-radius:8px; background:#eceef3; display:grid; place-items:center;
+    color:var(--muted); font-size:.62rem; text-align:center; }
+  .mi-ref { font:.8rem ui-monospace,Consolas,monospace; color:var(--muted); }
+  .mi-url { width:100%; min-width:13rem; }
+  .mi-actions { white-space:nowrap; text-align:right; }
+  .mi-actions button { margin-left:.35rem; }
+  .mi-actions .del { color:var(--err); border-color:var(--line); background:transparent; }
+  .mi-actions .del:hover { border-color:var(--err); }
   #flash { position:fixed; left:50%; bottom:1.4rem; translate:-50% 0; z-index:20; padding:.6rem 1.1rem; border-radius:10px;
     box-shadow:var(--shadow); font-size:.85rem; display:none; max-width:min(46rem,90vw); }
   #flash.on { display:block; }
@@ -246,8 +259,7 @@ const VIEWS = {
     ['Código','code','text'], ['Nombre','name.es_ES','text']]},
   categorias:{ title:'Categorías', crumb:'Productos / Categorías', type:'category', cols:[
     ['Nombre','name.es_ES','text'], ['Familias','search.familyIds','arr'], ['Activa','active','bool']]},
-  imagenes:  { title:'Imágenes de modelo', crumb:'Productos / Imágenes', type:'model-image', cols:[
-    ['Modelo','images.0.id','id'], ['URI','images.0.image.uri','text']]},
+  imagenes:  { title:'Imágenes de modelo', crumb:'Productos / Imágenes', type:'model-image', manager:true },
 
   ofertas:   { title:'Precios / Ofertas', crumb:'Inventario y Precios / Precios', type:'offer', cols:[
     ['Modelo','offerData.modelId|modelId','id'], ['Producto','offerData.productId|productId','id'],
@@ -411,6 +423,7 @@ function show(key) {
   $('title').textContent = v.title;
   if (v.dashboard) renderDashboard();
   else if (v.content) renderContent();
+  else if (v.manager) renderModelImages();
   else renderList();
 }
 
@@ -768,6 +781,126 @@ async function deleteMedia(name) {
     await loadMedia();
     paintContent();
     flash('Imagen eliminada.');
+  } catch (e) { flash(e.message, 'err'); }
+}
+
+/* ---------- Imágenes de modelo (marketing) ---------- */
+// Asigna la imagen de cada modelo del catálogo. Escribe el documento de sync
+// "model-image" que ya lee el catálogo comprable (GET /api/shop/catalog): subir un
+// fichero (POST /api/admin/media) o pegar una URL, y quitarla. No depende de BC.
+let modelImages = [];
+
+async function renderModelImages() {
+  $('content').innerHTML = '<p class="muted">Cargando modelos del catálogo…</p>';
+  try { modelImages = (await api('/api/admin/model-images')).items || []; }
+  catch { return; }   // api() ya avisa (401/403); no repintamos sobre el error
+  paintModelImages();
+}
+
+function paintModelImages() {
+  const withImg = modelImages.filter(m => m.imageUri).length;
+  $('content').innerHTML = `
+    <div class="toolbar">
+      <input type="search" id="mi-q" placeholder="Filtrar por referencia o nombre…">
+      <button class="btn-ghost" id="mi-reload">↻ Actualizar</button>
+      <div class="spacer"></div>
+      <span class="muted">${withImg} de ${modelImages.length} modelos con imagen asignada</span>
+    </div>
+    <div class="card mi">
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>Imagen</th><th>Referencia</th><th>Modelo</th><th>URL de la imagen</th><th></th></tr></thead>
+        <tbody id="mi-rows"></tbody>
+      </table></div>
+    </div>`;
+  $('mi-reload').onclick = renderModelImages;
+  $('mi-q').oninput = paintModelImageRows;
+  const rows = $('mi-rows');
+  // Escribir en la URL no repinta (se perdería el foco): solo actualiza el modelo
+  rows.oninput = event => {
+    const input = event.target.closest('.mi-url');
+    if (!input) return;
+    const model = modelImages.find(m => m.externalId === input.closest('tr').dataset.id);
+    if (model) model.imageUri = input.value;
+  };
+  rows.onclick = event => {
+    const button = event.target.closest('[data-action]');
+    if (!button) return;
+    const id = button.closest('tr').dataset.id;
+    const model = modelImages.find(m => m.externalId === id);
+    if (!model) return;
+    if (button.dataset.action === 'upload') return uploadModelImage(model);
+    if (button.dataset.action === 'save') return saveModelImage(model);
+    if (button.dataset.action === 'clear') return clearModelImage(model);
+  };
+  paintModelImageRows();
+}
+
+function paintModelImageRows() {
+  const q = ($('mi-q')?.value || '').toLowerCase();
+  const rows = modelImages.filter(m =>
+    !q || (m.reference || '').toLowerCase().includes(q) || (m.name || '').toLowerCase().includes(q));
+  $('mi-rows').innerHTML = rows.map(m => `
+    <tr data-id="${esc(m.externalId)}">
+      <td class="mi-thumb">${m.imageUri
+        ? `<img src="${esc(m.imageUri)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'no carga'}))">`
+        : `<div class="ph">sin<br>imagen</div>`}</td>
+      <td class="mi-ref">${esc(m.reference) || '—'}</td>
+      <td>${esc(m.name) || '—'}</td>
+      <td><input class="mi-url" value="${esc(m.imageUri || '')}" placeholder="https://… o /media/portal/…"></td>
+      <td class="mi-actions">
+        <button class="btn-ghost" data-action="upload">Subir…</button>
+        <button class="btn-primary" data-action="save">Guardar</button>
+        <button class="del" data-action="clear" ${m.imageUri ? '' : 'disabled'}>Quitar</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="5" class="empty">${
+      q ? 'Ningún modelo coincide con el filtro' : 'El catálogo todavía no tiene modelos — sincroniza desde BC'}</td></tr>`;
+}
+
+// Sube el fichero a /media/portal y fija esa URL como imagen del modelo
+function uploadModelImage(model) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/png,image/jpeg,image/webp,image/avif,image/gif,image/svg+xml';
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/admin/media', { method:'POST', headers:{ Authorization:'Bearer ' + token }, body: form });
+      if (res.status === 401) { logout(); throw new Error('Sesión caducada'); }
+      if (res.status === 403) { denied(); throw new Error(SIN_PERMISO); }
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'HTTP ' + res.status);
+      model.imageUri = data.url;
+      await putModelImage(model, `Imagen de ${model.reference || model.name} subida y asignada.`);
+    } catch (e) { flash(e.message, 'err'); }
+  };
+  input.click();
+}
+
+// Guarda la URL escrita/pegada en el campo
+function saveModelImage(model) {
+  const uri = (model.imageUri || '').trim();
+  if (!uri) return flash('Escribe una URL o pulsa «Subir…» antes de guardar.', 'err');
+  putModelImage(model, `Imagen de ${model.reference || model.name} guardada.`);
+}
+
+async function putModelImage(model, okMessage) {
+  try {
+    await apiSend('PUT', `/api/admin/model-images/${encodeURIComponent(model.externalId)}`, { uri: (model.imageUri || '').trim() });
+    flash(okMessage);
+    paintModelImageRows();
+  } catch (e) { flash(e.message, 'err'); }
+}
+
+async function clearModelImage(model) {
+  if (!confirm(`¿Quitar la imagen de ${model.reference || model.name}? El catálogo volverá al placeholder.`)) return;
+  try {
+    await apiSend('DELETE', `/api/admin/model-images/${encodeURIComponent(model.externalId)}`);
+    model.imageUri = null;
+    flash('Imagen quitada.');
+    paintModelImageRows();
   } catch (e) { flash(e.message, 'err'); }
 }
 

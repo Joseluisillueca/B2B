@@ -22,6 +22,7 @@ export const icons = {
   heartOn: size => svg('<path d="M12 20s-7.5-4.6-7.5-9.7A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.9C19.5 15.4 12 20 12 20Z" fill="currentColor"/>', size),
   download: size => svg('<path d="M12 4v10m0 0 4-4m-4 4-4-4"/><path d="M5 18h14"/>', size),
   list: size => svg('<path d="M4 6h16M4 12h16M4 18h16"/>', size),
+  grid: size => svg('<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>', size),
   trash: size => svg('<path d="M4 7h16M9 7V5h6v2M6 7l1 12.2A1.8 1.8 0 0 0 8.8 21h6.4a1.8 1.8 0 0 0 1.8-1.8L18 7"/>', size),
   pencil: size => svg('<path d="M4 20h4L20 8a2.1 2.1 0 0 0-3-3L5 17Z"/><path d="M15 5.5 18.5 9"/>', size),
   fileDown: size => svg('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M12 11v5m0 0 2-2m-2 2-2-2"/>', size),

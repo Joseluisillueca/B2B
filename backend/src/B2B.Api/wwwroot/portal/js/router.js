@@ -13,6 +13,7 @@ const VIEWS = {
   'credentials': () => import('./views/credentials.js'),
   'dashboard': () => import('./views/dashboard.js'),
   'catalog/catalog': () => import('./views/catalog.js'),
+  'product': () => import('./views/product.js'),
   'checkout': () => import('./views/checkout.js'),
   'shopping-carts': () => import('./views/carts.js'),
   'orders': () => import('./views/orders.js'),
@@ -65,6 +66,20 @@ export async function resolve() {
   // que reflejarlo (antes se quedaba /es/es/loquesea con el dashboard pintado).
   const parsed = parse();
   const route = parsed || { market: DEFAULT_MARKET, lang: DEFAULT_LANG, view: 'dashboard' };
+
+  // Rutas con parámetro (p. ej. "product/2038"): la vista completa no está en VIEWS,
+  // pero su prefijo antes de la primera "/" sí. Se separa el resto como route.param y
+  // la vista pasa a ser el prefijo. "catalog/catalog" SÍ está en VIEWS, así que la
+  // condición `!VIEWS[route.view]` lo deja intacto.
+  if (route.view && !VIEWS[route.view] && route.view.includes('/')) {
+    const slash = route.view.indexOf('/');
+    const prefix = route.view.slice(0, slash);
+    if (VIEWS[prefix]) {
+      route.param = route.view.slice(slash + 1);
+      route.view = prefix;
+    }
+  }
+
   const unknown = !parsed || !VIEWS[route.view];
   if (unknown) route.view = 'dashboard';
   current = route;

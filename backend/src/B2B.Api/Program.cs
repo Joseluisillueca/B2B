@@ -110,6 +110,7 @@ app.MapQueryEndpoints();
 app.MapAdminEndpoints();
 app.MapContentEndpoints();
 app.MapMediaEndpoints();
+app.MapModelImageEndpoints();
 app.MapShopEndpoints();
 app.MapPortalEndpoints();
 app.MapCartEndpoints();

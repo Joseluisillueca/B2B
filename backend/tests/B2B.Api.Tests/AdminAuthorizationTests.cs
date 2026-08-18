@@ -81,7 +81,10 @@ public class AdminAuthorizationTests : IClassFixture<AdminAuthorizationTests.Fac
         { "DELETE", "/api/admin/content/dashboard.hero?locale=es" },
         { "GET", "/api/admin/media" },
         { "POST", "/api/admin/media" },
-        { "DELETE", "/api/admin/media/inexistente.png" }
+        { "DELETE", "/api/admin/media/inexistente.png" },
+        { "GET", "/api/admin/model-images" },
+        { "PUT", "/api/admin/model-images/DEMO0001" },
+        { "DELETE", "/api/admin/model-images/DEMO0001" }
     };
 
     [Theory]

@@ -1,6 +1,7 @@
 // Toolbar del catálogo (17-catalog-catalog.png): botón "Desc. Stock", selector de
-// vista Listado/Grid y "Ordenar por". El Grid queda declarado pero deshabilitado:
-// la Fase 2 del plan entrega solo el modo Listado.
+// vista Listado/Cuadrícula y "Ordenar por". Ambos modos pintan el mismo catálogo:
+// Listado deja la matriz de tallas en línea, Cuadrícula muestra tarjetas con foto
+// grande que enlazan a la ficha del producto.
 
 import { t } from '../i18n.js';
 import { esc } from '../format.js';
@@ -9,23 +10,21 @@ import { icons } from './icons.js';
 export const SORTS = ['featured', 'relevance', 'price-asc', 'price-desc', 'name'];
 
 export function toolbar({ sort, view = 'list' } = {}) {
+  // El icono acompaña al modo activo: filas para Listado, cuadrícula para Grid
+  const viewIcon = view === 'grid' ? icons.grid(16) : icons.list(16);
   return `
     <div class="toolbar">
       <button type="button" class="tb-export" id="exportStock">
         ${icons.download(17)} ${esc(t('catalog.stockExport'))}
       </button>
 
-      <!-- Sin Grid el selector no tiene nada que elegir: se deshabilita entero (y
-           el title dice por qué) en vez de ofrecer una lista con una sola opción
-           viva. Cuando llegue el Grid basta con quitar disabled y el title. -->
       <!-- m8: la referencia no rotula este selector; el aria-label sigue nombrándolo -->
-      <label class="tb-field" title="${esc(t('catalog.viewOnlyList'))}">
+      <label class="tb-field">
         <span class="tb-select">
-          ${icons.list(16)}
-          <select id="viewMode" aria-label="${esc(t('catalog.view'))}" disabled
-            title="${esc(t('catalog.viewOnlyList'))}">
+          ${viewIcon}
+          <select id="viewMode" aria-label="${esc(t('catalog.view'))}">
             <option value="list"${view === 'list' ? ' selected' : ''}>${esc(t('catalog.viewList'))}</option>
-            <option value="grid">${esc(t('catalog.viewGrid'))}</option>
+            <option value="grid"${view === 'grid' ? ' selected' : ''}>${esc(t('catalog.viewGrid'))}</option>
           </select>
         </span>
       </label>

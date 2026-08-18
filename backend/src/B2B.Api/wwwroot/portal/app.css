@@ -573,6 +573,99 @@ body[data-focus="on"] .cat-count::before { content:none; }
 .sz.has .sz-head { background:var(--blue); color:#fff; border-bottom-color:var(--blue); }
 .sz.has .sz-qty { color:var(--blue); font-weight:700; }
 
+/* ── Cuadrícula del catálogo (referencia thehoffbrand.com) ──
+   Tarjetas limpias con foto 4:5 protagonista y mucho aire; 2–4 columnas según ancho.
+   Toda la tarjeta navega a la ficha con un enlace estirado; el corazón queda encima. */
+.cat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(15.5rem,1fr)); gap:2.2rem 1.6rem; }
+.pcard { position:relative; display:flex; flex-direction:column; }
+.pcard-media { position:relative; aspect-ratio:4/5; background:var(--surface); border-radius:var(--r);
+  overflow:hidden; display:grid; place-items:center; }
+.pcard-media img { width:100%; height:100%; object-fit:cover; transition:scale .5s var(--ease); }
+.pcard:hover .pcard-media img { scale:1.05; }
+.pcard-media .item-art { color:var(--ink); opacity:.2; }
+/* El corazón flota sobre la foto, en una pastilla crema translúcida */
+.pcard-fav { position:absolute; top:.7rem; right:.7rem; z-index:2; width:2.2rem; height:2.2rem;
+  border-radius:50%; display:grid; place-items:center; color:var(--ink); background:rgba(255,253,248,.88);
+  box-shadow:var(--shadow); transition:color .15s var(--ease), scale .15s var(--ease), background .15s var(--ease); }
+.pcard-fav:hover { scale:1.08; background:#fff; }
+.pcard-fav[aria-pressed="true"] { color:var(--accent); }
+
+.pcard-body { display:flex; flex-direction:column; padding:.95rem .15rem 0; }
+.pcard-name { margin:0; font-family:var(--display); font-weight:500; font-size:1.12rem; line-height:1.2;
+  letter-spacing:0; transition:color .15s var(--ease); }
+.pcard-name a { text-decoration:none; }
+/* Enlace estirado: cubre toda la tarjeta sin robar el clic al corazón (z-index 1<2) */
+.pcard-link::after { content:""; position:absolute; inset:0; z-index:1; border-radius:var(--r); }
+.pcard:hover .pcard-name { color:var(--blue); }
+.pcard-ref { margin:.3rem 0 0; font-size:.82rem; color:var(--muted); }
+.pcard-ref b { color:var(--ink-2); font-weight:600; }
+.pcard-price { display:flex; align-items:baseline; gap:.5rem; margin:.6rem 0 0; }
+.pcard-price span { font-size:.78rem; color:var(--muted); }
+.pcard-price b { font-family:var(--display); font-size:1.3rem; letter-spacing:-.02em; }
+.pcard-cta { display:inline-flex; align-items:center; gap:.4rem; margin-top:.7rem; font-size:.74rem;
+  font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--ink);
+  transition:gap .15s var(--ease), color .15s var(--ease); }
+.pcard:hover .pcard-cta { gap:.7rem; color:var(--blue); }
+.pcard-cta svg { flex:none; }
+.pcard-link:focus-visible::after { outline:2px solid var(--blue); outline-offset:3px; }
+
+/* ══════════════ Ficha de producto (estilo thehoffbrand.com) ══════════════ */
+/* Foto protagonista a la izquierda (pegajosa al hacer scroll) y ficha aireada a la
+   derecha con la MISMA matriz de tallas del catálogo. Mucho aire, filetes finos. */
+.page.product { padding-top:2rem; }
+.product .crumbs { margin-bottom:1.7rem; }
+.product .crumbs a { text-decoration:none; }
+.product .crumbs a:hover { color:var(--blue); }
+
+.product-grid { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
+  gap:clamp(1.6rem,4vw,3.6rem); align-items:start; }
+.product-media { margin:0; aspect-ratio:4/5; background:var(--surface); border-radius:var(--r);
+  overflow:hidden; display:grid; place-items:center; position:sticky; top:calc(var(--header-h) + 1.5rem); }
+.product-media img { width:100%; height:100%; object-fit:cover; display:block; }
+.product-media .item-art { color:var(--ink); opacity:.2; }
+.product-skeleton { aspect-ratio:4/5; height:auto; }
+
+.product-panel { min-width:0; }
+.product-head { display:flex; align-items:flex-start; gap:1rem; }
+.product-name { flex:1; margin:0; font-family:var(--display); font-weight:500;
+  font-size:clamp(1.9rem,3.6vw,2.8rem); line-height:1.05; letter-spacing:-.015em; }
+.product-fav { flex:none; color:var(--ink); padding:.3rem; border-radius:8px;
+  transition:color .15s var(--ease), scale .15s var(--ease); }
+.product-fav:hover { scale:1.1; }
+.product-fav[aria-pressed="true"] { color:var(--accent); }
+.product-ref { margin:1rem 0 0; font-size:.95rem; color:var(--ink-2); }
+.product-ref b { color:var(--ink); font-weight:600; }
+
+.product-attrs { display:grid; grid-template-columns:repeat(auto-fit,minmax(7rem,1fr)); gap:1rem 1.6rem;
+  margin:1.6rem 0 0; padding:1.5rem 0 0; border-top:1px solid var(--line); }
+.product-attrs dt { font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.product-attrs dd { margin:.3rem 0 0; font-size:.9rem; font-weight:700; letter-spacing:.02em; text-transform:uppercase; }
+
+.product-price { display:flex; align-items:baseline; gap:.7rem; margin:1.6rem 0 0; padding:1.5rem 0 0;
+  border-top:1px solid var(--line); }
+.product-price span { font-size:.9rem; color:var(--ink-2); }
+.product-price b { font-family:var(--display); font-size:2.1rem; letter-spacing:-.02em; }
+
+.product-buy { margin:1.9rem 0 0; }
+.product-buy .matrix, .product-buy .matrix.wide { max-width:none; }
+.product-buy .matrix-consult { max-width:none; }
+.product-order { display:flex; align-items:center; justify-content:space-between; gap:1.2rem;
+  flex-wrap:wrap; margin-top:1.5rem; }
+.product-total { font-size:.95rem; color:var(--ink-2); }
+.product-total b { font-family:var(--display); font-size:1.25rem; letter-spacing:-.01em; }
+.product-hint { color:var(--muted); }
+.product-order .btn-primary { padding:.85rem 1.9rem; }
+
+.product-docs { display:flex; flex-wrap:wrap; gap:.8rem; margin:2rem 0 0; padding:1.6rem 0 0;
+  border-top:1px solid var(--line); }
+.product-doc { display:inline-flex; align-items:center; gap:.5rem; font-size:.82rem; font-weight:600;
+  letter-spacing:.02em; color:var(--ink); border:1px solid var(--line-control); border-radius:var(--r-sm);
+  padding:.62rem 1rem; background:var(--card);
+  transition:border-color .15s var(--ease), color .15s var(--ease); }
+.product-doc:not([disabled]):hover { border-color:var(--ink); }
+.product-doc[disabled] { color:var(--muted-2); border-style:dashed; cursor:not-allowed; }
+.product-doc svg { flex:none; }
+
 /* ══════════════ Checkout (16-checkout.png) ══════════════ */
 /* La referencia no enseña el H1 "Checkout" (las migas y "Cliente: …" ya sitúan la
    página), pero el documento necesita su encabezado: se oculta solo visualmente. */
@@ -1000,6 +1093,11 @@ table.grid .num { white-space:nowrap; }
   .ck-grid { grid-template-columns:1fr; }
   .ck-side { position:static; }
 
+  /* Ficha: la foto deja de ser columna y se apila arriba, ya sin pegajosidad, con
+     un ancho contenido para no comerse la pantalla en tabletas. */
+  .product-grid { grid-template-columns:1fr; gap:1.8rem; }
+  .product-media { position:static; width:100%; max-width:26rem; }
+
   /* Cuenta, empresa y contacto: las columnas de fichas se apilan mucho antes que
      el resto del layout, porque cada campo necesita su ancho para leerse. */
   .acc-grid { grid-template-columns:1fr; gap:2rem; }
@@ -1047,6 +1145,15 @@ table.grid .num { white-space:nowrap; }
   .item-matrix { grid-area:matrix; }
   .item h2 { font-size:1.05rem; }
   .matrix, .matrix.wide { max-width:none; grid-template-columns:repeat(auto-fill,minmax(4.6rem,1fr)); }
+
+  /* Cuadrícula del catálogo: dos columnas caben en 390 px con la foto aún grande */
+  .cat-grid { grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr)); gap:1.5rem 1rem; }
+  .pcard-name { font-size:1rem; }
+  .pcard-price b { font-size:1.15rem; }
+
+  /* Ficha en móvil: la foto ocupa el ancho y el pedido se apila con el CTA a lo ancho */
+  .product-media { max-width:none; }
+  .product-order .btn-primary { flex:1 1 auto; }
 
   /* Checkout: los campos en una columna y los botones de la cabecera repartidos */
   .ck-row, .ck-row.two { grid-template-columns:1fr; gap:.9rem; }

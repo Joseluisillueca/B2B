@@ -9,6 +9,7 @@ import { api } from '../api.js';
 import { t, lang } from '../i18n.js';
 import { esc, eur } from '../format.js';
 import { state } from '../state.js';
+import { href } from '../router.js';
 import { icons } from '../ui/icons.js';
 import { pageHead } from '../ui/chrome.js';
 import { sizeMatrix, bindMatrix } from '../ui/size-matrix.js';
@@ -28,6 +29,19 @@ const priceOf = (item, kind) =>
   item?.[kind] == null ? null : { label: t(`catalog.price.${kind}`), value: item[kind] };
 
 const main = item => priceOf(item, preferred()) ?? priceOf(item, preferred() === 'pvd' ? 'pvp' : 'pvd');
+
+// Vista por defecto del catálogo: la preferencia MODO LISTADO del perfil (una para
+// escritorio y otra para móvil), que el selector de la toolbar puede pisar en la
+// sesión (la elección se guarda en la URL y en prefs). 'grid' | 'list'.
+const defaultView = () => {
+  const prefs = state.me?.prefs || {};
+  const mobile = window.matchMedia('(max-width:48rem)').matches;
+  return (mobile ? prefs.listMobile : prefs.listDesktop) === 'grid' ? 'grid' : 'list';
+};
+
+/** URL de la ficha del producto: /{market}/{lang}/product/{referencia} */
+const productHref = item =>
+  `${href('product')}/${encodeURIComponent(item.reference || item.modelId)}`;
 
 // La ficha del listado solo lleva SILUETA y COLECCIÓN (m6). GRUPO DE EDAD sigue
 // existiendo como faceta del rail, pero no como columna del artículo. Las claves
@@ -94,12 +108,16 @@ function readQuery() {
   for (const [key, value] of params) {
     if (key.startsWith('a.') && key.length > 2 && value) attributes[key.slice(2)] = value.split(',');
   }
+  const urlView = params.get('view');
   return {
     q: params.get('q') || '',
     family: params.get('family') || '',
     availability: (params.get('availability') || '').split(',').filter(Boolean),
     attributes,
     sort: params.get('sort') || (state.prefs.focus ? 'relevance' : 'featured'),
+    // El modo lo fija la URL si viene; si no, la última elección de la sesión y por
+    // último la preferencia del perfil. El selector de la toolbar manda sobre todo.
+    view: urlView === 'grid' || urlView === 'list' ? urlView : (state.prefs.catalogView || defaultView()),
     skip: Number(params.get('skip')) || 0,
     take: Number(params.get('take')) || 24
   };
@@ -113,6 +131,8 @@ function writeQuery(query, { keepScroll = false } = {}) {
   for (const [key, values] of Object.entries(query.attributes))
     if (values.length) params.set(`a.${key}`, values.join(','));
   if (query.sort && query.sort !== 'featured') params.set('sort', query.sort);
+  // Listado es el modo por defecto: solo la cuadrícula deja rastro en la URL
+  if (query.view === 'grid') params.set('view', 'grid');
   if (query.skip) params.set('skip', String(query.skip));
   if (query.take !== 24) params.set('take', String(query.take));
 
@@ -379,11 +399,22 @@ export default async function catalog(host) {
 
   // ── Toolbar ────────────────────────────────────────────────────────────────
   function paintTools() {
-    tools.innerHTML = toolbar({ sort: query.sort });
+    tools.innerHTML = toolbar({ sort: query.sort, view: query.view });
 
     tools.querySelector('#sortMode').onchange = event => {
       query = { ...query, sort: event.target.value, skip: 0 };
       load();
+    };
+
+    // Cambiar de vista no vuelve a pedir el catálogo: los datos ya están, solo se
+    // repinta. La elección se guarda en la URL (writeQuery) y en las preferencias
+    // de sesión para que sobreviva a ir a una ficha y volver.
+    tools.querySelector('#viewMode').onchange = event => {
+      query = { ...query, view: event.target.value === 'grid' ? 'grid' : 'list' };
+      state.prefs = { ...state.prefs, catalogView: query.view };
+      writeQuery(query, { keepScroll: true });
+      paintTools();
+      paintList();
     };
 
     tools.querySelector('#exportStock').onclick = async event => {
@@ -417,9 +448,44 @@ export default async function catalog(host) {
     const lines = Object.fromEntries(
       state.cartLines().map(line => [`${line.modelId}|${line.size}`, line]));
 
-    list.innerHTML = items.map(item => article(item, stockWindow, lines)).join('');
+    // Cuadrícula: tarjetas con foto grande que enlazan a la ficha (el pedido se hace
+    // allí). Listado: la fila de siempre con la matriz de tallas en línea, intacta.
+    if (query.view === 'grid') {
+      list.classList.add('is-grid');
+      list.innerHTML = `<div class="cat-grid">${items.map(item => card(item)).join('')}</div>`;
+    } else {
+      list.classList.remove('is-grid');
+      list.innerHTML = items.map(item => article(item, stockWindow, lines)).join('');
+    }
     bindFavorites();
     paintPrices();
+  }
+
+  // Tarjeta de la cuadrícula (referencia thehoffbrand.com): foto 4:5 protagonista con
+  // zoom al hover, nombre, referencia, precio y un CTA a la ficha. Toda la tarjeta
+  // navega con un enlace estirado (::after); el corazón queda por encima, clicable.
+  function card(item) {
+    const price = main(item);
+    const target = productHref(item);
+    return `
+      <article class="pcard" data-model="${esc(item.modelId)}">
+        <div class="pcard-media">
+          ${item.imageUri
+            ? `<img src="${esc(item.imageUri)}" alt="" loading="lazy" decoding="async">`
+            : `<span class="item-art" aria-hidden="true">${icons.shoe(52)}</span>`}
+          <button type="button" class="item-fav pcard-fav" data-model="${esc(item.modelId)}"
+            aria-pressed="${item.favorite ? 'true' : 'false'}"
+            aria-label="${esc(favLabel(item.favorite))}" title="${esc(favLabel(item.favorite))}">
+            ${item.favorite ? icons.heartOn(22) : icons.heart(22)}
+          </button>
+        </div>
+        <div class="pcard-body">
+          <h3 class="pcard-name"><a class="pcard-link" href="${esc(target)}">${esc(item.name)}</a></h3>
+          <p class="pcard-ref">${esc(t('catalog.reference'))} <b>${esc(item.reference || '')}</b></p>
+          ${price ? `<p class="pcard-price"><span>${price.label}</span> <b>${esc(eur(price.value))}</b></p>` : ''}
+          <span class="pcard-cta" aria-hidden="true">${esc(t('catalog.viewProduct'))} ${icons.right(15)}</span>
+        </div>
+      </article>`;
   }
 
   function article(item, stockWindow, lines) {
