@@ -32,6 +32,7 @@ builder.Services.AddAuthorization(options =>
     options.AddConnectorPolicy();
 });
 builder.Services.AddLoginRateLimiter(builder.Configuration);
+builder.Services.AddHttpClient();   // asistente del portal → API de Anthropic (opcional)
 
 // Auditoría m-6: la clave de firma de appsettings.json se auto-documenta como de
 // desarrollo, pero nada impedía arrancar producción con ella. Ahora sí.
@@ -115,6 +116,7 @@ app.MapCartEndpoints();
 app.MapDocumentEndpoints();
 app.MapAccountEndpoints();
 app.MapSatEndpoints();
+app.MapAssistantEndpoints();
 
 // Portal del cliente: enrutado por History API sobre las rutas reales del portal
 // actual, /{market}/{lang}/{vista} (p.ej. /es/es/orders). Recargar cualquiera de

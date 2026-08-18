@@ -9,6 +9,7 @@ import { esc, initial, roleLabel } from '../format.js';
 import { href, go, current } from '../router.js';
 import { icons } from './icons.js';
 import { paintCartBody } from './cart.js';
+import { mountAssistant } from './assistant.js';
 
 const header = () => document.getElementById('chrome-header');
 const nav = () => document.getElementById('chrome-nav');
@@ -47,6 +48,7 @@ export function renderChrome(route) {
   paintNav(route);
   paintFooter();
   paintDrawer();
+  mountAssistant();   // chat flotante del portal (se monta una sola vez)
   document.body.dataset.focus = state.prefs.focus ? 'on' : 'off';
 }
 

@@ -11,6 +11,8 @@ export const icons = {
   chevron: size => svg('<path d="m6 9 6 6 6-6"/>', size),
   cart: size => svg('<path d="M6 7h14l-1.5 9.5a2 2 0 0 1-2 1.5H9a2 2 0 0 1-2-1.6L5 3H2"/><circle cx="10" cy="21" r="1"/><circle cx="17" cy="21" r="1"/>', size),
   close: size => svg('<path d="M6 6l12 12M18 6 6 18"/>', size),
+  chat: size => svg('<path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5Z"/>', size),
+  sparkles: size => svg('<path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3Z"/><path d="M19 15l.7 1.8L21.5 17.5l-1.8.7L19 20l-.7-1.8L16.5 17.5l1.8-.7L19 15Z"/>', size),
   login: size => svg('<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/>', size),
   pause: size => svg('<path d="M9 5v14M15 5v14"/>', size),
   play: size => svg('<path d="M7 4.8v14.4L19.5 12Z"/>', size),
