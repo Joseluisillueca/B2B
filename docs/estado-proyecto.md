@@ -35,9 +35,11 @@ Método usado (pedido por el cliente): subagentes Opus por fase
 
 ## Pendiente
 
-1. **Auditoría integral final del /goal** (visual: 14 vistas vs capturas;
-   funcional: recorridos completos; técnica: tests/consola/i18n/aislamiento).
-   Dos rondas ejecutadas (2026-08-17/18):
+1. **Auditoría integral final del /goal** — **CERRADA: CUMPLE en las tres
+   dimensiones** (visual R3, funcional R3, técnica R2 tras corregir B-2), commit
+   `e91580b`. Historia del bucle (visual: 14 vistas vs capturas; funcional:
+   recorridos completos; técnica: tests/consola/i18n/aislamiento), tres rondas
+   (2026-08-17/18):
    - **Ronda 1** (NO CUMPLE): 1 bloqueante (B-1 CMS sin rol), 15 mayores, ~33 menores.
      Corregido: B-1 (rol `admin`), 9 mayores visuales (footer, buscador, contenedor a
      sangre, literales EN/IT, checkout, estadísticas, empresa/AÑADIR, carritos),
@@ -52,8 +54,12 @@ Método usado (pedido por el cliente): subagentes Opus por fase
      con U+FFFD reparado en BD; el código de proyección era correcto), n-1 (hero de
      dev restaurado a las imágenes de demo), R2 (proporción del gráfico de
      estadísticas a ~3.49:1) y n-4 (PVD/PVP por i18n con `catalog.price.*`).
-   - **Pendiente de cerrar el bucle**: ronda 3 de verificación visual/funcional en
-     curso; el auditor funcional de la ronda 2 se cortó por límite de sesión (repetir).
+   - **Ronda 3** (CUMPLE): verificación visual (M5, R2, n-1, n-4 + regresión, 0
+     errores de consola) y funcional (F-01, F-02, M8, compra completa, permisos del
+     CMS en navegador y regresión de las 14 vistas) — ambas CUMPLE, sin fallos nuevos.
+     Detalles cosméticos anotados y no accionados: el aviso "sin alias" de M8 es la
+     burbuja de validación nativa del navegador (no localizable sin validación propia);
+     `TRASNPORTE` del CSV de albaranes es la errata literal del portal original (paridad).
    - **Menores no bloqueantes aplazados** (hardening/contrato, anotados en
      `scratchpad/auditoria/tecnica-r2.md`): n-2 (el rate-limit cuenta también logins
      correctos y particiona por IP sin `ForwardedHeaders`), n-3 (`keySlug` del catálogo
