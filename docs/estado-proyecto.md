@@ -6,14 +6,45 @@
 
 ## Qué es
 
-Plataforma B2B que sustituirá al portal actual de lejan (mygo2b), con el
-objetivo declarado por el cliente (**/goal**): portal **idéntico** al actual en
-menú, apariencia y funciones — con la portada configurable desde el CMS — pero
-con acabado más moderno. Backend .NET 10 + PostgreSQL que implementa el mismo
-contrato API que consume el conector MITO de Business Central (BC no se toca:
-solo URLs y credenciales de su Setup en el corte).
+Plataforma B2B que sustituirá al portal actual de lejan (mygo2b). Backend .NET 10 +
+PostgreSQL que implementa el mismo contrato API que consume el conector MITO de
+Business Central (BC no se toca: solo URLs y credenciales de su Setup en el corte).
 
-## Hecho (330/330 tests; la corrección de la auditoría todavía sin commitear)
+**Evolución del /goal:**
+1. Primero se replicó el portal lejan con **paridad** visual/funcional (auditoría
+   CUMPLE, tag `v1-paridad-lejan`).
+2. Ahora el /goal es un **portal moderno con las MISMAS funcionalidades pero un
+   diseño nuevo y potente que no parezca una copia**. En marcha el rediseño
+   "Premium editorial" (ver sección abajo). Punto de retorno: `git checkout v1-paridad-lejan`.
+
+## Rediseño "Premium editorial" (2026-08-18, en curso)
+
+Dirección elegida por el cliente: lienzo **crema cálido**, display serif **Fraunces**
++ **Inter**, **verde profundo** de marca (#1f5c46, reutiliza los tokens `--blue*`) +
+**terracota** de acento (#c4633a), tablas silenciosas, layout contenido. Todo el
+sistema cuelga de los tokens de `app.css`.
+
+- **Método**: sistema base construido a mano → **3 subagentes críticos de diseño en
+  paralelo** (entrada, compra, datos) con las skills de `.claude/skills/` (66 skills
+  del repo *awesome-design-skills* instaladas: editorial, refined, premium, bento…)
+  + `web-design-guidelines` → aplicación de los hallazgos P1 en bucle. Informes en
+  `scratchpad/critica/{entrada,compra,datos}.md`.
+- **Hecho** (commits `a6d07a5`, `a1fcdee` + el del checkout): tokens/tipografía/chrome
+  verde/footer/login; tablas silenciosas; **portada rediseñada** con saludo editorial
+  + **bento de KPIs** (datos reales del cliente) + tarjetas díptico verde/terracota con
+  line-art (assets SVG de demo reescritos on-brand); escala de estados sin azul; matriz
+  de tallas "silenciosa"; contraste AA de los grises; checkout con panel crema y flujo
+  reordenado (desglose → condiciones → CTA).
+- **Backlog de pulido pendiente** (de las 3 críticas, no bloqueante):
+  1. **Móvil**: rail de facetas del catálogo → drawer "Filtrar"; listados de documentos
+     (orders/sat) → tarjetas por debajo de ~640px (hoy ocultan columnas).
+  2. **Estadísticas**: etiquetas de valor en las barras, altura en móvil, banda de KPIs.
+  3. Matriz: ocultar el "0" vacío (placeholder) para quitar el "mar de ceros".
+  4. Pantalla de credenciales más rica; wordmark como SVG real; chips truncados
+     ("Pendiente De…"); microinteracción de count-up en el botón del carrito.
+- El MCP de consultas está en `mcp/` (ver sección propia abajo).
+
+## Hecho (330/330 tests; todo commiteado y pusheado)
 
 | Pieza | Dónde |
 |---|---|
@@ -74,6 +105,15 @@ Método usado (pedido por el cliente): subagentes Opus por fase
 3. Cosas menores anotadas: SVG real del wordmark lejan (interino: texto),
    preload completo del hero (requiere inlinar primer slide), modo Grid del
    catálogo (select deshabilitado a propósito).
+
+## MCP "lejan-b2b" — consulta en lenguaje natural (carpeta `mcp/`)
+
+Servidor MCP en Python (FastMCP) para conectar un chat (Claude Desktop, etc.) con los
+datos del cliente y preguntar "¿cuánto he vendido este mes?", "¿qué pedidos he hecho?",
+"¿cuánto debo?". Se autentica en la API del portal con `B2B_EMAIL`/`B2B_PASSWORD` (el
+token filtra por cliente; solo lectura). Herramientas: `resumen_ventas`, `pedidos`,
+`facturas`, `ventas_por_mes`, `mi_cuenta`. Instalación y config para Claude Desktop en
+`mcp/README.md`. Verificado en vivo contra el portal.
 
 ## Cómo arrancar todo (dev)
 

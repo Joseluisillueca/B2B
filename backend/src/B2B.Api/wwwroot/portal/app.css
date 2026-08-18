@@ -587,6 +587,8 @@ body[data-focus="on"] .cat-count::before { content:none; }
 
 .ck-side { background:var(--card); border:1px solid var(--line); box-shadow:var(--shadow);
   border-radius:var(--r); padding:1.4rem; position:sticky; top:calc(var(--header-h) + 1rem); }
+/* El CTA cierra el panel (bajo el desglose y las condiciones) */
+.ck-side .btn-primary.block { margin-top:1.2rem; padding-top:.9rem; padding-bottom:.9rem; }
 .ck-totals { margin:1.2rem 0 0; }
 .ck-totals > div { display:flex; align-items:center; justify-content:space-between; gap:1rem;
   padding:.6rem 0; border-bottom:1px solid var(--line); }

@@ -108,10 +108,6 @@ export default function checkout(host) {
               </div>` : ''}
             ${sent ? sentNotice() : blocked ? blockedNotice(blocked) : ''}
 
-            <button type="button" class="btn-primary block" id="submit"
-              ${blocked ? 'aria-describedby="ckBlocked"' : ''}
-              ${units && accepted && !sent ? '' : 'disabled'}>${esc(t('checkout.submit'))}</button>
-
             <dl class="ck-totals">
               <div><dt>${esc(t('checkout.subtotal'))}</dt><dd>${esc(eur(subtotal))}</dd></div>
               <div><dt>${esc(t('checkout.totalNet'))}</dt><dd>${esc(eur(subtotal))}</dd></div>
@@ -125,6 +121,12 @@ export default function checkout(host) {
               <input type="checkbox" id="terms" ${accepted ? 'checked' : ''}>
               <span>${esc(t('checkout.terms'))}</span>
             </label>
+
+            <!-- El CTA cierra el panel: el usuario ve primero el desglose y acepta
+                 las condiciones, y solo entonces confirma (flujo natural). -->
+            <button type="button" class="btn-primary block" id="submit"
+              ${blocked ? 'aria-describedby="ckBlocked"' : ''}
+              ${units && accepted && !sent ? '' : 'disabled'}>${esc(t('checkout.submit'))}</button>
           </aside>
         </div>
       </div>`;
