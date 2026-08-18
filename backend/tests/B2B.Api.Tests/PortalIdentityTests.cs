@@ -74,7 +74,7 @@ public class PortalIdentityTests : IClassFixture<TestWebApplicationFactory>
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetTokenAsync(_client));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetConnectorTokenAsync(_client));
         var response = await _client.SendAsync(request);
         response.EnsureSuccessStatusCode();
     }
@@ -201,9 +201,45 @@ public class PortalIdentityTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal("TEST 5", client.GetProperty("name").GetString());
         Assert.True(client.GetProperty("canShop").GetBoolean());
         Assert.Equal("A+", client.GetProperty("productSegments")[0].GetString());
-        Assert.Equal("transf30", client.GetProperty("payMethods")[0].GetString());
+        // M5: la forma de pago viaja con código y nombre legible; sin ficha en el
+        // maestro del sync el nombre es el propio código.
+        Assert.Equal("transf30", client.GetProperty("payMethods")[0].GetProperty("id").GetString());
+        Assert.Equal("transf30", client.GetProperty("payMethods")[0].GetProperty("name").GetString());
+        Assert.Equal("transf30", client.GetProperty("payMethodIds")[0].GetString());
         Assert.Equal(15000, client.GetProperty("creditInfo").GetProperty("value").GetDecimal());
         Assert.Equal("B12345678", client.GetProperty("fiscalInfo").GetProperty("fiscalId").GetProperty("document").GetString());
+    }
+
+    // Auditoría M-4: las etiquetas del servidor eran españolas fijas y salían sin
+    // traducir en en/fr/it. El contrato añade claves estables que el front traduce,
+    // sin retirar las etiquetas actuales.
+    [Fact]
+    public async Task Me_DevuelveClavesEstablesDeRolYDeCredencial()
+    {
+        await SeedAsync();
+
+        var body = await (await GetMeAsync()).Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal("admin", body.GetProperty("roleKey").GetString());
+        var credential = body.GetProperty("credentials").EnumerateArray().Single();
+        Assert.Equal("client", credential.GetProperty("typeKey").GetString());
+        Assert.Equal("admin", credential.GetProperty("roleKey").GetString());
+
+        // Las etiquetas siguen ahí: el portal actual no se rompe al desplegar
+        Assert.Equal("Administrador", body.GetProperty("rol").GetString());
+        Assert.Equal("CLIENTE", credential.GetProperty("type").GetString());
+    }
+
+    // El diccionario de claves, sin pasar por HTTP: es lo que el front va a traducir
+    [Theory]
+    [InlineData("client-admin", "admin")]
+    [InlineData("integration", "integration")]
+    [InlineData("admin", "admin")]
+    [InlineData("lo-que-sea", "user")]
+    [InlineData(null, "user")]
+    public void RoleKey_TraduceElRolAUnaClaveEstable(string? role, string expected)
+    {
+        Assert.Equal(expected, B2B.Api.Portal.ClientIdentity.RoleKey(role));
     }
 
     [Fact]

@@ -22,7 +22,7 @@ public class AdminIncludePayloadTests : IClassFixture<TestWebApplicationFactory>
     [Fact]
     public async Task ListConIncludePayload_DevuelveElPayloadPorFila()
     {
-        var token = await _factory.GetTokenAsync(_client);
+        var token = await _factory.GetAdminTokenAsync(_client);
         var put = new HttpRequestMessage(HttpMethod.Put, "/api/core/warehouses/PAYLOAD1")
         {
             Content = new StringContent("""{"code":"PAYLOAD1","active":true}""", Encoding.UTF8, "application/json")
@@ -45,7 +45,7 @@ public class AdminIncludePayloadTests : IClassFixture<TestWebApplicationFactory>
     [Fact]
     public async Task ListSinIncludePayload_NoIncluyePayload()
     {
-        var token = await _factory.GetTokenAsync(_client);
+        var token = await _factory.GetAdminTokenAsync(_client);
         var get = new HttpRequestMessage(HttpMethod.Get, "/api/admin/sync-documents?take=1");
         get.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var response = await _client.SendAsync(get);

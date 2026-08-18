@@ -15,6 +15,17 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
     public const string SeededEmail = "integracion@test.com";
     public const string SeededPassword = "secreto123";
 
+    /// Administrador del CMS: el único rol que abre /api/admin/* (B-1)
+    public const string AdminEmail = "admin@test.com";
+    public const string AdminPassword = "admin-secreto123";
+
+    /// Cuenta de servicio del conector de BC (auditoría B-2): rol "integration" que
+    /// abre /api/sync/* y /api/query/*. Es una cuenta APARTE de los administradores de
+    /// cliente —a los que las pruebas provisionan sobre SeededEmail y acaban en
+    /// "client-admin"—, así que la siembra vía sync la usa a ella y nunca se degrada.
+    public const string ConnectorEmail = "conector@test.com";
+    public const string ConnectorPassword = "conector-secreto123";
+
     private readonly string _dbName = $"b2b-tests-{Guid.NewGuid():N}";
 
     /// Carpeta de medios de esta fábrica: las subidas de prueba no tocan wwwroot
@@ -28,12 +39,28 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
     /// La portada de demostración solo se siembra donde la prueba lo pide
     protected virtual bool SeedPortalContent => false;
 
-    public async Task<string> GetTokenAsync(HttpClient client)
+    /// El límite de intentos del login (m-5) estorbaría a la batería entera: las
+    /// pruebas se autentican en cada petición. Solo la prueba del límite lo baja.
+    protected virtual int LoginPermitLimit => 100_000;
+
+    public Task<string> GetTokenAsync(HttpClient client) =>
+        LoginAsync(client, SeededEmail, SeededPassword);
+
+    /// Token del administrador del CMS (rol "admin")
+    public Task<string> GetAdminTokenAsync(HttpClient client) =>
+        LoginAsync(client, AdminEmail, AdminPassword);
+
+    /// Token de la cuenta de servicio del conector (rol "integration"): el que la
+    /// siembra vía sync debe usar para no chocar con la política bc-connector (B-2).
+    public Task<string> GetConnectorTokenAsync(HttpClient client) =>
+        LoginAsync(client, ConnectorEmail, ConnectorPassword);
+
+    public async Task<string> LoginAsync(HttpClient client, string email, string password)
     {
         var response = await client.PostAsJsonAsync("/api/auth/login", new
         {
-            email = SeededEmail,
-            password = SeededPassword,
+            email,
+            password,
             type = "global",
             longDuration = true
         });
@@ -47,6 +74,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Media:Root", MediaRoot);
         builder.UseSetting("Contact:Root", ContactRoot);
         builder.UseSetting("Seed:PortalContent", SeedPortalContent ? "true" : "false");
+        builder.UseSetting("Auth:Login:PermitLimit", LoginPermitLimit.ToString());
 
         builder.ConfigureServices(services =>
         {
@@ -57,14 +85,20 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             using var scope = services.BuildServiceProvider().CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.Database.EnsureCreated();
-            if (!db.Users.Any(u => u.Email == SeededEmail))
-            {
-                var user = new AppUser { Id = Guid.NewGuid(), Email = SeededEmail, PasswordHash = "" };
-                user.PasswordHash = new PasswordHasher<AppUser>().HashPassword(user, SeededPassword);
-                db.Users.Add(user);
-                db.SaveChanges();
-            }
+            Seed(db, SeededEmail, SeededPassword, role: "integration");
+            Seed(db, AdminEmail, AdminPassword, role: "admin");
+            Seed(db, ConnectorEmail, ConnectorPassword, role: "integration");
         });
+    }
+
+    private static void Seed(AppDbContext db, string email, string password, string role)
+    {
+        if (db.Users.Any(u => u.Email == email)) return;
+
+        var user = new AppUser { Id = Guid.NewGuid(), Email = email, PasswordHash = "", Role = role };
+        user.PasswordHash = new PasswordHasher<AppUser>().HashPassword(user, password);
+        db.Users.Add(user);
+        db.SaveChanges();
     }
 
     protected override void Dispose(bool disposing)

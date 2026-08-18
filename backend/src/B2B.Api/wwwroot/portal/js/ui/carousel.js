@@ -14,10 +14,13 @@ const SWIPE_PX = 40;
 
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// Un medio del CMS que ya no está en disco dejaba el icono de "imagen rota" en
+// mitad del hero. Si la imagen no carga se retira y el slide se queda con su fondo
+// y su rótulo, que es lo que el visitante necesita ver.
 const picture = (slide, eager) => {
   const img = `<img src="${esc(slide.imageUrl)}" alt="${esc(slide.alt || '')}"
     loading="${eager ? 'eager' : 'lazy'}" ${eager ? 'fetchpriority="high"' : ''}
-    decoding="async" draggable="false">`;
+    decoding="async" draggable="false" onerror="this.remove()">`;
   return slide.imageUrlMobile
     ? `<picture><source media="(max-width:48rem)" srcset="${esc(slide.imageUrlMobile)}">${img}</picture>`
     : img;

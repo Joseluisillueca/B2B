@@ -4,9 +4,11 @@
 // de fin), el H2 "Ventas totales por meses (dd/mm/aaaa - dd/mm/aaaa)" y el gráfico
 // de barras con lo facturado al cliente mes a mes.
 //
-// El gráfico es SVG propio: sin librerías ni CDN. Cada barra lleva su valor en el
-// <title> y bajo el gráfico hay una tabla con las mismas cifras, así que el dato
-// no depende de ver la imagen.
+// El gráfico es SVG propio: sin librerías ni CDN, a sangre y sin marco, como en la
+// referencia. Cada barra lleva su mes y su importe en el <title>, y el aria-label
+// del SVG resume el periodo y el total facturado: el dato sigue siendo legible sin
+// ver la imagen aunque la referencia no lleve ni tabla mensual ni bloque de totales
+// (M7 — ambos se han retirado).
 
 import { api } from '../api.js';
 import { t, lang } from '../i18n.js';
@@ -16,8 +18,10 @@ import { pageHead } from '../ui/chrome.js';
 const LOCALES = { es: 'es-ES', en: 'en-GB', fr: 'fr-FR', it: 'it-IT' };
 const locale = () => LOCALES[lang()] || 'es-ES';
 
-// Lienzo del gráfico en unidades de viewBox (escala con el ancho de la página)
-const W = 1000, H = 420;
+// Lienzo del gráfico en unidades de viewBox (escala con el ancho de la página).
+// Proporción ~3.49:1 como en la referencia (11-statistics.png): sin tarjeta, el
+// gráfico va a sangre y no debe crecer en alto hasta empujar el eje bajo el pliegue.
+const W = 1000, H = 287;
 const PAD = { top: 24, right: 24, bottom: 52, left: 82 };
 
 export default async function statistics(host) {
@@ -58,6 +62,7 @@ export default async function statistics(host) {
     if (query.from) params.set('from', query.from);
     if (query.to) params.set('to', query.to);
     if (query.season) params.set('season', query.season);
+    if (query.catalog) params.set('catalog', query.catalog);
     params.set('locale', lang());
 
     try {
@@ -104,8 +109,14 @@ export default async function statistics(host) {
         load();
       };
     }
-    const season = tools.querySelector('#season');
-    if (season && !season.disabled) season.onchange = () => { query = { ...query, season: season.value }; load(); };
+    // Los dos selects de vocabulario se enlazan igual; hoy llegan vacíos y
+    // deshabilitados (el plan §5 lo documenta), pero el de Catálogo no estaba
+    // conectado siquiera, así que habría quedado muerto en cuanto BC publique datos.
+    for (const id of ['season', 'catalog']) {
+      const select = tools.querySelector(`#${id}`);
+      if (select && !select.disabled)
+        select.onchange = () => { query = { ...query, [id]: select.value }; load(); };
+    }
   }
 
   const pick = (id, label, values, active, allLabel) => `
@@ -131,12 +142,7 @@ export default async function statistics(host) {
 
     container.innerHTML = `
       <h2 class="stat-title">${esc(range)}</h2>
-      <div class="stat-chart">${chart(months)}</div>
-      <dl class="stat-summary">
-        <div><dt>${esc(t('statistics.total'))}</dt><dd>${esc(eur(data.total))}</dd></div>
-        <div><dt>${esc(t('statistics.count'))}</dt><dd>${esc(String(data.count ?? 0))}</dd></div>
-      </dl>
-      ${table(months)}`;
+      <div class="stat-chart">${chart(months)}</div>`;
   }
 
   function chart(months) {
@@ -156,7 +162,7 @@ export default async function statistics(host) {
 
     return `
       <svg viewBox="0 0 ${W} ${H}" role="img" preserveAspectRatio="xMidYMid meet"
-        aria-label="${esc(t('statistics.chartLabel'))}">
+        aria-label="${esc(chartLabel(months))}">
         ${ticks.map(tick => `
           <g class="stat-tick">
             <line x1="${PAD.left}" x2="${W - PAD.right}" y1="${y(tick).toFixed(1)}" y2="${y(tick).toFixed(1)}"></line>
@@ -186,28 +192,25 @@ export default async function statistics(host) {
       </svg>`;
   }
 
-  // Tabla con las mismas cifras: el gráfico no puede ser la única forma de leerlas
-  const table = months => `
-    <div class="grid-scroll stat-table">
-      <table class="grid">
-        <thead><tr>
-          <th>${esc(t('statistics.month'))}</th>
-          <th class="num">${esc(t('statistics.amount'))}</th>
-          <th class="num">${esc(t('statistics.count'))}</th>
-        </tr></thead>
-        <tbody>
-          ${months.length ? months.map(month => `
-            <tr>
-              <td>${esc(monthLabel(month.month, true))}</td>
-              <td class="num">${esc(eur(month.amount))}</td>
-              <td class="num">${esc(String(month.count ?? 0))}</td>
-            </tr>`).join('')
-            : `<tr class="grid-empty"><td colspan="3">${esc(t('docs.empty'))}</td></tr>`}
-        </tbody>
-      </table>
-    </div>`;
+  /**
+   * Nombre accesible del gráfico. Un `role="img"` colapsa todo su contenido en esta
+   * cadena: los <title> de cada barra NO se exponen, así que el desglose mes a mes
+   * —que antes vivía en la tabla que la referencia no tiene (M7)— se escribe aquí.
+   * Es un atributo, no texto en pantalla: la vista sigue siendo la de la referencia.
+   */
+  function chartLabel(months) {
+    const head = [
+      t('statistics.chartLabel'),
+      `${t('statistics.total')}: ${eur(data.total)}`,
+      `${t('statistics.count')}: ${data.count ?? 0}`
+    ];
+    const detail = months
+      .filter(month => Number(month.amount))
+      .map(month => `${monthLabel(month.month, true)}: ${eur(month.amount)}`);
+    return [...head, ...(detail.length ? detail : [t('statistics.empty')])].join(' · ');
+  }
 
-  /** "2026-01" → "ene" (o "enero 2026" en la tabla y el tooltip) */
+  /** "2026-01" → "ene" (o "enero 2026" en el nombre accesible del gráfico) */
   function monthLabel(key, long = false) {
     const [year, month] = String(key || '').split('-');
     const moment = new Date(Number(year), Number(month) - 1, 1);

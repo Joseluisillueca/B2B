@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using B2B.Api.Data;
+using B2B.Api.Portal;
 using Microsoft.EntityFrameworkCore;
 
 namespace B2B.Api.Shop;
@@ -10,7 +11,12 @@ namespace B2B.Api.Shop;
 // que si BC publica un atributo nuevo aparece solo en la barra lateral.
 public sealed record CatalogQuery
 {
-    public const int MaxTake = 500;
+    // m-8: la página por defecto era de 500 modelos (~1 MB con todas sus variantes).
+    // El front pide 24 desde siempre; el techo evita que nadie pida el catálogo entero
+    // por la URL. La descarga de stock usa ExportTake, que no es una página.
+    public const int DefaultTake = 24;
+    public const int MaxTake = 100;
+    public const int ExportTake = int.MaxValue;
 
     public string? Search { get; init; }
     public string? Family { get; init; }
@@ -20,7 +26,10 @@ public sealed record CatalogQuery
     public string Sort { get; init; } = CatalogSort.Featured;
     public string? Window { get; init; }
     public int Skip { get; init; }
-    public int Take { get; init; } = MaxTake;
+    public int Take { get; init; } = DefaultTake;
+
+    /// M-1: idioma del vocabulario servido (es|en|fr|it). Sin parámetro, español.
+    public string Locale { get; init; } = "es";
 
     public static CatalogQuery From(IQueryCollection query)
     {
@@ -41,7 +50,10 @@ public sealed record CatalogQuery
             Sort = CatalogSort.Normalize(query["sort"]),
             Window = Trimmed(query["window"]),
             Skip = Math.Max(0, Int(query["skip"], 0)),
-            Take = Math.Clamp(Int(query["take"], MaxTake), 1, MaxTake)
+            Take = Math.Clamp(Int(query["take"], DefaultTake), 1, MaxTake),
+            // Mismo criterio que el resto de endpoints del portal: idioma desconocido
+            // o ausente cae en español (B2B.Api.Portal.DocumentProjections.Locale)
+            Locale = B2B.Api.Portal.DocumentProjections.Locale(query["locale"])
         };
     }
 
@@ -92,11 +104,16 @@ public sealed record CatalogVariant(
     decimal? Pvd,
     decimal? Pvp);
 
-/// Una fila del listado, con todo lo que pintan la ficha y la matriz de tallas
+/// Una fila del listado, con todo lo que pintan la ficha y la matriz de tallas.
+/// Name y FamilyLabel ya vienen en el idioma pedido (M-1); Model conserva el texto
+/// crudo del sync para búsquedas y para el CSV, que es español por decisión (m-3).
 public sealed record CatalogRow(
     CatalogModel Model,
+    string Name,
+    string FamilyLabel,
     IReadOnlyList<string> Segments,
     IReadOnlyDictionary<string, string> Attributes,
+    IReadOnlyList<CatalogAttributeEntry> AttributeList,
     string? ImageUri,
     IReadOnlyList<CatalogVariant> Variants,
     decimal? Pvd,
@@ -105,13 +122,20 @@ public sealed record CatalogRow(
     IReadOnlyList<string> Availability,
     bool PricePerSize);
 
-public sealed record CatalogFacetValue(string Value, int Count);
+/// Un atributo del artículo con las dos caras: la clave con la que se filtra y la
+/// etiqueta que se pinta. Los slug son claves estables para el diccionario del portal.
+public sealed record CatalogAttributeEntry(
+    string Key, string KeySlug, string Label, string Value, string ValueSlug, string ValueLabel);
+
+public sealed record CatalogFacetValue(string Value, string Slug, string Label, int Count);
 public sealed record CatalogFamilyFacet(string Id, string Label, int Count);
-public sealed record CatalogAttributeFacet(string Key, IReadOnlyList<CatalogFacetValue> Values);
+public sealed record CatalogAttributeFacet(
+    string Key, string KeySlug, string Label, IReadOnlyList<CatalogFacetValue> Values);
 
 public sealed record CatalogPage(
     IReadOnlyList<object> Windows,
     string? Window,
+    string Locale,
     IReadOnlyList<CatalogRow> Rows,
     int Total,
     IReadOnlyList<CatalogFamilyFacet> Families,
@@ -137,6 +161,7 @@ public static class CatalogService
         var offers = await db.Offers.ToListAsync();
         var windows = await db.ServiceWindows.ToListAsync();
         var imageDocs = await db.SyncDocuments.Where(d => d.EntityType == "model-image").ToListAsync();
+        var vocabulary = await CatalogVocabulary.LoadAsync(db);
 
         var window = PickWindow(windows, query.Window);
         var context = new PriceContext(prices.ClientId, prices.GroupIds, window?.OrderType);
@@ -159,27 +184,33 @@ public static class CatalogService
         var windowKey = window?.ExternalId;
         var all = models
             .Select(model => Build(model, productsByModel, offersByModel, stockByProduct, imageByModel,
-                context, windowKey, now))
+                context, windowKey, now, vocabulary, query.Locale))
             .ToList();
 
         var filtered = all.Where(row => Matches(row, query)).ToList();
         var page = Sort(filtered, query).Skip(query.Skip).Take(query.Take).ToList();
 
         return new CatalogPage(
-            Windows: [.. windows.Select(object (w) => new { id = w.ExternalId, name = w.Name, orderType = w.OrderType })],
+            Windows: [.. windows.Select(object (w) => new
+            {
+                id = w.ExternalId,
+                name = WindowName(w, query.Locale),
+                orderType = w.OrderType
+            })],
             Window: windowKey,
+            Locale: query.Locale,
             Rows: page,
             Total: filtered.Count,
-            Families: FamilyFacet(all, query),
+            Families: FamilyFacet(all, query, vocabulary),
             AvailabilityFacet: AvailabilityFacet(all, query),
-            AttributeFacets: AttributeFacets(all, query));
+            AttributeFacets: AttributeFacets(all, query, vocabulary));
     }
 
     /// Mismas filas que el listado pero sin paginar: lo que baja "Desc. Stock"
     public static async Task<IReadOnlyList<CatalogRow>> RowsAsync(
         AppDbContext db, PortalActorPrices prices, CatalogQuery query, DateTimeOffset now)
     {
-        var page = await QueryAsync(db, prices, query with { Skip = 0, Take = CatalogQuery.MaxTake }, now);
+        var page = await QueryAsync(db, prices, query with { Skip = 0, Take = CatalogQuery.ExportTake }, now);
         return page.Rows;
     }
 
@@ -196,6 +227,15 @@ public static class CatalogService
         return windows.FirstOrDefault(w => w.OrderType == "REPLENISHMENT") ?? windows.FirstOrDefault();
     }
 
+    // El nombre de la ventana llega multiidioma en el payload del conector; la columna
+    // Name de la tabla guarda solo el español (se normaliza con SpanishText).
+    private static string WindowName(ServiceWindow window, string locale)
+    {
+        var payload = ClientIdentity.Parse(window.PayloadJson ?? "");
+        var localized = DocumentProjections.Localized(payload?["name"], locale);
+        return localized.Length > 0 ? localized : window.Name;
+    }
+
     private static CatalogRow Build(
         CatalogModel model,
         Dictionary<string, List<CatalogProduct>> productsByModel,
@@ -204,7 +244,9 @@ public static class CatalogService
         Dictionary<string, string?> imageByModel,
         PriceContext context,
         string? windowKey,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        CatalogVocabulary vocabulary,
+        string locale)
     {
         var modelOffers = offersByModel.GetValueOrDefault(model.ExternalId) ?? [];
 
@@ -229,10 +271,28 @@ public static class CatalogService
             ? pvpPrices.Max()
             : CatalogPricing.Resolve(modelOffers, "PVP", null, context, now);
 
+        var attributes = Attributes(model.AttributesJson);
+        // M-1: el nombre del modelo sí viene traducido de BC (contrato 02 §2); si el
+        // idioma pedido falta, DocumentProjections.Localized cae a español.
+        var localizedName = DocumentProjections.Localized(
+            ClientIdentity.Parse(model.NameTranslationsJson), locale);
+
         return new CatalogRow(
             Model: model,
+            Name: localizedName.Length > 0 ? localizedName : model.Name,
+            FamilyLabel: vocabulary.FamilyLabel(model.FamilyId, locale),
             Segments: Strings(model.ProductSegmentsJson),
-            Attributes: Attributes(model.AttributesJson),
+            Attributes: attributes,
+            AttributeList: [.. attributes.Select(pair => new CatalogAttributeEntry(
+                Key: pair.Key,
+                KeySlug: CatalogVocabulary.Slug(pair.Key),
+                Label: vocabulary.AttributeLabel(pair.Key, locale),
+                Value: pair.Value,
+                ValueSlug: CatalogVocabulary.Slug(pair.Value),
+                // BC no publica traducción de los valores de atributo (contrato 02 §6:
+                // values[] solo lleva order e id), así que la etiqueta es el valor y el
+                // portal traduce por ValueSlug si quiere.
+                ValueLabel: pair.Value))],
             ImageUri: imageByModel.GetValueOrDefault(model.ExternalId),
             Variants: variants,
             Pvd: pvd,
@@ -263,8 +323,11 @@ public static class CatalogService
         MatchesSearch(row, query) && MatchesFamily(row, query)
         && MatchesAvailability(row, query) && MatchesAttributes(row, query, skip: null);
 
+    // El buscador entra por el nombre que se está viendo, por el original del sync y
+    // por la referencia: cambiar de idioma no puede hacer desaparecer un resultado.
     private static bool MatchesSearch(CatalogRow row, CatalogQuery query) =>
         query.Search is null
+        || row.Name.Contains(query.Search, StringComparison.OrdinalIgnoreCase)
         || row.Model.Name.Contains(query.Search, StringComparison.OrdinalIgnoreCase)
         || row.Model.ExternalReference.Contains(query.Search, StringComparison.OrdinalIgnoreCase);
 
@@ -289,12 +352,13 @@ public static class CatalogService
     // Cada grupo se cuenta sobre el resto de filtros pero NO sobre el suyo: así el
     // recuento sigue siendo útil después de marcar una casilla de ese mismo grupo.
 
-    private static List<CatalogFamilyFacet> FamilyFacet(List<CatalogRow> all, CatalogQuery query) =>
+    private static List<CatalogFamilyFacet> FamilyFacet(
+        List<CatalogRow> all, CatalogQuery query, CatalogVocabulary vocabulary) =>
         [.. all
             .Where(r => MatchesSearch(r, query) && MatchesAvailability(r, query) && MatchesAttributes(r, query, null))
             .GroupBy(r => r.Model.FamilyId, StringComparer.OrdinalIgnoreCase)
             .Where(g => g.Key.Length > 0)
-            .Select(g => new CatalogFamilyFacet(g.Key, Label(g.Key), g.Count()))
+            .Select(g => new CatalogFamilyFacet(g.Key, vocabulary.FamilyLabel(g.Key, query.Locale), g.Count()))
             .OrderBy(f => f.Label, StringComparer.CurrentCultureIgnoreCase)];
 
     private static List<CatalogFacetValue> AvailabilityFacet(List<CatalogRow> all, CatalogQuery query)
@@ -302,11 +366,14 @@ public static class CatalogService
         var pool = all
             .Where(r => MatchesSearch(r, query) && MatchesFamily(r, query) && MatchesAttributes(r, query, null))
             .ToList();
+        // "Disponible / Consultar / < 10u" son vocabulario de la interfaz, no dato del
+        // sync: la faceta viaja con su id estable y el portal ya lo traduce con t().
         return [.. Availability.All.Select(state =>
-            new CatalogFacetValue(state, pool.Count(r => r.Availability.Contains(state))))];
+            new CatalogFacetValue(state, state, state, pool.Count(r => r.Availability.Contains(state))))];
     }
 
-    private static List<CatalogAttributeFacet> AttributeFacets(List<CatalogRow> all, CatalogQuery query)
+    private static List<CatalogAttributeFacet> AttributeFacets(
+        List<CatalogRow> all, CatalogQuery query, CatalogVocabulary vocabulary)
     {
         var keys = all.SelectMany(r => r.Attributes.Keys).Distinct(StringComparer.OrdinalIgnoreCase);
 
@@ -319,10 +386,15 @@ public static class CatalogService
                     .Select(r => r.Attributes.GetValueOrDefault(key))
                     .OfType<string>()
                     .GroupBy(v => v, StringComparer.OrdinalIgnoreCase)
-                    .Select(g => new CatalogFacetValue(g.Key, g.Count()))
-                    .OrderBy(v => v.Value, StringComparer.CurrentCultureIgnoreCase)
+                    .Select(g => new CatalogFacetValue(
+                        Value: g.Key, Slug: CatalogVocabulary.Slug(g.Key), Label: g.Key, Count: g.Count()))
+                    .OrderBy(v => v.Label, StringComparer.CurrentCultureIgnoreCase)
                     .ToList();
-                return new CatalogAttributeFacet(key, values);
+                return new CatalogAttributeFacet(
+                    Key: key,
+                    KeySlug: CatalogVocabulary.Slug(key),
+                    Label: vocabulary.AttributeLabel(key, query.Locale),
+                    Values: values);
             })
             .Where(f => f.Values.Count > 0)
             .OrderBy(f => Rank(f.Key))
@@ -337,16 +409,17 @@ public static class CatalogService
 
     // ── Orden ──────────────────────────────────────────────────────────────────
 
+    // Alfabético por el nombre que se ve: en inglés el listado se ordena en inglés
     private static IEnumerable<CatalogRow> Sort(List<CatalogRow> rows, CatalogQuery query) => query.Sort switch
     {
-        CatalogSort.PriceAsc => rows.OrderBy(r => r.Pvd ?? decimal.MaxValue).ThenBy(r => r.Model.Name, Alpha),
-        CatalogSort.PriceDesc => rows.OrderByDescending(r => r.Pvd ?? decimal.MinValue).ThenBy(r => r.Model.Name, Alpha),
+        CatalogSort.PriceAsc => rows.OrderBy(r => r.Pvd ?? decimal.MaxValue).ThenBy(r => r.Name, Alpha),
+        CatalogSort.PriceDesc => rows.OrderByDescending(r => r.Pvd ?? decimal.MinValue).ThenBy(r => r.Name, Alpha),
         // Relevancia: primero lo que se puede comprar hoy, después el nombre
         CatalogSort.Relevance => rows
             .OrderByDescending(r => r.Availability.Contains(Availability.Available))
             .ThenByDescending(r => r.Availability.Contains(Availability.Low))
-            .ThenBy(r => r.Model.Name, Alpha),
-        _ => rows.OrderBy(r => r.Model.Name, Alpha)
+            .ThenBy(r => r.Name, Alpha),
+        _ => rows.OrderBy(r => r.Name, Alpha)
     };
 
     private static readonly StringComparer Alpha = StringComparer.CurrentCultureIgnoreCase;

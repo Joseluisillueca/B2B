@@ -317,9 +317,16 @@ const NAV = [
 ];
 
 /* ---------- API ---------- */
+// El CMS es exclusivo del rol "admin": el token del portal (client-admin) autentica
+// pero no autoriza, y el servidor responde 403. Se distingue de la sesión caducada
+// (401) porque volver a entrar con ese usuario no arregla nada.
+const SIN_PERMISO = 'Este usuario no tiene permisos de administración. '
+  + 'Entra con una cuenta de administrador del CMS.';
+
 async function api(path) {
   const res = await fetch(path, { headers: { Authorization: 'Bearer ' + token } });
   if (res.status === 401) { logout(); throw new Error('401'); }
+  if (res.status === 403) { denied(); throw new Error(SIN_PERMISO); }
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
 }
@@ -340,6 +347,11 @@ async function login() {
 function logout() {
   token = ''; sessionStorage.clear();
   $('app').classList.remove('on'); $('login-screen').style.display = 'flex';
+}
+// 403: la sesión es válida, lo que falta es el rol. Se sale del CMS y se dice por qué.
+function denied() {
+  logout();
+  $('loginError').textContent = SIN_PERMISO;
 }
 function enter() {
   $('login-screen').style.display = 'none';
@@ -520,6 +532,7 @@ async function apiSend(method, path, body) {
     body: body ? JSON.stringify(body) : undefined
   });
   if (res.status === 401) { logout(); throw new Error('Sesión caducada'); }
+  if (res.status === 403) { denied(); throw new Error(SIN_PERMISO); }
   const data = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) throw new Error(data?.error || 'HTTP ' + res.status);
   return data;
@@ -708,7 +721,7 @@ const nextWindow = items => items.some(i => i.window === 'replenishment') ? 'sch
 function pickImage(item) {
   const input = document.createElement('input');
   input.type = 'file';
-  input.accept = 'image/png,image/jpeg,image/webp,image/avif,image/gif';
+  input.accept = 'image/png,image/jpeg,image/webp,image/avif,image/gif,image/svg+xml';
   input.onchange = async () => {
     const file = input.files[0];
     if (!file) return;
@@ -716,6 +729,7 @@ function pickImage(item) {
       const form = new FormData();
       form.append('file', file);
       const res = await fetch('/api/admin/media', { method:'POST', headers:{ Authorization:'Bearer ' + token }, body: form });
+      if (res.status === 403) { denied(); throw new Error(SIN_PERMISO); }
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || 'HTTP ' + res.status);
       item.imageUrl = data.url;

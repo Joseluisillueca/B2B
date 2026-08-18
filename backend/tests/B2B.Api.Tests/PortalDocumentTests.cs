@@ -291,7 +291,7 @@ public class PortalDocumentTests : IClassFixture<PortalDocumentTests.Factory>, I
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetTokenAsync(_client));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetConnectorTokenAsync(_client));
         (await _client.SendAsync(request)).EnsureSuccessStatusCode();
     }
 
@@ -402,7 +402,7 @@ public class PortalDocumentTests : IClassFixture<PortalDocumentTests.Factory>, I
     public async Task Pedidos_TemporadaSoloSaleCuandoBcLaManda()
     {
         var body = await JsonAsync("/api/portal/orders");
-        Assert.Equal(["SS26"], body.GetProperty("seasons").EnumerateArray().Select(s => s.GetString()).ToArray());
+        Assert.Equal(["SS26"], body.GetProperty("seasons").EnumerateArray().Select(s => s.GetString()!).ToArray());
         Assert.Equal(["PV00001"], Numbers(await JsonAsync("/api/portal/orders?season=SS26")));
     }
 

@@ -20,6 +20,11 @@ export default function contact(host) {
   let notice = null;   // { tone: 'ok' | 'error', text }
   let file = null;
 
+  // El "Consultar" del catálogo (F-02) llega aquí con la referencia del artículo:
+  // el asunto viene escrito para que el usuario solo tenga que redactar el mensaje.
+  const ref = new URLSearchParams(location.search).get('ref') || '';
+  let prefillSubject = ref ? t('contact.stockSubject', { ref }) : '';
+
   render();
 
   function render() {
@@ -41,7 +46,8 @@ export default function contact(host) {
           <div class="ct-row">
             <p class="ct-field">
               <label for="subject">${esc(t('contact.subject'))}<b class="ct-req">*</b></label>
-              <input type="text" id="subject" name="subject" maxlength="200" required>
+              <input type="text" id="subject" name="subject" maxlength="200" required
+                value="${esc(prefillSubject)}">
             </p>
             <p class="ct-field">
               <label for="email">${esc(t('contact.email'))}</label>
@@ -131,6 +137,7 @@ export default function contact(host) {
         });
         if (!response.ok) throw new Error(String(response.status));
         file = null;
+        prefillSubject = '';   // enviada la consulta, el formulario queda limpio
         notice = { tone: 'ok', text: t('contact.sent') };
         render();
       } catch {

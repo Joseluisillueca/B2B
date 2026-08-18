@@ -19,6 +19,24 @@ import { confirmDialog, promptDialog } from '../ui/dialog.js';
 
 const IVA = 0.21;   // Tipo general: el desglose real por línea llega con el pedido de BC
 
+// M5: MÉTODO DE PAGO enseñaba el código interno (`transf30`). Business Central manda
+// los métodos del cliente en client.payMethods, y según la versión del conector cada
+// entrada es un código suelto o una ficha con su nombre legible ("Transferencia 30
+// días"), que es lo que la referencia imprime y lo que ya muestra /invoices. Se
+// normalizan las dos formas: si viene el nombre se enseña el nombre; si no, el código.
+const payOption = method => {
+  if (method && typeof method === 'object') {
+    const value = method.id ?? method.code ?? method.key ?? method.value ?? '';
+    return { value: String(value), label: String(method.name ?? method.label ?? method.description ?? value) };
+  }
+  return { value: String(method ?? ''), label: String(method ?? '') };
+};
+
+const payOptions = client => (client.payMethods || []).map(payOption);
+
+const payLabel = (client, value) =>
+  payOptions(client).find(option => option.value === value)?.label || value || '';
+
 export default function checkout(host) {
   const me = state.me || {};
   const client = me.client || {};
@@ -30,7 +48,7 @@ export default function checkout(host) {
   let error = '';   // fallo de la última acción, en línea junto a los totales
   const form = {
     reference: '',
-    payMethod: (client.payMethods || [])[0] || '',
+    payMethod: payOptions(client)[0]?.value || '',
     shippingAddressId: (client.shippingAddresses || [])[0]?.id || '',
     notes: ''
   };
@@ -59,12 +77,15 @@ export default function checkout(host) {
             <div class="ck-head">
               <h2 class="ck-client">${esc(t('checkout.client'))}
                 <b>${esc(clientName)}${clientNumber ? ` (${esc(clientNumber)})` : ''}</b></h2>
+              <!-- M6: en la referencia (16-checkout.png) el carrito vacío deja los
+                   cinco botones activos —ELIMINAR CARRITO en rojo con su papelera—
+                   y solo apaga TERMINAR PEDIDO. -->
               <div class="ck-actions">
-                <button type="button" class="btn-danger" id="dropCart" ${units ? '' : 'disabled'}>
+                <button type="button" class="btn-danger" id="dropCart">
                   ${icons.trash(16)} ${esc(t('checkout.dropCart'))}</button>
                 <button type="button" class="btn-ghost" id="edit" aria-pressed="${editing}">
                   ${icons.pencil(16)} ${esc(t('checkout.edit'))}</button>
-                <button type="button" class="btn-ghost" id="excel" ${units ? '' : 'disabled'}>
+                <button type="button" class="btn-ghost" id="excel">
                   ${icons.fileDown(16)} ${esc(t('checkout.excel'))}</button>
               </div>
             </div>
@@ -73,7 +94,7 @@ export default function checkout(host) {
 
             <div class="ck-lines-head">
               <h2>${esc(t('checkout.products', { n: units }))}</h2>
-              <button type="button" class="btn-ghost" id="favorite" ${units ? '' : 'disabled'}>
+              <button type="button" class="btn-ghost" id="favorite">
                 ${icons.heart(16)} ${esc(t('checkout.saveFavorite'))}</button>
             </div>
 
@@ -111,8 +132,10 @@ export default function checkout(host) {
     bind();
   }
 
+  // La ficha se repinta entera al marcar las condiciones: sin role="status" el aviso
+  // aparecía y desaparecía sin que un lector de pantalla dijera nada.
   const blockedNotice = reason => `
-    <div class="notice notice-error" id="ckBlocked">
+    <div class="notice notice-error" id="ckBlocked" role="status">
       ${icons.alert(18)}
       <div><b>${esc(t('checkout.blockedTitle'))}</b><span>${esc(reason)}</span></div>
     </div>`;
@@ -136,19 +159,20 @@ export default function checkout(host) {
         <dl class="ck-row">
           ${field(t('checkout.date'), date(new Date()))}
           ${field(t('checkout.reference'), editing
-            ? `<input type="text" id="reference" value="${esc(form.reference)}" maxlength="60">`
+            ? `<input type="text" id="reference" value="${esc(form.reference)}" maxlength="60"
+                aria-label="${esc(t('checkout.reference'))}">`
             : esc(form.reference) || '—', true)}
           ${field(t('checkout.payMethod'), editing
-            ? `<select id="payMethod">${(client.payMethods || []).map(method =>
-                `<option value="${esc(method)}"${method === form.payMethod ? ' selected' : ''}>
-                   ${esc(method)}</option>`).join('')}</select>`
-            : esc(form.payMethod) || '—', true)}
+            ? `<select id="payMethod" aria-label="${esc(t('checkout.payMethod'))}">${payOptions(client).map(option =>
+                `<option value="${esc(option.value)}"${option.value === form.payMethod ? ' selected' : ''}>
+                   ${esc(option.label)}</option>`).join('')}</select>`
+            : esc(payLabel(client, form.payMethod)) || '—', true)}
           ${field(t('checkout.type'), t(`window.${state.prefs.window}`).toUpperCase())}
         </dl>
 
         <dl class="ck-row two">
           ${field(t('checkout.shipTo'), editing && (client.shippingAddresses || []).length
-            ? `<select id="shipTo">${(client.shippingAddresses || []).map(a =>
+            ? `<select id="shipTo" aria-label="${esc(t('checkout.shipTo'))}">${(client.shippingAddresses || []).map(a =>
                 `<option value="${esc(a.id)}"${a.id === form.shippingAddressId ? ' selected' : ''}>
                    ${esc(addressText(a))}</option>`).join('')}</select>`
             : esc(address ? addressText(address) : '—'), true)}
@@ -158,7 +182,8 @@ export default function checkout(host) {
 
         <dl class="ck-row one">
           ${field(t('checkout.notes'), editing
-            ? `<textarea id="notes" rows="3" maxlength="500">${esc(form.notes)}</textarea>`
+            ? `<textarea id="notes" rows="3" maxlength="500"
+                aria-label="${esc(t('checkout.notes'))}">${esc(form.notes)}</textarea>`
             : esc(form.notes), true)}
         </dl>
       </div>`;
@@ -203,7 +228,12 @@ export default function checkout(host) {
     const $ = id => host.querySelector(`#${id}`);
 
     $('edit').onclick = () => { editing = !editing; render(); };
-    $('terms').onchange = event => { accepted = event.target.checked; render(); };
+    // El repintado destruye la casilla que se acaba de marcar: se devuelve el foco
+    $('terms').onchange = event => {
+      accepted = event.target.checked;
+      render();
+      host.querySelector('#terms')?.focus({ preventScroll: true });
+    };
 
     if (editing) {
       $('reference')?.addEventListener('input', e => { form.reference = e.target.value; });
@@ -229,7 +259,17 @@ export default function checkout(host) {
       render();
     };
 
+    // Los dos botones que CREAN un carrito en el servidor siguen activos con el
+    // carrito vacío (M6), pero no dejan un registro en blanco: avisan y no llaman.
+    const needsLines = () => {
+      if (state.cartUnits()) return true;
+      error = t('checkout.emptyAction');
+      render();
+      return false;
+    };
+
     $('excel').onclick = async event => {
+      if (!needsLines()) return;
       const button = event.currentTarget;
       button.disabled = true;
       try {
@@ -247,6 +287,7 @@ export default function checkout(host) {
     };
 
     $('favorite').onclick = async event => {
+      if (!needsLines()) return;
       const button = event.currentTarget;
       const name = await promptDialog({
         title: t('checkout.saveFavorite'), label: t('checkout.favoriteName'), value: defaultName()

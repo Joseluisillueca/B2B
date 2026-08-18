@@ -25,7 +25,7 @@ public class PortalContentTests : IClassFixture<TestWebApplicationFactory>
         var request = new HttpRequestMessage(method, route);
         if (json is not null)
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetTokenAsync(_client));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetAdminTokenAsync(_client));
         return await _client.SendAsync(request);
     }
 
@@ -66,7 +66,7 @@ public class PortalContentTests : IClassFixture<TestWebApplicationFactory>
 
         Assert.Equal("dashboard.hero", body.GetProperty("key").GetString());
         Assert.Equal("es", body.GetProperty("locale").GetString());
-        Assert.Equal(TestWebApplicationFactory.SeededEmail, body.GetProperty("updatedBy").GetString());
+        Assert.Equal(TestWebApplicationFactory.AdminEmail, body.GetProperty("updatedBy").GetString());
         Assert.True(body.GetProperty("updatedAt").GetDateTimeOffset() > DateTimeOffset.UtcNow.AddMinutes(-5));
 
         var items = body.GetProperty("items").EnumerateArray().ToList();
@@ -116,7 +116,7 @@ public class PortalContentTests : IClassFixture<TestWebApplicationFactory>
             i => i.GetProperty("key").GetString() == "dashboard.tiles"
               && i.GetProperty("locale").GetString() == "fr");
         Assert.Equal(1, block.GetProperty("count").GetInt32());
-        Assert.Equal(TestWebApplicationFactory.SeededEmail, block.GetProperty("updatedBy").GetString());
+        Assert.Equal(TestWebApplicationFactory.AdminEmail, block.GetProperty("updatedBy").GetString());
     }
 
     [Fact]

@@ -68,8 +68,9 @@ export default async function carts(host) {
       </div>
       <div id="cartsPager"></div>`;
 
+    // M9: esta vista va sin buscador y sin "Mostrar" (plan §1, vista 6): solo «‹ 1 ›»
     const pagerHost = container.querySelector('#cartsPager');
-    pagerHost.innerHTML = pager({ total: all.length, skip, take });
+    pagerHost.innerHTML = pager({ total: all.length, skip, take, size: false });
     bindPager(pagerHost, {
       take,
       onPage: value => { skip = Math.max(0, value); render(); },

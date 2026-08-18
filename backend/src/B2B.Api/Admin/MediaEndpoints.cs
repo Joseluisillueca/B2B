@@ -1,3 +1,4 @@
+using B2B.Api.Auth;
 using System.Text;
 
 namespace B2B.Api.Admin;
@@ -11,8 +12,9 @@ public static class MediaEndpoints
     private const long MaxBytes = 5 * 1024 * 1024;
 
     // Extensión y content-type tienen que cuadrar: ni .php declarado como imagen ni
-    // .png con html dentro. El SVG queda fuera a propósito: se sirve desde el mismo
-    // origen y puede ejecutar script.
+    // .png con html dentro. El SVG entra (F-07: el wordmark y los iconos de la portada
+    // son vectoriales) con dos cautelas: la subida es solo-admin desde B-1 y el dibujo
+    // se revisa antes de escribirlo, porque se sirve desde el mismo origen.
     private static readonly Dictionary<string, string[]> Allowed = new(StringComparer.OrdinalIgnoreCase)
     {
         [".jpg"] = ["image/jpeg"],
@@ -20,7 +22,8 @@ public static class MediaEndpoints
         [".png"] = ["image/png"],
         [".webp"] = ["image/webp"],
         [".avif"] = ["image/avif"],
-        [".gif"] = ["image/gif"]
+        [".gif"] = ["image/gif"],
+        [".svg"] = ["image/svg+xml"]
     };
 
     // El listado sí enseña los SVG que van con el producto (la portada de demo):
@@ -62,16 +65,37 @@ public static class MediaEndpoints
                     error = $"El contenido dice ser \"{contentType}\" y la extensión {extension}: no cuadran."
                 });
 
+            // El SVG es el único formato que el navegador ejecuta: se lee entero y se
+            // rechaza si trae script en vez de dibujo.
+            byte[]? svg = null;
+            if (extension.Equals(".svg", StringComparison.OrdinalIgnoreCase))
+            {
+                using var buffer = new MemoryStream();
+                await file.CopyToAsync(buffer);
+                svg = buffer.ToArray();
+                if (!IsSafeSvg(svg))
+                    return Results.BadRequest(new
+                    {
+                        error = "El SVG lleva script o enlaces ejecutables: súbelo sin <script>, "
+                                + "sin atributos on… y sin javascript:."
+                    });
+            }
+
             var root = MediaRoot(config, env);
             Directory.CreateDirectory(root);
 
             var name = UniqueName(file.FileName ?? "imagen", extension);
             await using (var stream = File.Create(Path.Combine(root, name)))
-                await file.CopyToAsync(stream);
+            {
+                if (svg is not null)
+                    await stream.WriteAsync(svg);
+                else
+                    await file.CopyToAsync(stream);
+            }
 
             var url = UrlPrefix + name;
             return Results.Created(url, new { url, name, size = file.Length, contentType });
-        }).RequireAuthorization().DisableAntiforgery();
+        }).RequireAdmin().DisableAntiforgery();
 
         app.MapGet("/api/admin/media", (IConfiguration config, IWebHostEnvironment env) =>
         {
@@ -86,7 +110,7 @@ public static class MediaEndpoints
                 .ToList();
 
             return Results.Ok(new { items });
-        }).RequireAuthorization();
+        }).RequireAdmin();
 
         app.MapDelete("/api/admin/media/{name}", (string name, IConfiguration config, IWebHostEnvironment env) =>
         {
@@ -100,7 +124,23 @@ public static class MediaEndpoints
 
             File.Delete(path);
             return Results.NoContent();
-        }).RequireAuthorization();
+        }).RequireAdmin();
+    }
+
+    // Lista negra corta y explícita: lo que convierte un SVG en una página ejecutable
+    // (script, manejadores on…, javascript: y documentos embebidos).
+    private static readonly string[] SvgForbidden =
+        ["<script", "javascript:", "<foreignobject", "<iframe", "<embed", "<object", "<use xlink:href=\"http"];
+
+    private static bool IsSafeSvg(byte[] bytes)
+    {
+        var text = Encoding.UTF8.GetString(bytes);
+        if (SvgForbidden.Any(token => text.Contains(token, StringComparison.OrdinalIgnoreCase)))
+            return false;
+
+        // Cualquier atributo de evento: on… = "…"
+        return !System.Text.RegularExpressions.Regex.IsMatch(
+            text, @"\son[a-z]+\s*=", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
     }
 
     // banner portada SS26.png → banner-portada-ss26-4f2a91.png (URL limpia y sin pisar)

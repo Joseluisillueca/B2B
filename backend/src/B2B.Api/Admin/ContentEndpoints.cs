@@ -1,3 +1,4 @@
+using B2B.Api.Auth;
 using System.Security.Claims;
 using System.Text.Json.Nodes;
 using B2B.Api.Data;
@@ -35,7 +36,7 @@ public static class ContentEndpoints
                 locales = PortalContentModel.Locales,
                 items
             });
-        }).RequireAuthorization();
+        }).RequireAdmin();
 
         // El CMS ve el bloque entero, incluidos los elementos apagados o caducados
         app.MapGet("/api/admin/content/{key}", async (string key, string? locale, AppDbContext db) =>
@@ -55,7 +56,7 @@ public static class ContentEndpoints
                 updatedAt = block.UpdatedAt,
                 updatedBy = block.UpdatedBy
             });
-        }).RequireAuthorization();
+        }).RequireAdmin();
 
         app.MapPut("/api/admin/content/{key}", async (
             string key, string? locale, JsonNode? body, ClaimsPrincipal principal, AppDbContext db) =>
@@ -88,7 +89,7 @@ public static class ContentEndpoints
                 updatedAt = block.UpdatedAt,
                 updatedBy = block.UpdatedBy
             });
-        }).RequireAuthorization();
+        }).RequireAdmin();
 
         app.MapDelete("/api/admin/content/{key}", async (string key, string? locale, AppDbContext db) =>
         {
@@ -102,7 +103,7 @@ public static class ContentEndpoints
             db.PortalContents.Remove(block);
             await db.SaveChangesAsync();
             return Results.NoContent();
-        }).RequireAuthorization();
+        }).RequireAdmin();
     }
 
     // Clave e idioma son parte del contrato: fuera de la lista, 400 (no 404), porque

@@ -5,7 +5,7 @@
 
 import { t, LANGS, lang } from '../i18n.js';
 import { state, onCartChange } from '../state.js';
-import { esc, initial } from '../format.js';
+import { esc, initial, roleLabel } from '../format.js';
 import { href, go, current } from '../router.js';
 import { icons } from './icons.js';
 import { paintCartBody } from './cart.js';
@@ -33,6 +33,11 @@ const SOCIAL = [
 const windowLabel = () => t(`window.${state.prefs.window}`).toUpperCase();
 
 export function renderChrome(route) {
+  // El enlace de salto vive en index.html (tiene que existir antes del primer
+  // pintado), pero su texto se traduce como cualquier otro literal.
+  const skip = document.querySelector('.skip');
+  if (skip) skip.textContent = t('chrome.skip');
+
   const bare = document.body.dataset.chrome !== 'on';
   for (const el of [header(), nav(), footer()]) el.hidden = bare;
   drawer().hidden = bare;
@@ -48,7 +53,9 @@ export function renderChrome(route) {
 function paintHeader() {
   const me = state.me || {};
   const credential = state.credential || {};
-  const line1 = `${me.email || ''}${me.rol ? ` - ${me.rol}` : ''}`;
+  // El rol viene de BC en español; si la ficha trae roleKey se traduce (M-4)
+  const role = roleLabel({ roleKey: credential.roleKey ?? me.roleKey, role: credential.role, rol: me.rol });
+  const line1 = `${me.email || ''}${role ? ` - ${role}` : ''}`;
   const line2 = credential.name || me.client?.name || '';
 
   header().innerHTML = `
@@ -142,12 +149,31 @@ function togglePopup(button, template) {
     closePopups();
     toggleFocus();
   });
-  setTimeout(() => addEventListener('click', onOutside, { once: true }));
+
+  // El cierre por clic fuera escuchaba `{ once: true }`: un clic DENTRO del propio
+  // menú consumía el listener y lo dejaba abierto para siempre. Ahora se comprueba
+  // dónde ha caído el clic, y Escape cierra y devuelve el foco al botón.
+  setTimeout(() => {
+    addEventListener('click', onOutside);
+    addEventListener('keydown', onEscape);
+  });
 }
 
-const onOutside = () => closePopups();
+const onOutside = event => {
+  if (event.target.closest?.('.h-menu')) return;
+  closePopups();
+};
+
+const onEscape = event => {
+  if (event.key !== 'Escape') return;
+  const open = document.querySelector('[aria-haspopup="menu"][aria-expanded="true"]');
+  closePopups();
+  open?.focus();
+};
 
 function closePopups() {
+  removeEventListener('click', onOutside);
+  removeEventListener('keydown', onEscape);
   for (const menu of document.querySelectorAll('.h-menu')) menu.remove();
   for (const button of document.querySelectorAll('[aria-haspopup="menu"]'))
     button.setAttribute('aria-expanded', 'false');
@@ -182,29 +208,45 @@ function paintDrawer() {
 
 // El contador del botón azul y el contenido del drawer siguen al carrito: cualquier
 // celda de la matriz de tallas los actualiza sin que la vista tenga que avisar.
+//
+// F-01: aquí NO se puede reescribir el innerHTML del botón. El `change` del input de
+// talla se dispara en el mousedown sobre el botón azul; si en ese momento se sustituye
+// el <span> que recibió el mousedown, el nodo queda desconectado y Chrome ya no emite
+// el `click` (solo mousedown+mouseup), de modo que el primer clic se perdía. Se
+// actualiza el TEXTO del nodo existente, que no rompe la pareja mousedown/mouseup.
 onCartChange(() => {
   if (document.body.dataset.chrome !== 'on') return;
-  const button = header().querySelector('#cartBtn');
-  if (button) button.innerHTML = cartButtonInner();
+  const label = header().querySelector('#cartBtn .label');
+  if (label) label.textContent = cartLabel();
   if (!drawer().hidden) paintCartBody(drawer(), { onClose: closeCart });
   const win = drawer().querySelector('.win');
   if (win) win.textContent = t(`window.${state.prefs.window}`);
 });
 
-const cartButtonInner = () =>
-  `${icons.cart(16)}<span class="label">${esc(windowLabel())} (${state.cartUnits()})</span>`;
+const cartLabel = () => `${windowLabel()} (${state.cartUnits()})`;
 
+const cartButtonInner = () =>
+  `${icons.cart(16)}<span class="label">${esc(cartLabel())}</span>`;
+
+// El panel entra desde la derecha: el foco se va con él (si no, el teclado se queda
+// detrás del velo) y Escape lo cierra devolviendo el foco al botón azul.
 function openCart() {
   drawer().hidden = false;
   drawer().classList.add('on');
   veil().hidden = false;
   veil().classList.add('on');
+  drawer().querySelector('#cartClose')?.focus({ preventScroll: true });
+  addEventListener('keydown', onCartEscape);
 }
 
 function closeCart() {
+  removeEventListener('keydown', onCartEscape);
   drawer().classList.remove('on');
   veil().classList.remove('on');
+  header().querySelector('#cartBtn')?.focus({ preventScroll: true });
 }
+
+const onCartEscape = event => { if (event.key === 'Escape') closeCart(); };
 
 /**
  * Cabecera de vista: migas + H1. Con el ojo activo solo sobrevive "Inicio"

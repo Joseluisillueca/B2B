@@ -4,6 +4,8 @@
 // bloqueada cuando no hay stock.
 
 import { esc, eur } from '../format.js';
+import { t } from '../i18n.js';
+import { href } from '../router.js';
 import { state, lineKey } from '../state.js';
 
 /** Sentinela del conector (contrato 03 §7.7): ventana programada abierta */
@@ -43,9 +45,11 @@ export function sizeMatrix(item, { windowKey, lines = {} } = {}) {
   // con stock) y dentro se navega con las flechas. Con 15 tallas por artículo y 24
   // artículos por página, lo contrario son cientos de tabuladores hasta el pie.
   let stop = false;
-  // El precio en la cabecera de la talla solo aporta si NO es el PVD del artículo,
-  // que ya está impreso junto a la matriz; repetirlo 15 veces es ruido.
-  const perSize = (item.products || []).some(p => p.pvd != null && p.pvd !== item.pvd);
+  // F-04: en los artículos con precio por talla (kids 21–35) la cabecera lleva el
+  // precio EFECTIVO de cada talla —el propio si lo tiene, si no el del artículo—,
+  // no solo el de las tallas con oferta propia: si tres tallas de quince mostraban
+  // importe, la columna parecía un error de datos.
+  const perSize = !!item.pricePerSize;
 
   const cells = (item.products || []).map(product => {
     const stock = stockOf(product, windowKey);
@@ -60,8 +64,7 @@ export function sizeMatrix(item, { windowKey, lines = {} } = {}) {
       <div class="sz ${status}${qty > 0 ? ' has' : ''}">
         <div class="sz-head">
           <span class="sz-size">${esc(product.size ?? '—')}</span>
-          ${item.pricePerSize && perSize && price != null && price !== item.pvd
-            ? `<span class="sz-price">${esc(eur(price))}</span>` : ''}
+          ${perSize && price != null ? `<span class="sz-price">${esc(eur(price))}</span>` : ''}
         </div>
         <div class="sz-body">
           <input type="number" min="0" max="9999" step="1" inputmode="numeric"
@@ -69,13 +72,26 @@ export function sizeMatrix(item, { windowKey, lines = {} } = {}) {
             tabindex="${roving ? '0' : '-1'}"
             data-model="${esc(item.modelId)}" data-product="${esc(product.productId)}"
             data-size="${esc(product.size ?? '')}" data-price="${price ?? 0}"
-            aria-label="Talla ${esc(product.size ?? '')}">
+            aria-label="${esc(t('catalog.sizeField', {
+              size: product.size ?? '', name: item.name || '', stock: stockText(stock)
+            }))}">
           <span class="sz-stock">${status === 'low' || status === 'out' ? '<i></i>' : ''}(${esc(stockText(stock))})</span>
         </div>
       </div>`;
   }).join('');
 
-  return `<div class="matrix${item.pricePerSize && perSize ? ' wide' : ''}">${cells}</div>`;
+  // F-02: un artículo sin stock en ninguna talla no se pide, se CONSULTA. La
+  // referencia ofrece la palabra en la fila; sin ella el usuario solo veía campos
+  // apagados a 0 y ninguna indicación de qué hacer. El enlace lleva al formulario
+  // de contacto con la referencia del artículo ya puesta en el asunto.
+  const consult = rowState(item, windowKey) === 'out'
+    ? `<p class="matrix-consult">
+         <a href="${esc(href('contact'))}?ref=${encodeURIComponent(item.reference || '')}">
+           ${esc(t('catalog.availability.consult'))}</a>
+       </p>`
+    : '';
+
+  return `<div class="matrix${perSize ? ' wide' : ''}">${cells}</div>${consult}`;
 }
 
 /**

@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using B2B.Api.Auth;
 using B2B.Api.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,12 +14,24 @@ public static class ClientIdentity
     public const string IntegrationRole = "integration";
     public const string ClientAdminRole = "client-admin";
 
-    // Etiquetas de la pantalla "SELECCIONA AHORA TUS CREDENCIALES" (01-tras-login.png)
+    // Etiquetas de la pantalla "SELECCIONA AHORA TUS CREDENCIALES" (01-tras-login.png).
+    // Se mantienen por compatibilidad; el idioma lo resuelve el front con RoleKey (M-4).
     public static string RoleLabel(string? role) => role switch
     {
         ClientAdminRole => "Administrador",
         IntegrationRole => "Integración",
         _ => "Usuario"
+    };
+
+    // Auditoría M-4: estas etiquetas viajaban en español a las 14 vistas en los cuatro
+    // idiomas. La API sirve además una clave estable y el portal la traduce.
+    public const string ClientCredentialType = "client";
+
+    public static string RoleKey(string? role) => role switch
+    {
+        ClientAdminRole or AdminPolicy.Role => "admin",
+        IntegrationRole => "integration",
+        _ => "user"
     };
 
     // Se llama dentro del upsert del sync, antes del SaveChanges: el documento crudo

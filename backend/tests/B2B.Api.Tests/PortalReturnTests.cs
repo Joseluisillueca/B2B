@@ -74,7 +74,7 @@ public class PortalReturnTests : IClassFixture<PortalReturnTests.Factory>, IAsyn
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetTokenAsync(_client));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetConnectorTokenAsync(_client));
         (await _client.SendAsync(request)).EnsureSuccessStatusCode();
     }
 

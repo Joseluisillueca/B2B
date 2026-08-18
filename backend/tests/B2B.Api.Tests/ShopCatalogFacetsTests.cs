@@ -47,7 +47,7 @@ public class ShopCatalogFacetsTests : IClassFixture<ShopCatalogFacetsTests.Facto
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetTokenAsync(_client));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetConnectorTokenAsync(_client));
         (await _client.SendAsync(request)).EnsureSuccessStatusCode();
     }
 
@@ -235,6 +235,31 @@ public class ShopCatalogFacetsTests : IClassFixture<ShopCatalogFacetsTests.Facto
         Assert.Equal(3, page.GetProperty("total").GetInt32());
         Assert.Single(page.GetProperty("items").EnumerateArray());
         Assert.Equal(1, page.GetProperty("skip").GetInt32());
+    }
+
+    // m-8: la página por defecto era de 500 modelos (~1 MB). El front pide 24; el
+    // servidor ahora sirve esa misma cifra por defecto y no deja pedir más de 100.
+    [Fact]
+    public async Task Catalog_PaginaPorDefecto24YNoDejaPasarDe100()
+    {
+        Assert.Equal(24, (await GetAsync("/api/shop/catalog")).GetProperty("take").GetInt32());
+        Assert.Equal(100, (await GetAsync("/api/shop/catalog?take=500")).GetProperty("take").GetInt32());
+        Assert.Equal(100, (await GetAsync("/api/shop/catalog?take=101")).GetProperty("take").GetInt32());
+        Assert.Equal(50, (await GetAsync("/api/shop/catalog?take=50")).GetProperty("take").GetInt32());
+    }
+
+    // El techo de la página no puede recortar la descarga de stock: el CSV es el
+    // listado completo con los mismos filtros, no la página que se está viendo.
+    [Fact]
+    public async Task StockExport_NoSeQuedaEnElTamanoDePagina()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/shop/stock-export.csv?take=1");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetTokenAsync(_client));
+        var response = await _client.SendAsync(request);
+
+        var csv = Encoding.UTF8.GetString(await response.Content.ReadAsByteArrayAsync());
+        foreach (var referencia in new[] { "1974", "1005", "9001" })
+            Assert.Contains(referencia, csv);
     }
 
     [Fact]

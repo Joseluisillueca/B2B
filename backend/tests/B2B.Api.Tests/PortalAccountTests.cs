@@ -153,7 +153,7 @@ public class PortalAccountTests : IClassFixture<PortalAccountTests.Factory>, IAs
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetTokenAsync(_client));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetConnectorTokenAsync(_client));
         (await _client.SendAsync(request)).EnsureSuccessStatusCode();
     }
 
@@ -399,9 +399,66 @@ public class PortalAccountTests : IClassFixture<PortalAccountTests.Factory>, IAs
             item => item.GetProperty("id").GetString() == request.GetProperty("id").GetString());
     }
 
+    // Auditoría M8: el bloque "Direcciones de envío" tiene un botón AÑADIR que pide
+    // el alta por el mismo canal que los EDITAR. Sin la sección "addresses" la
+    // solicitud caía al buzón de contacto y no aparecía entre las pendientes.
+    [Fact]
+    public async Task Empresa_ElAltaDeDireccionSeRegistraComoSolicitud()
+    {
+        var created = await SendAsync(HttpMethod.Post, "/api/portal/business/change-request", new
+        {
+            section = "addresses",
+            changes = new
+            {
+                alias = "GETAFE02",
+                streetAddress = "Polígono Sur",
+                num = "12",
+                zipCode = "28906",
+                city = "Getafe",
+                province = "Madrid",
+                countryIsoId = "ES"
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var request = await JsonAsync(created);
+        Assert.Equal("addresses", request.GetProperty("section").GetString());
+        Assert.Equal("pending", request.GetProperty("status").GetString());
+        Assert.Equal("GETAFE02", request.GetProperty("changes").GetProperty("alias").GetString());
+        Assert.Equal("Getafe", request.GetProperty("changes").GetProperty("city").GetString());
+
+        // Sale en la lista de pendientes de /business, como las otras dos secciones
+        var business = await JsonAsync(await SendAsync(HttpMethod.Get, "/api/portal/business"));
+        Assert.Contains(business.GetProperty("pending").EnumerateArray(),
+            item => item.GetProperty("id").GetString() == request.GetProperty("id").GetString()
+                    && item.GetProperty("section").GetString() == "addresses");
+
+        // Y no toca las direcciones que manda BC: sigue habiendo las del sync
+        Assert.DoesNotContain("GETAFE02",
+            business.GetProperty("addresses").GetRawText());
+    }
+
+    // El alias es lo que identifica la dirección en la lista: sin él no hay solicitud
+    [Fact]
+    public async Task Empresa_AltaDeDireccionSinAlias_Devuelve400()
+    {
+        var response = await SendAsync(HttpMethod.Post, "/api/portal/business/change-request", new
+        {
+            section = "addresses",
+            changes = new { city = "Getafe", zipCode = "28906" }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task Empresa_SolicitudInvalida_Devuelve400()
     {
+        // Un campo de otra sección no se cuela por la de direcciones
+        Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(HttpMethod.Post,
+            "/api/portal/business/change-request",
+            new { section = "addresses", changes = new { alias = "X", canShop = "true" } })).StatusCode);
+
         Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(HttpMethod.Post,
             "/api/portal/business/change-request",
             new { section = "inventada", changes = new { phone = "600" } })).StatusCode);

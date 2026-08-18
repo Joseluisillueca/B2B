@@ -6,7 +6,7 @@
 // cada celda es una cantidad que entra directa en el carrito de la ventana activa.
 
 import { api } from '../api.js';
-import { t } from '../i18n.js';
+import { t, lang } from '../i18n.js';
 import { esc, eur } from '../format.js';
 import { state } from '../state.js';
 import { icons } from '../ui/icons.js';
@@ -18,20 +18,73 @@ import { pager, bindPager } from '../ui/pager.js';
 const AVAILABILITY = ['available', 'consult', 'low'];   // orden de la referencia
 const FACET_PREVIEW = 3;                                // valores antes de "Ver más"
 
-// "MOSTRAR PRECIOS" de /profile (09-profile.png): con PVP el precio recomendado
-// pasa a ser el grande de la fila y el de distribución queda debajo. Si el artículo
-// no trae el precio elegido se enseña el que haya, nunca una fila sin precio.
+// "MOSTRAR PRECIOS" de /profile (09-profile.png): la ficha muestra UNA sola línea
+// de precio, la de la preferencia (PVD por defecto, PVP si así lo pide el usuario),
+// como en la referencia (m7). Si el artículo no trae el precio elegido se enseña el
+// que haya, nunca una fila sin precio.
 const preferred = () => (state.me?.prefs?.showPrices === 'pvp' ? 'pvp' : 'pvd');
 
 const priceOf = (item, kind) =>
-  item?.[kind] == null ? null : { label: kind.toUpperCase(), value: item[kind] };
+  item?.[kind] == null ? null : { label: t(`catalog.price.${kind}`), value: item[kind] };
 
 const main = item => priceOf(item, preferred()) ?? priceOf(item, preferred() === 'pvd' ? 'pvp' : 'pvd');
 
-const second = item => {
-  const other = preferred() === 'pvd' ? 'pvp' : 'pvd';
-  return main(item)?.label === other.toUpperCase() ? null : priceOf(item, other);
+// La ficha del listado solo lleva SILUETA y COLECCIÓN (m6). GRUPO DE EDAD sigue
+// existiendo como faceta del rail, pero no como columna del artículo. Las claves
+// las nombra Business Central, así que se comparan normalizadas (sin acentos ni
+// signos) y en las cuatro lenguas del portal; lo que no reconoce, lo deja pasar.
+const HIDDEN_ATTRS = new Set(['grupo-de-edad']);
+
+// \u2500\u2500 Vocabulario del cat\u00e1logo (M-1) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+//
+// Business Central manda las familias y los atributos con el MISMO texto en los
+// cuatro idiomas, as\u00ed que a\u00f1adir `locale` a la petici\u00f3n no basta: quien traduce el
+// vocabulario del rail es el portal. El backend acompa\u00f1a cada t\u00e9rmino de una clave
+// estable \u2014`families[].id`, `keySlug` del atributo y `slug` del valor\u2014 y de la
+// etiqueta que \u00e9l ha resuelto; aqu\u00ed se busca la clave en el diccionario y, si no
+// est\u00e1, se cae en esa etiqueta y por \u00faltimo en el texto crudo. Las claves de FILTRO
+// (`key` y `value`) no se tocan nunca: son las que viajan en la URL y en la API.
+//
+// El slug se normaliza aqu\u00ed porque el del servidor conserva los acentos
+// ("colecci\u00f3n"); el diccionario usa claves sin acentos y separadas por guiones.
+const slugKey = value => String(value ?? '').normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '');
+
+const vocab = (prefix, slug, label, raw) => {
+  const key = slugKey(slug || raw);
+  if (key) {
+    const translated = t(`catalog.${prefix}.${key}`);
+    if (translated !== `catalog.${prefix}.${key}`) return translated;
+  }
+  return label || raw || '';
 };
+
+/**
+ * Atributos de la ficha, ya traducidos. Con `attributeList` (servidor nuevo) se usan
+ * los slug; con el objeto `attributes` de siempre el slug sale del propio nombre, que
+ * para "Grupo de edad" da exactamente la misma clave.
+ */
+const cardAttrs = item => {
+  const list = Array.isArray(item.attributeList) && item.attributeList.length
+    ? item.attributeList.map(entry => ({
+        slug: entry.keySlug || entry.key,
+        label: vocab('attr', entry.keySlug, entry.label, entry.key),
+        value: vocab('attrValue', entry.valueSlug, entry.valueLabel, entry.value)
+      }))
+    : Object.entries(item.attributes || {}).map(([key, value]) => ({
+        slug: key,
+        label: vocab('attr', key, '', key),
+        value: vocab('attrValue', value, '', value)
+      }));
+
+  return list.filter(entry => !HIDDEN_ATTRS.has(slugKey(entry.slug)));
+};
+
+/** F-03: la etiqueta del corazón describe lo que hace el clic, no lo que ya es */
+const favLabel = on => t(on ? 'catalog.favoriteOff' : 'catalog.favorite');
 
 // El estado del rail vive en la URL: compartir el enlace comparte el filtro, y el
 // buscador del header entra por ?q= sin que el catálogo tenga que saber de él.
@@ -77,6 +130,10 @@ const apiQuery = query => {
     if (values.length) params.set(`a.${key}`, values.join(','));
   params.set('sort', query.sort);
   params.set('window', windowId());
+  // M-1: el vocabulario del catálogo (familias, facetas y valores de atributo) lo
+  // traduce el backend según la locale de la ruta. Mientras no esté implementado
+  // seguirá llegando en español, que es lo que se veía hasta ahora.
+  params.set('locale', lang());
   return params;
 };
 
@@ -176,18 +233,20 @@ export default async function catalog(host) {
 
   // ── Rail de facetas ────────────────────────────────────────────────────────
   function paintRail() {
+    const focused = railFocusKey();
     const lines = data.facets?.families || [];
     const attributes = data.facets?.attributes || [];
-    const availability = data.facets?.availability || [];
 
     rail.innerHTML = `
       <section class="rail-lines">
         <h2>${esc(t('catalog.facet.lines'))}</h2>
-        <button type="button" class="rail-line${query.family ? '' : ' on'}" data-family="">
+        <button type="button" class="rail-line${query.family ? '' : ' on'}" data-family=""
+          aria-pressed="${query.family ? 'false' : 'true'}">
           ${esc(t('nav.catalog'))}</button>
         ${lines.map(line => `
           <button type="button" class="rail-line${query.family === line.id ? ' on' : ''}"
-            data-family="${esc(line.id)}">${esc(line.label)}</button>`).join('')}
+            data-family="${esc(line.id)}" aria-pressed="${query.family === line.id}"
+            >${esc(vocab('family', line.id, line.label, line.id))}</button>`).join('')}
       </section>
 
       <section class="rail-model">
@@ -198,43 +257,70 @@ export default async function catalog(host) {
 
       <section>
         <h2>${esc(t('catalog.facet.availability'))}</h2>
-        ${AVAILABILITY.map(id => {
-          const facet = availability.find(a => a.id === id);
-          return checkbox({
-            group: 'availability', value: id,
-            label: t(`catalog.availability.${id}`),
-            count: facet?.count ?? 0,
-            checked: query.availability.includes(id)
-          });
-        }).join('')}
+        ${AVAILABILITY.map(id => checkbox({
+          group: 'availability', value: id,
+          label: t(`catalog.availability.${id}`),
+          checked: query.availability.includes(id)
+        })).join('')}
       </section>
 
       ${attributes.map(attribute => attributeSection(attribute)).join('')}`;
 
     bindRail();
+    restoreRailFocus(focused);
   }
 
-  const checkbox = ({ group, value, label, count, checked }) => `
+  // Repintar el rail destruye el control que el usuario acaba de usar y el foco cae
+  // al principio del documento: marcar tres casillas seguidas con el teclado era
+  // imposible. Se anota qué control tenía el foco y se recupera tras el repintado.
+  function railFocusKey() {
+    const active = document.activeElement;
+    if (!active || !rail.contains(active)) return '';
+    if (active.id === 'modelSearch') return '#modelSearch';
+    if (active.dataset?.facet) return `.rail-more[data-facet="${CSS.escape(active.dataset.facet)}"]`;
+    if (active.dataset?.family !== undefined)
+      return `.rail-line[data-family="${CSS.escape(active.dataset.family)}"]`;
+    if (active.dataset?.group)
+      return `.rail-check input[data-group="${CSS.escape(active.dataset.group)}"][value="${CSS.escape(active.value)}"]`;
+    return '';
+  }
+
+  function restoreRailFocus(key) {
+    if (!key) return;
+    const target = rail.querySelector(key);
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    if (key === '#modelSearch') target.setSelectionRange(target.value.length, target.value.length);
+  }
+
+  // m1: la referencia no lleva recuento por faceta; `count` llega y no se pinta
+  const checkbox = ({ group, value, label, checked }) => `
     <label class="rail-check">
       <input type="checkbox" data-group="${esc(group)}" value="${esc(value)}" ${checked ? 'checked' : ''}>
       <span>${esc(label)}</span>
-      <span class="rail-count">${esc(String(count))}</span>
     </label>`;
 
   function attributeSection(attribute) {
     const selected = query.attributes[attribute.key] || [];
     const expanded = expandedFacets.has(attribute.key);
     const values = expanded ? attribute.values : attribute.values.slice(0, FACET_PREVIEW);
+    const title = vocab('attr', attribute.keySlug, attribute.label, attribute.key);
 
+    // El nombre del atributo y el de cada valor se traducen; lo que viaja en el
+    // filtro sigue siendo `attribute.key` / `value.value`, tal cual llega de la API.
+    // "Ver más" se repite en cada faceta: el aria-label dice de cuál es.
     return `
       <section>
-        <h2>${esc(attribute.key)}</h2>
+        <h2>${esc(title)}</h2>
         ${values.map(value => checkbox({
-          group: `a.${attribute.key}`, value: value.value, label: value.value,
-          count: value.count, checked: selected.includes(value.value)
+          group: `a.${attribute.key}`, value: value.value,
+          label: vocab('attrValue', value.slug, value.label, value.value),
+          checked: selected.includes(value.value)
         })).join('')}
         ${attribute.values.length > FACET_PREVIEW ? `
-          <button type="button" class="rail-more" data-facet="${esc(attribute.key)}">
+          <button type="button" class="rail-more" data-facet="${esc(attribute.key)}"
+            aria-expanded="${expanded}"
+            aria-label="${esc(`${t(expanded ? 'catalog.less' : 'catalog.more')} · ${title}`)}">
             ${esc(t(expanded ? 'catalog.less' : 'catalog.more'))}</button>` : ''}
       </section>`;
   }
@@ -282,8 +368,11 @@ export default async function catalog(host) {
     search.oninput = () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
+        // El repintado ya devuelve el foco a quien lo tenía (restoreRailFocus); no
+        // se fuerza aquí, que arrancaba el foco a quien hubiera tabulado a otro
+        // control durante los 300 ms de espera.
         query = { ...query, q: search.value.trim(), skip: 0 };
-        load({ keepScroll: true }).then(() => rail.querySelector('#modelSearch')?.focus());
+        load({ keepScroll: true });
       }, 300);
     };
   }
@@ -334,7 +423,7 @@ export default async function catalog(host) {
   }
 
   function article(item, stockWindow, lines) {
-    const attributes = Object.entries(item.attributes || {});
+    const attributes = cardAttrs(item);
     return `
       <article class="item" data-model="${esc(item.modelId)}">
         <div class="item-photo">
@@ -348,20 +437,19 @@ export default async function catalog(host) {
             <h2>${esc(item.name)}</h2>
             <button type="button" class="item-fav" data-model="${esc(item.modelId)}"
               aria-pressed="${item.favorite ? 'true' : 'false'}"
-              aria-label="${esc(t('catalog.favorite'))}" title="${esc(t('catalog.favorite'))}">
+              aria-label="${esc(favLabel(item.favorite))}" title="${esc(favLabel(item.favorite))}">
               ${item.favorite ? icons.heartOn(22) : icons.heart(22)}
             </button>
           </div>
 
           <p class="item-ref">${esc(t('catalog.reference'))} <b>${esc(item.reference || '')}</b></p>
 
-          ${attributes.length ? `<dl class="item-attrs">${attributes.map(([key, value]) => `
-            <div><dt>${esc(key)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>` : ''}
+          ${attributes.length ? `<dl class="item-attrs">${attributes.map(attribute => `
+            <div><dt>${esc(attribute.label)}</dt><dd>${esc(attribute.value)}</dd></div>`).join('')}</dl>` : ''}
 
           ${main(item) ? `
             <p class="item-price"><span>${main(item).label}</span>
               <b>${esc(eur(main(item).value))}</b></p>` : ''}
-          ${second(item) ? `<p class="item-pvp">${second(item).label} ${esc(eur(second(item).value))}</p>` : ''}
         </div>
 
         <div class="item-matrix">
@@ -374,13 +462,22 @@ export default async function catalog(host) {
       </article>`;
   }
 
+  // F-03: el corazón anuncia la ACCIÓN, no el estado. Marcado dice "Quitar de
+  // favoritos" y sin marcar "Añadir a favoritos"; aria-pressed sigue llevando el
+  // estado. Sin esto un lector de pantalla ofrecía "Añadir" sobre algo ya añadido.
+  function paintFav(button, on) {
+    button.setAttribute('aria-pressed', String(on));
+    button.setAttribute('aria-label', favLabel(on));
+    button.setAttribute('title', favLabel(on));
+    button.innerHTML = on ? icons.heartOn(22) : icons.heart(22);
+  }
+
   function bindFavorites() {
     list.querySelectorAll('.item-fav').forEach(button => {
       button.onclick = async () => {
         const modelId = button.dataset.model;
         const on = button.getAttribute('aria-pressed') !== 'true';
-        button.setAttribute('aria-pressed', String(on));
-        button.innerHTML = on ? icons.heartOn(22) : icons.heart(22);
+        paintFav(button, on);
         const item = itemsById[modelId];
         if (item) item.favorite = on;
         try {
@@ -388,8 +485,7 @@ export default async function catalog(host) {
                     : api.del(`/api/portal/favorites/${encodeURIComponent(modelId)}`));
         } catch {
           // Sin red el corazón vuelve a su sitio en vez de mentir
-          button.setAttribute('aria-pressed', String(!on));
-          button.innerHTML = !on ? icons.heartOn(22) : icons.heart(22);
+          paintFav(button, !on);
           if (item) item.favorite = !on;
         }
       };

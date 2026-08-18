@@ -34,8 +34,11 @@ async function content(key) {
 const tileHtml = tile => {
   const window = tile.window === 'scheduled' ? 'scheduled' : 'replenishment';
   const label = tile.title || t(`window.${window}`);
+  // Si el medio del CMS ha desaparecido, la tarjeta cae en el degradado de marca
+  // en vez de enseñar el icono de imagen rota
   const art = tile.imageUrl
-    ? `<img src="${esc(tile.imageUrl)}" alt="${esc(tile.alt || '')}" loading="lazy" decoding="async">`
+    ? `<img src="${esc(tile.imageUrl)}" alt="${esc(tile.alt || '')}" loading="lazy" decoding="async"
+        onerror="this.remove()">`
     : `<span class="t-art" aria-hidden="true"></span>`;
 
   return `

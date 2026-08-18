@@ -8,7 +8,7 @@
 
 import { api } from '../api.js';
 import { t, lang, LANGS } from '../i18n.js';
-import { esc } from '../format.js';
+import { esc, roleLabel } from '../format.js';
 import { state } from '../state.js';
 import { go, current } from '../router.js';
 import { icons } from '../ui/icons.js';
@@ -75,14 +75,15 @@ export default async function profile(host) {
   const dataFacts = () => facts([
     [t('profile.name'), esc(data.name || '')],
     [t('profile.email'), esc(data.email || '')],
-    [t('profile.role'), esc(data.rol || '')],
+    [t('profile.role'), esc(roleLabel(data))],
     [t('profile.language'), esc(t(`lang.${langOf(data.culture)}`))]
   ]);
 
+  // m15: la referencia muestra los valores de Preferencias en mayúsculas (LISTADO)
   const prefsFacts = () => facts([
-    [t('profile.showPrices'), esc(t(`profile.price.${data.prefs.showPrices}`))],
-    [t('profile.listDesktop'), esc(t(`profile.mode.${data.prefs.listDesktop}`))],
-    [t('profile.listMobile'), esc(t(`profile.mode.${data.prefs.listMobile}`))],
+    [t('profile.showPrices'), esc(t(`profile.price.${data.prefs.showPrices}`).toUpperCase())],
+    [t('profile.listDesktop'), esc(t(`profile.mode.${data.prefs.listDesktop}`).toUpperCase())],
+    [t('profile.listMobile'), esc(t(`profile.mode.${data.prefs.listMobile}`).toUpperCase())],
     [t('profile.defaultAddress'), esc(addressLabel(data.prefs.shippingAddressId))]
   ]);
 
@@ -97,7 +98,7 @@ export default async function profile(host) {
       ${field(t('profile.name'), `<input type="text" name="name" maxlength="200"
         value="${esc(data.name || '')}" required>`)}
       ${readonly(t('profile.email'), data.email)}
-      ${readonly(t('profile.role'), data.rol)}
+      ${readonly(t('profile.role'), roleLabel(data))}
       ${field(t('profile.language'), `<select name="culture">
         ${LANGS.map(code => `<option value="${CULTURES[code]}"
           ${CULTURES[code] === data.culture ? ' selected' : ''}>${esc(t(`lang.${code}`))}</option>`).join('')}

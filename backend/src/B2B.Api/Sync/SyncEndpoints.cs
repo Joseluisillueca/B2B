@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using B2B.Api.Auth;
 using B2B.Api.Data;
 using B2B.Api.Portal;
 using Microsoft.EntityFrameworkCore;
@@ -39,12 +40,12 @@ public static class SyncEndpoints
         {
             var type = entityType;
             app.MapPut(route, (HttpRequest request, string id, AppDbContext db) =>
-                UpsertAsync(db, request, type, id, parentId: null)).RequireAuthorization();
+                UpsertAsync(db, request, type, id, parentId: null)).RequireConnector();
         }
 
         // Singleton de empresa: PUT sin id en la ruta (contrato 01 §4.2, Sync Company URL)
         app.MapPut("/api/core/b2binfo", (HttpRequest request, AppDbContext db) =>
-            UpsertAsync(db, request, "company", "company", parentId: null)).RequireAuthorization();
+            UpsertAsync(db, request, "company", "company", parentId: null)).RequireConnector();
 
         // Ofertas del conector: PUT a URL fija SIN id, body = array [{id, offerData}]
         // (contrato 03 §4.2-4.3). Cada elemento se guarda por su id raíz.
@@ -85,15 +86,15 @@ public static class SyncEndpoints
             await db.SaveChangesAsync();
 
             return Results.Ok(new { received });
-        }).RequireAuthorization();
+        }).RequireConnector();
 
         // Rutas que el conector deriva de la URL de clientes con sufijos hardcodeados (contrato 04)
         // El usuario admin, además de guardarse crudo, provisiona el AppUser del portal.
         app.MapPut("/api/clients/{clientId}/users/admin", (HttpRequest request, string clientId, AppDbContext db) =>
-            UpsertAsync(db, request, "client-user", clientId, parentId: clientId)).RequireAuthorization();
+            UpsertAsync(db, request, "client-user", clientId, parentId: clientId)).RequireConnector();
 
         app.MapPut("/api/clients/{clientId}/shipping-addresses/{id}", (HttpRequest request, string clientId, string id, AppDbContext db) =>
-            UpsertAsync(db, request, "shipping-address", id, parentId: clientId)).RequireAuthorization();
+            UpsertAsync(db, request, "shipping-address", id, parentId: clientId)).RequireConnector();
     }
 
     private static async Task<IResult> UpsertAsync(

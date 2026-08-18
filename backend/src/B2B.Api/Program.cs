@@ -26,7 +26,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             builder.Configuration["Jwt:SigningKey"]
             ?? throw new InvalidOperationException("Jwt:SigningKey is not configured")))
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddAdminPolicy();
+    options.AddConnectorPolicy();
+});
+builder.Services.AddLoginRateLimiter(builder.Configuration);
+
+// Auditoría m-6: la clave de firma de appsettings.json se auto-documenta como de
+// desarrollo, pero nada impedía arrancar producción con ella. Ahora sí.
+if (!builder.Environment.IsDevelopment()
+    && builder.Configuration["Jwt:SigningKey"] == SigningKeys.DevelopmentDefault)
+    throw new InvalidOperationException(
+        $"Jwt:SigningKey sigue siendo la clave de desarrollo y el entorno es " +
+        $"\"{builder.Environment.EnvironmentName}\". Configura una clave propia " +
+        "(variable de entorno Jwt__SigningKey o secreto del despliegue) antes de arrancar.");
 
 var app = builder.Build();
 
@@ -40,24 +54,34 @@ using (var scope = app.Services.CreateScope())
     var seedEmail = app.Configuration["Seed:UserEmail"];
     var seedPassword = app.Configuration["Seed:UserPassword"];
     if (!string.IsNullOrEmpty(seedEmail) && !string.IsNullOrEmpty(seedPassword) && !db.Users.Any())
-    {
-        var user = new AppUser { Id = Guid.NewGuid(), Email = seedEmail.ToLowerInvariant(), PasswordHash = "" };
-        user.PasswordHash = new PasswordHasher<AppUser>().HashPassword(user, seedPassword);
-        db.Users.Add(user);
-        db.SaveChanges();
-    }
+        SeedUser(db, seedEmail, seedPassword, ClientIdentity.IntegrationRole);
+
+    // Administrador del CMS (auditoría B-1). El sync solo provisiona usuarios de cliente
+    // (client-admin), así que el rol "admin" tiene que nacer de la configuración. En
+    // desarrollo viene de appsettings.Development.json; en producción, de secretos.
+    var adminEmail = app.Configuration["Seed:AdminEmail"];
+    var adminPassword = app.Configuration["Seed:AdminPassword"];
+    if (!string.IsNullOrEmpty(adminEmail) && !string.IsNullOrEmpty(adminPassword)
+        && !db.Users.Any(u => u.Email == adminEmail.ToLowerInvariant()))
+        SeedUser(db, adminEmail, adminPassword, AdminPolicy.Role);
 
     // Portada de demostración: solo mientras el CMS no haya publicado nada
     if (app.Configuration.GetValue("Seed:PortalContent", true))
         PortalContentSeed.EnsureDemoContent(db);
 }
 
-app.MapOpenApi();
-app.MapScalarApiReference("/docs", options => options.WithTitle("B2B Platform API"));
+// Auditoría m-4: la superficie completa de la API sin autenticar no se publica
+// fuera de desarrollo.
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference("/docs", options => options.WithTitle("B2B Platform API"));
+}
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -107,5 +131,19 @@ app.MapFallbackToFile($"/{{market:regex({Locale})}}/{{lang:regex({Locale})}}/{{v
 app.MapFallbackToFile("/login", PortalShell);
 
 app.Run();
+
+static void SeedUser(AppDbContext db, string email, string password, string role)
+{
+    var user = new AppUser
+    {
+        Id = Guid.NewGuid(),
+        Email = email.ToLowerInvariant(),
+        PasswordHash = "",
+        Role = role
+    };
+    user.PasswordHash = new PasswordHasher<AppUser>().HashPassword(user, password);
+    db.Users.Add(user);
+    db.SaveChanges();
+}
 
 public partial class Program { }

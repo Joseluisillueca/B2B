@@ -1,3 +1,4 @@
+using B2B.Api.Auth;
 using B2B.Api.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,7 +37,7 @@ public static class AdminEndpoints
                 }).ToListAsync();
 
             return Results.Ok(new { total, items });
-        }).RequireAuthorization();
+        }).RequireAdmin();
 
         app.MapGet("/api/admin/summary", async (AppDbContext db) =>
         {
@@ -52,7 +53,7 @@ public static class AdminEndpoints
                 .ToListAsync();
 
             return Results.Ok(new { items });
-        }).RequireAuthorization();
+        }).RequireAdmin();
 
         app.MapGet("/api/admin/sync-documents/{entityType}/{externalId}",
             async (string entityType, string externalId, AppDbContext db) =>
@@ -71,6 +72,6 @@ public static class AdminEndpoints
                 lastReceivedAt = doc.LastReceivedAt,
                 payload = doc.Payload
             });
-        }).RequireAuthorization();
+        }).RequireAdmin();
     }
 }

@@ -66,6 +66,6 @@ public static class AuthEndpoints
                 token = new JwtSecurityTokenHandler().WriteToken(jwt),
                 tokenExpiresIn = expiresAt.ToString(BcDateTimeFormat)
             });
-        });
+        }).RequireRateLimiting(LoginRateLimiter.PolicyName);
     }
 }

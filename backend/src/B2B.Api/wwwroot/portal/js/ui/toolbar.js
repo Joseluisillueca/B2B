@@ -18,8 +18,8 @@ export function toolbar({ sort, view = 'list' } = {}) {
       <!-- Sin Grid el selector no tiene nada que elegir: se deshabilita entero (y
            el title dice por qué) en vez de ofrecer una lista con una sola opción
            viva. Cuando llegue el Grid basta con quitar disabled y el title. -->
+      <!-- m8: la referencia no rotula este selector; el aria-label sigue nombrándolo -->
       <label class="tb-field" title="${esc(t('catalog.viewOnlyList'))}">
-        <span class="tb-legend">${esc(t('catalog.view'))}</span>
         <span class="tb-select">
           ${icons.list(16)}
           <select id="viewMode" aria-label="${esc(t('catalog.view'))}" disabled

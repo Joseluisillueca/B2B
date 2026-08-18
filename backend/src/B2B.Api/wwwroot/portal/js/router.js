@@ -61,9 +61,14 @@ export function go(pathOrView, { replace = false } = {}) {
 }
 
 export async function resolve() {
-  const route = parse() || { market: DEFAULT_MARKET, lang: DEFAULT_LANG, view: 'dashboard' };
-  if (!VIEWS[route.view]) route.view = 'dashboard';
+  // m-11: una ruta inexistente cae en la portada, y la barra de direcciones tiene
+  // que reflejarlo (antes se quedaba /es/es/loquesea con el dashboard pintado).
+  const parsed = parse();
+  const route = parsed || { market: DEFAULT_MARKET, lang: DEFAULT_LANG, view: 'dashboard' };
+  const unknown = !parsed || !VIEWS[route.view];
+  if (unknown) route.view = 'dashboard';
   current = route;
+  if (unknown) history.replaceState({}, '', href('dashboard', route));
 
   await setLang(route.lang);
 

@@ -23,7 +23,7 @@ public class AdminSummaryAndDetailTests : IClassFixture<TestWebApplicationFactor
         var request = new HttpRequestMessage(method, route);
         if (json is not null)
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetTokenAsync(_client));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetAdminTokenAsync(_client));
         return await _client.SendAsync(request);
     }
 

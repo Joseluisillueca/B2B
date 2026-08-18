@@ -5,9 +5,12 @@
 // "Datos fiscales de la empresa" (RAZÓN SOCIAL, CIF, PAÍS, CÓDIGO POSTAL,
 // PROVINCIA, CIUDAD, DIRECCIÓN + recargo de equivalencia), cada uno con EDITAR.
 //
-// Los datos maestros son de Business Central: EDITAR no los escribe, registra una
-// SOLICITUD de cambio (plan, Fase 4). La ficha sigue diciendo lo que dice BC hasta
-// que el cambio vuelva por el sync.
+// Cierra la página el bloque "Direcciones de envío" con su botón AÑADIR, que es el
+// segundo botón que registra `estructura.json` para esta vista (M8).
+//
+// Los datos maestros son de Business Central: ni EDITAR ni AÑADIR los escriben,
+// registran una SOLICITUD de cambio (plan, Fase 4). La ficha sigue diciendo lo que
+// dice BC hasta que el cambio vuelva por el sync.
 
 import { api } from '../api.js';
 import { t, lang } from '../i18n.js';
@@ -21,12 +24,16 @@ const SECTIONS = {
     'streetAddress', 'recargoEquivalencia']
 };
 
+// Campos de una dirección de envío nueva, en el orden en que se piden
+const ADDRESS_FIELDS = ['alias', 'streetAddress', 'num', 'zipCode', 'city', 'province', 'countryIsoId'];
+
 const LABELS = {
   email: 'business.email', phone: 'business.phone', secondaryPhone: 'business.secondaryPhone',
   web: 'business.web', tradeName: 'business.tradeName', billingEmail: 'business.billingEmail',
   fiscalName: 'business.fiscalName', fiscalId: 'business.fiscalId', countryIsoId: 'business.country',
   zipCode: 'business.zipCode', province: 'business.province', city: 'business.city',
-  streetAddress: 'business.street', recargoEquivalencia: 'business.recargo'
+  streetAddress: 'business.street', recargoEquivalencia: 'business.recargo',
+  alias: 'business.alias', num: 'business.addressNum'
 };
 
 /** "ES" → "España (ES)" en el idioma de la ruta, con Intl del navegador */
@@ -71,9 +78,52 @@ export default async function business(host) {
 
       ${section('general', icons.building(20), t('business.general'))}
       ${section('fiscal', icons.coin(20), t('business.fiscal'))}
+      ${addressesSection()}
       ${pending()}`;
     bind();
   }
+
+  // ── Direcciones de envío (M8) ───────────────────────────────────────────────
+  // Las manda BC (shipping-address del sync). AÑADIR no crea la dirección: abre el
+  // formulario y registra la solicitud, igual que hacen los EDITAR de arriba.
+  const addressesSection = () => `
+    <section class="biz-section">
+      <header class="acc-head biz-head">
+        <h2>${icons.truck(20)}${esc(t('business.addresses'))}</h2>
+        ${editing === 'addresses' ? '' : `
+          <button type="button" class="btn-primary acc-edit" data-edit="addresses">
+            ${icons.plus(15)}${esc(t('business.add'))}</button>`}
+      </header>
+      <div class="biz-card">
+        ${editing === 'addresses' ? addressForm() : addressList()}
+      </div>
+    </section>`;
+
+  const addressList = () => {
+    const list = data.addresses || [];
+    if (!list.length) return `<p class="biz-none">${esc(t('business.noAddresses'))}</p>`;
+    return `<ul class="biz-addresses">${list.map(address => `
+      <li>
+        <b>${esc(address.alias || t('business.addressNoAlias'))}</b>
+        <span>${esc(address.label || '')}</span>
+      </li>`).join('')}</ul>`;
+  };
+
+  const addressForm = () => `
+    <form class="biz-form" data-form="addresses">
+      <p class="biz-hint">${icons.alert(16)}<span>${esc(t('business.requestHint'))}</span></p>
+      <div class="biz-grid">
+        ${ADDRESS_FIELDS.map(key => `
+          <p class="acc-field"><label>
+            <span>${esc(t(LABELS[key]))}</span>
+            <input type="text" name="${key}" maxlength="200"${key === 'alias' ? ' required' : ''}>
+          </label></p>`).join('')}
+      </div>
+      <div class="acc-actions">
+        <button type="button" class="btn-ghost" data-cancel>${esc(t('business.cancel'))}</button>
+        <button type="submit" class="btn-primary">${esc(t('business.request'))}</button>
+      </div>
+    </form>`;
 
   const section = (id, icon, title) => `
     <section class="biz-section">
@@ -188,8 +238,11 @@ export default async function business(host) {
     form.onsubmit = async event => {
       event.preventDefault();
       const id = form.dataset.form;
-      const source = id === 'general' ? data.general : data.fiscal;
       const values = new FormData(form);
+
+      if (id === 'addresses') return submitAddress(form, values);
+
+      const source = id === 'general' ? data.general : data.fiscal;
 
       // Solo viaja lo que ha cambiado: la solicitud dice exactamente qué revisar
       const changes = {};
@@ -222,6 +275,36 @@ export default async function business(host) {
       }
       render();
     };
+  }
+
+  // Alta de dirección de envío: mismo canal que los EDITAR
+  // (POST /api/portal/business/change-request, sección "addresses").
+  async function submitAddress(form, values) {
+    const changes = {};
+    for (const key of ADDRESS_FIELDS) {
+      const value = String(values.get(key) ?? '').trim();
+      if (value) changes[key] = value;
+    }
+
+    if (!changes.alias || Object.keys(changes).length < 2) {
+      notice = { tone: 'error', text: t('business.addressRequired') };
+      render();
+      return;
+    }
+
+    const submit = form.querySelector('button[type=submit]');
+    submit.disabled = true;
+    try {
+      const created = await api.post('/api/portal/business/change-request',
+        { section: 'addresses', changes });
+      data = { ...data, pending: [created, ...(data.pending || [])] };
+      editing = '';
+      notice = { tone: 'ok', text: t('business.requested') };
+    } catch (failure) {
+      submit.disabled = false;
+      notice = { tone: 'error', text: failure.body?.error || t('business.requestError') };
+    }
+    render();
   }
 
   // Al final del módulo: las plantillas de arriba son const y no se pueden usar

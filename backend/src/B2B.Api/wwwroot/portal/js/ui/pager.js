@@ -7,7 +7,12 @@ import { icons } from './icons.js';
 
 export const PAGE_SIZES = [12, 24, 48, 96];
 
-export function pager({ total, skip, take }) {
+/**
+ * `size: false` deja solo «‹ 1 ›» centrado, sin el selector "Mostrar": es lo que
+ * pide la vista de carritos favoritos (M9), la única del inventario que va sin
+ * buscador y sin "Mostrar".
+ */
+export function pager({ total, skip, take, size = true }) {
   const pages = Math.max(1, Math.ceil(total / take));
   const current = Math.floor(skip / take) + 1;
   const numbers = pageWindow(current, pages);
@@ -23,13 +28,14 @@ export function pager({ total, skip, take }) {
       <button type="button" class="pg-arrow" data-page="${current + 1}" ${current >= pages ? 'disabled' : ''}
         aria-label="${esc(t('pager.next'))}">${icons.right(16)}</button>
 
-      <label class="pg-size">
-        <span class="sr-only">${esc(t('pager.show'))}</span>
-        <select id="pageSize" aria-label="${esc(t('pager.show'))}">
-          ${PAGE_SIZES.map(size => `<option value="${size}"${size === take ? ' selected' : ''}>
-            ${esc(t('pager.showN', { n: size }))}</option>`).join('')}
-        </select>
-      </label>
+      ${size ? `
+        <label class="pg-size">
+          <span class="sr-only">${esc(t('pager.show'))}</span>
+          <select id="pageSize" aria-label="${esc(t('pager.show'))}">
+            ${PAGE_SIZES.map(option => `<option value="${option}"${option === take ? ' selected' : ''}>
+              ${esc(t('pager.showN', { n: option }))}</option>`).join('')}
+          </select>
+        </label>` : ''}
     </nav>`;
 }
 

@@ -194,7 +194,7 @@ public class AdminSyncDocumentsTests : IClassFixture<TestWebApplicationFactory>
     [Fact]
     public async Task ListSyncDocuments_FiltraPorTipoYPagina()
     {
-        var token = await _factory.GetTokenAsync(_client);
+        var token = await _factory.GetAdminTokenAsync(_client);
         for (var i = 1; i <= 3; i++)
         {
             var put = new HttpRequestMessage(HttpMethod.Put, $"/api/core/warehouses/ALM{i}")

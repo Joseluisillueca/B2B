@@ -23,6 +23,9 @@ public static class ShopEndpoints
             {
                 page.Windows,
                 window = page.Window,
+                // M-1: idioma efectivo de este payload (es|en|fr|it). Sin el parámetro
+                // locale la respuesta es la de siempre, en español.
+                locale = page.Locale,
                 page.Total,
                 query.Skip,
                 query.Take,
@@ -36,12 +39,13 @@ public static class ShopEndpoints
                 items = page.Rows.Select(row => new
                 {
                     modelId = row.Model.ExternalId,
-                    name = row.Model.Name,
+                    name = row.Name,
                     reference = row.Model.ExternalReference,
                     familyId = row.Model.FamilyId,
-                    familyLabel = Label(row.Model.FamilyId),
+                    familyLabel = row.FamilyLabel,
                     segments = row.Segments,
                     attributes = row.Attributes,
+                    attributeList = row.AttributeList,
                     imageUri = row.ImageUri,
                     pvd = row.Pvd,
                     pvp = row.Pvp,
@@ -69,7 +73,7 @@ public static class ShopEndpoints
         {
             var actor = await PortalScope.ActorAsync(principal, db);
             var query = CatalogQuery.From(request.Query);
-            var page = await CatalogService.QueryAsync(db, Prices(actor), query with { Skip = 0, Take = CatalogQuery.MaxTake },
+            var page = await CatalogService.QueryAsync(db, Prices(actor), query with { Skip = 0, Take = CatalogQuery.ExportTake },
                 DateTimeOffset.UtcNow);
 
             var rows = page.Rows.SelectMany(row => row.Variants.Select(variant => new object?[]

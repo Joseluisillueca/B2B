@@ -3,7 +3,11 @@
 
 :root {
   --ink:#0d0d0d; --ink-2:#1c1c1e; --ink-3:#2e2e33;
-  --paper:#f6f6f3; --card:#ffffff; --line:#e7e6e1;
+  /* La referencia va sobre blanco puro: --paper es el fondo de página y --surface
+     el gris muy tenue que se reserva para hovers y cabeceras de bloque. */
+  --paper:#ffffff; --surface:#f4f4f1; --card:#ffffff; --line:#e3e2dd;
+  /* Canal lateral de la referencia: ~25 px sobre 1600 (1,5 %), casi a sangre */
+  --gutter:1.5%;
   /* --muted es texto secundario sobre blanco/papel: #6b6b74 llega a 4,5:1 sobre
      ambos. --line y los filetes de tabla siguen siendo decorativos (no son bordes
      de control) y se quedan claros. Los bordes de CONTROL usan --line-control. */
@@ -18,7 +22,7 @@
 }
 
 * { box-sizing:border-box; }
-html { scrollbar-color:#c9c8c1 var(--paper); }
+html { scrollbar-color:#c9c8c1 var(--surface); }
 body { margin:0; min-height:100vh; background:var(--paper); color:var(--ink);
   font:14px/1.5 "Archivo",system-ui,sans-serif; font-variant-numeric:tabular-nums;
   display:flex; flex-direction:column; }
@@ -44,17 +48,22 @@ main { flex:1; outline:none; }
    ~151×39 px dentro de un header de ~72 px, así que el texto se sube a 2.8rem. */
 #chrome-header .brand { font-size:2.8rem; color:#fff; text-decoration:none; line-height:1; }
 
+/* Caja BLANCA sobre el header negro: es el elemento de mayor contraste de la
+   franja superior en la referencia (01-dashboard.png), con la lupa a la derecha. */
 .h-search { position:relative; width:min(20rem,32vw); }
-.h-search input { width:100%; background:transparent; border:1px solid #4a4a52; border-radius:var(--r-sm);
-  padding:.62rem 2.4rem .62rem .8rem; color:#fff; transition:border-color .15s var(--ease); }
-.h-search input::placeholder { color:#8b8b93; }
-.h-search input:focus { border-color:#fff; }
+.h-search input { width:100%; background:#fff; border:1px solid #d6d5d0; border-radius:var(--r-sm);
+  padding:.62rem 2.6rem .62rem .85rem; color:var(--ink); transition:border-color .15s var(--ease); }
+.h-search input::placeholder { color:var(--muted); opacity:1; }
+.h-search input:focus { border-color:var(--blue); }
 /* Sobre el header negro el azul de marca no contrasta: el foco se marca en blanco */
 .h-search input:focus-visible, #chrome-header button:focus-visible, #chrome-header a:focus-visible {
   outline:2px solid #fff; outline-offset:2px; }
-.h-search button { position:absolute; right:.35rem; top:50%; translate:0 -50%; padding:.35rem;
-  color:#cfcfd6; border-radius:6px; display:grid; place-items:center; }
-.h-search button:hover { color:#fff; }
+.h-search button { position:absolute; right:.4rem; top:50%; translate:0 -50%; padding:.35rem;
+  color:var(--ink); border-radius:6px; display:grid; place-items:center; }
+.h-search button:hover { color:var(--blue); }
+/* La lupa vive DENTRO de la caja blanca: el anillo blanco del header sería
+   invisible ahí, así que aquí se marca en azul (y con más peso que esa regla). */
+#chrome-header .h-search button:focus-visible { outline:2px solid var(--blue); outline-offset:1px; }
 
 #chrome-header .spacer { flex:1; }
 
@@ -72,7 +81,7 @@ main { flex:1; outline:none; }
   border-radius:var(--r-sm); box-shadow:var(--shadow-card); padding:.4rem; z-index:30; }
 .h-menu a, .h-menu button { display:block; width:100%; text-align:left; padding:.55rem .75rem; border-radius:6px;
   font-size:.88rem; text-decoration:none; transition:background .12s var(--ease); }
-.h-menu a:hover, .h-menu button:hover { background:var(--paper); }
+.h-menu a:hover, .h-menu button:hover { background:var(--surface); }
 .h-menu hr { border:none; border-top:1px solid var(--line); margin:.35rem .3rem; }
 .h-menu .out { color:var(--out); }
 /* Idioma y vista sin distracciones solo cuelgan del menú cuando el header los oculta */
@@ -97,24 +106,29 @@ main { flex:1; outline:none; }
 .h-cart:hover { background:var(--blue-deep); }
 
 /* ══════════════ Barra blanca de navegación ══════════════ */
-#chrome-nav { background:#fff; border-bottom:1px solid var(--line); padding:0 1.6rem; }
+#chrome-nav { background:#fff; border-bottom:1px solid var(--line); padding:0 var(--gutter); }
 #chrome-nav a { display:inline-block; padding:1rem .2rem; margin-right:1.6rem; font-size:.95rem;
   text-decoration:none; border-bottom:2px solid transparent; transition:border-color .15s var(--ease); }
 #chrome-nav a:hover { border-bottom-color:var(--ink); }
-#chrome-nav a[aria-current="page"] { border-bottom-color:var(--blue); font-weight:600; }
+/* La referencia no marca "Catálogo" como activo (m11): el estado sigue expuesto en
+   aria-current, pero sin subrayado ni negrita. */
 
 /* ══════════════ Footer ══════════════ */
-/* --muted es global (texto secundario sobre blanco); sobre el gris del footer
-   necesita ser más oscuro para llegar al 4,5:1, así que se fija aquí. */
-#chrome-footer { --footer-ink:#5c5c65; background:#e9e9e6; color:var(--footer-ink); margin-top:3rem;
-  display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1.4rem 1.6rem; flex-wrap:wrap; }
-#chrome-footer .social { display:flex; gap:.35rem; }
-#chrome-footer .social a { padding:.4rem; border-radius:50%; color:var(--ink); opacity:.65;
+/* Banda gris oscura con TODO el bloque centrado — copyright y los 5 iconos
+   sociales juntos en el centro, en blanco (03-orders.png). */
+#chrome-footer { background:#323232; color:#fff; margin-top:3rem;
+  display:flex; align-items:center; justify-content:center; gap:1.5rem; padding:1.05rem 1.6rem; flex-wrap:wrap; }
+#chrome-footer > span:first-child { font-size:.85rem; letter-spacing:.01em; }
+#chrome-footer .social { display:flex; align-items:center; gap:.9rem; }
+#chrome-footer .social a { padding:.25rem; border-radius:6px; color:#fff; opacity:.92;
   display:grid; place-items:center; transition:opacity .15s var(--ease), background .15s var(--ease); }
-#chrome-footer .social a:hover { opacity:1; background-color:#dcdcd6; }
+#chrome-footer .social a:hover { opacity:1; background-color:rgba(255,255,255,.16); }
+#chrome-footer .social a:focus-visible { outline:2px solid #fff; outline-offset:2px; }
 
 /* ══════════════ Vistas con chrome ══════════════ */
-.page { max-width:100rem; margin:0 auto; padding:1.6rem 1.5rem 3rem; }
+/* La referencia va casi a sangre: ~1,5 % de canal lateral, sin contenedor centrado.
+   La cabecera negra de las tablas llega prácticamente al borde de la ventana. */
+.page { margin:0; padding:1.6rem var(--gutter) 3rem; }
 .crumbs { color:var(--muted); font-size:.82rem; margin:0 0 .6rem; }
 .crumbs a { text-decoration:none; }
 .crumbs a:hover { text-decoration:underline; }
@@ -139,7 +153,7 @@ body[data-focus="on"] .crumb, body[data-focus="on"] h1.title { display:none; }
 /* La portada va sobre blanco y sin marco (ni radio ni sombra), como la referencia */
 body:has(#hero) { background:#fff; }
 
-.hero { max-width:100rem; margin:0 auto; padding:1.6rem 1.5rem 0; }
+.hero { margin:0; padding:1.6rem var(--gutter) 0; }
 .hero + .page { padding-top:4.7rem; }
 
 .carousel { position:relative; overflow:hidden; border-radius:0; background:var(--ink-2);
@@ -330,7 +344,9 @@ table.grid .grid-empty:hover td { background:transparent; }
    los números siguen centrados y el selector se va a la derecha (o baja de línea). */
 .pager { display:flex; align-items:center; justify-content:center; gap:.3rem;
   padding:1.6rem 0; flex-wrap:wrap; }
-.pager::before { content:""; flex:1 1 0; }
+/* El pseudoelemento equilibra el peso de "Mostrar" para que los números queden
+   centrados; sin ese selector (carritos favoritos, M9) sobra y desplazaría todo. */
+.pager:has(.pg-size)::before { content:""; flex:1 1 0; }
 .pager button { min-width:2.1rem; height:2.1rem; border-radius:var(--r-sm); display:grid; place-items:center;
   color:var(--ink); font-size:.86rem; transition:background .15s var(--ease); }
 .pager button:hover:not([disabled]) { background:#eceae5; }
@@ -451,9 +467,17 @@ body[data-focus="on"] .cat-count::before { content:none; }
 .sz { border:1px solid var(--line); background:#fff; overflow:hidden;
   transition:border-color .12s var(--ease), box-shadow .12s var(--ease); }
 .sz:focus-within { border-color:var(--blue); box-shadow:0 0 0 3px rgba(43,43,255,.14); }
-.sz-head { background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center;
-  gap:.35rem; padding:.22rem .3rem; font-size:.76rem; font-weight:700; }
+/* m9: la cifra de talla va pegada a la izquierda de la cabecera negra, como en la
+   referencia; el precio por talla (kids) se va al extremo contrario. */
+.sz-head { background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:space-between;
+  gap:.35rem; padding:.22rem .45rem; font-size:.76rem; font-weight:700; }
+.sz-size { margin-right:auto; }
 .sz-price { font-weight:600; font-size:.72rem; white-space:nowrap; }
+
+/* F-02: artículo sin stock en ninguna talla → "Consultar" bajo la matriz */
+.matrix-consult { margin:.6rem 0 0; max-width:45rem; }
+.matrix-consult a { color:var(--blue); font-weight:700; font-size:.9rem; text-underline-offset:3px; }
+.matrix-consult a:hover { color:var(--blue-deep); }
 .sz-body { display:flex; align-items:center; justify-content:space-between; gap:.2rem; padding:.28rem .35rem; }
 .sz-qty { width:2.1rem; border:none; background:transparent; padding:.1rem 0; font-weight:600;
   -moz-appearance:textfield; }
@@ -615,7 +639,7 @@ table.grid .num { white-space:nowrap; }
   margin:0; text-transform:uppercase; }
 .doc-modal-head p { margin:.25rem 0 0; color:var(--muted); font-size:.88rem; }
 .doc-modal-close { color:var(--muted); padding:.35rem; border-radius:6px; flex:none; }
-.doc-modal-close:hover { color:var(--ink); background:var(--paper); }
+.doc-modal-close:hover { color:var(--ink); background:var(--surface); }
 .doc-modal-body { max-height:70vh; overflow-y:auto; }
 
 .doc-facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));
@@ -639,7 +663,12 @@ table.grid .num { white-space:nowrap; }
 #cart-drawer { position:fixed; inset:0 0 0 auto; width:min(24rem,94vw); z-index:40; background:var(--card);
   box-shadow:-18px 0 50px -30px rgba(13,13,13,.45); translate:100% 0; transition:translate .3s var(--ease);
   display:flex; flex-direction:column; }
+/* El panel existe en todas las páginas, solo desplazado fuera de la ventana. Sin
+   `visibility:hidden` su botón de cerrar y sus papeleras seguían siendo enfocables
+   con el tabulador, al final del documento y fuera de la pantalla. El retardo de la
+   visibilidad conserva la animación de salida. */
 #cart-drawer[hidden] { display:flex !important; visibility:hidden; }
+#cart-drawer:not(.on) { visibility:hidden; transition:translate .3s var(--ease), visibility 0s .3s; }
 #cart-drawer.on { translate:0 0; visibility:visible; }
 #cart-drawer .top { background:var(--ink); color:#fff; padding:1.05rem 1.2rem; display:flex; align-items:center; gap:.7rem; }
 #cart-drawer .top h2 { font-family:"Archivo Black",sans-serif; font-size:1rem; margin:0; text-transform:uppercase; }
@@ -684,7 +713,9 @@ table.grid .num { white-space:nowrap; }
 .acc-facts > div:last-child { border-bottom:none; }
 .acc-facts dt { font-size:.74rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink); }
 .acc-facts dd { margin:.4rem 0 0; color:#3f3f46; font-size:.95rem; min-height:1.2rem; }
-.acc-none { color:var(--muted-2); }
+/* Es la única señal de que un dato de la ficha está vacío: --muted-2 sobre blanco
+   se queda en 2,8:1, así que va con --muted (5,3:1). */
+.acc-none { color:var(--muted); }
 
 /* Editar: los mismos huecos, con campos en vez de texto */
 .acc-form { padding:1.2rem 1.5rem 1.4rem; }
@@ -699,7 +730,7 @@ table.grid .num { white-space:nowrap; }
 
 /* Banda gris de "Cambiar contraseña": ocupa el ancho de la ventana bajo la página */
 .acc-band { background:#f3f2ef; border-top:1px solid var(--line); margin-top:2.5rem; }
-.acc-band-inner { max-width:100rem; margin:0 auto; padding:2.2rem 1.5rem 2.6rem; }
+.acc-band-inner { margin:0; padding:2.2rem var(--gutter) 2.6rem; }
 .acc-band h2 { font-family:"Archivo Black",sans-serif; font-size:1.45rem; letter-spacing:-.025em; margin:0; }
 .acc-band-lead { margin:.25rem 0 1.3rem; color:#3f3f46; }
 .acc-password { display:grid; gap:.9rem; max-width:none; }
@@ -741,6 +772,17 @@ table.grid .num { white-space:nowrap; }
   font-size:.85rem; }
 .biz-hint svg { flex:none; margin-top:.1rem; }
 
+/* M8 · Direcciones de envío: una fila por dirección, alias arriba y la dirección
+   completa debajo, con los mismos filetes que las tarjetas de datos. */
+.biz-addresses { list-style:none; margin:0; padding:0; }
+.biz-addresses li { padding:.85rem 0; border-bottom:1px solid var(--line); }
+.biz-addresses li:first-child { padding-top:0; }
+.biz-addresses li:last-child { padding-bottom:0; border-bottom:none; }
+.biz-addresses b { display:block; font-size:.72rem; font-weight:700; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--muted); }
+.biz-addresses span { display:block; margin-top:.25rem; }
+.biz-none { margin:0; color:var(--muted); }
+
 .biz-pending { margin-top:1rem; }
 .biz-pending h2 { font-size:.9rem; text-transform:uppercase; letter-spacing:.05em; margin:0 0 .6rem; }
 .biz-pending ul { list-style:none; margin:0; padding:0; }
@@ -756,8 +798,8 @@ table.grid .num { white-space:nowrap; }
 .stat-title { font-family:"Archivo Black",sans-serif; font-size:1.7rem; letter-spacing:-.03em;
   margin:0 0 1.2rem; }
 
-.stat-chart { background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm);
-  padding:1rem .6rem .4rem; }
+/* M7: en la referencia el gráfico va a sangre, sin tarjeta ni borde */
+.stat-chart { background:none; border:none; border-radius:0; padding:0; }
 .stat-chart svg { width:100%; height:auto; display:block; }
 .stat-tick line { stroke:#eceae5; stroke-width:1; }
 .stat-tick text { fill:var(--muted); font-size:13px; }
@@ -767,13 +809,6 @@ table.grid .num { white-space:nowrap; }
 .stat-bar.negative rect { fill:var(--out); }
 .stat-month { fill:#3f3f46; font-size:13px; }
 .stat-na { fill:var(--muted); font-size:14px; }
-
-.stat-summary { display:flex; gap:2.4rem; flex-wrap:wrap; margin:1.4rem 0 1.8rem; }
-.stat-summary dt { font-size:.72rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
-  color:var(--muted); }
-.stat-summary dd { margin:.3rem 0 0; font-family:"Archivo Black",sans-serif; font-size:1.5rem;
-  letter-spacing:-.02em; }
-.stat-table table.grid td.num, .stat-table table.grid th.num { text-align:right; }
 
 /* ══════════════ Contacto (07-contact.png) ══════════════ */
 .ct-lead { margin:0 0 1.8rem; font-size:1rem; color:#3f3f46; }
@@ -898,7 +933,6 @@ table.grid .num { white-space:nowrap; }
   .acc-head { flex-wrap:wrap; }
   .acc-band-inner { padding:1.6rem 1rem 2rem; }
   .stat-title { font-size:1.25rem; }
-  .stat-summary dd { font-size:1.2rem; }
   .ct-actions button, .acc-password button { width:100%; }
 
   /* Carritos: PROPIETARIO/A es el dato prescindible cuando no cabe la tabla.

@@ -3,8 +3,11 @@
 // enmarcado en azul. El punto es el mismo color que el chip de la columna ESTADO,
 // así que la leyenda y la tabla se leen juntas.
 //
-// El color nunca va solo: cada fila lleva su etiqueta escrita y el contador de
-// documentos, así que el rail sigue siendo legible sin distinguir colores.
+// El color nunca va solo: cada fila lleva su etiqueta escrita, así que el rail
+// sigue siendo legible sin distinguir colores. La referencia NO muestra el
+// recuento de documentos por estado (m1), de modo que `count` se recibe pero no
+// se pinta: la etiqueta ocupa toda la fila y ya no se recorta ("Pendiente De…"
+// completo en facturas, m14).
 
 import { esc } from '../format.js';
 
@@ -20,7 +23,6 @@ export function statusRail({ label, items, active = '' }) {
           data-status="${esc(item.id)}"${item.id === active ? ' aria-current="true"' : ''}>
           <i class="srail-dot tone-${esc(item.tone)}" aria-hidden="true"></i>
           <span class="srail-label">${esc(item.label)}</span>
-          <span class="srail-count">${esc(String(item.count ?? 0))}</span>
         </button>`).join('')}
     </nav>`;
 }

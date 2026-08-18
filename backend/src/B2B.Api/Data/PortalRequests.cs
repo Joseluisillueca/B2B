@@ -14,7 +14,8 @@ public class BusinessChangeRequest
     public Guid UserId { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    /// "general" (datos de contacto) | "fiscal" (datos fiscales)
+    /// "general" (datos de contacto) | "fiscal" (datos fiscales) |
+    /// "addresses" (alta de dirección de envío)
     public string Section { get; set; } = BusinessSections.General;
 
     /// { campo: valorSolicitado } tal cual lo mandó el formulario
@@ -29,7 +30,11 @@ public static class BusinessSections
     public const string General = "general";
     public const string Fiscal = "fiscal";
 
-    public static readonly string[] All = [General, Fiscal];
+    /// Alta de dirección de envío (botón AÑADIR del bloque "Direcciones de envío").
+    /// El portal no crea la dirección: la pide, como el resto de datos maestros.
+    public const string Addresses = "addresses";
+
+    public static readonly string[] All = [General, Fiscal, Addresses];
 }
 
 // Formulario de /contact (07-contact.png). Se guarda siempre: el correo a

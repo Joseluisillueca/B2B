@@ -41,8 +41,15 @@ public static class AccountEndpoints
     {
         [BusinessSections.General] = ["email", "phone", "secondaryPhone", "web", "tradeName", "billingEmail"],
         [BusinessSections.Fiscal] = ["fiscalName", "fiscalId", "countryIsoId", "zipCode", "province",
-                                     "city", "streetAddress", "recargoEquivalencia"]
+                                     "city", "streetAddress", "recargoEquivalencia"],
+        // M8: alta de dirección de envío. Mismos campos que el formulario del bloque
+        // "Direcciones de envío" (views/business.js, ADDRESS_FIELDS).
+        [BusinessSections.Addresses] = ["alias", "streetAddress", "num", "zipCode", "province",
+                                        "city", "countryIsoId"]
     };
+
+    /// El alias es lo que identifica la dirección en la lista: sin él no hay solicitud
+    private const string AddressKey = "alias";
 
     // Adjuntos del formulario de contacto: lo que un cliente manda de verdad con una
     // incidencia (foto, albarán en PDF, hoja de cálculo). Sin ejecutables ni SVG.
@@ -175,7 +182,8 @@ public static class AccountEndpoints
 
             var section = (body.Section ?? "").Trim().ToLowerInvariant();
             if (!ChangeableFields.TryGetValue(section, out var allowed))
-                return Bad("Sección desconocida: usa \"general\" o \"fiscal\".");
+                return Bad($"Sección desconocida: usa {string.Join(", ",
+                    ChangeableFields.Keys.Select(key => $"\"{key}\""))}.");
 
             var changes = new JsonObject();
             foreach (var (key, value) in body.Changes ?? [])
@@ -187,6 +195,11 @@ public static class AccountEndpoints
 
             if (changes.Count == 0)
                 return Bad("No has pedido ningún cambio.");
+
+            // Una dirección sin alias no se puede ni listar ni referir después en BC
+            if (section == BusinessSections.Addresses
+                && string.IsNullOrWhiteSpace(DocumentProjections.Text(changes[AddressKey])))
+                return Bad("La dirección necesita un alias.");
 
             var request = new BusinessChangeRequest
             {

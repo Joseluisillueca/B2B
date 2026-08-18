@@ -1,6 +1,6 @@
 # Estado del proyecto — B2B Platform (lejan)
 
-> Actualizado: 2026-08-17. Este documento es la foto de estado para retomar el
+> Actualizado: 2026-08-18. Este documento es la foto de estado para retomar el
 > trabajo en cualquier sesión. La historia fina está en `git log` y el plan en
 > [plan-portal.md](plan-portal.md).
 
@@ -13,7 +13,7 @@ con acabado más moderno. Backend .NET 10 + PostgreSQL que implementa el mismo
 contrato API que consume el conector MITO de Business Central (BC no se toca:
 solo URLs y credenciales de su Setup en el corte).
 
-## Hecho (todo commiteado, 213/213 tests)
+## Hecho (330/330 tests; la corrección de la auditoría todavía sin commitear)
 
 | Pieza | Dónde |
 |---|---|
@@ -37,7 +37,31 @@ Método usado (pedido por el cliente): subagentes Opus por fase
 
 1. **Auditoría integral final del /goal** (visual: 14 vistas vs capturas;
    funcional: recorridos completos; técnica: tests/consola/i18n/aislamiento).
-   Se lanzó y se canceló por saldo — relanzar y corregir en bucle hasta CUMPLE.
+   Dos rondas ejecutadas (2026-08-17/18):
+   - **Ronda 1** (NO CUMPLE): 1 bloqueante (B-1 CMS sin rol), 15 mayores, ~33 menores.
+     Corregido: B-1 (rol `admin`), 9 mayores visuales (footer, buscador, contenedor a
+     sangre, literales EN/IT, checkout, estadísticas, empresa/AÑADIR, carritos),
+     F-01 (clic del carrito), F-02 (`Consultar`), M-1 (locale catálogo), M-4 (claves
+     de rol), m-1/m-4/m-5/m-6/m-8, F-07 (SVG) — 26/27 en front + 8 de accesibilidad.
+   - **Ronda 2** (NO CUMPLE): las 11 correcciones encargadas verificadas OK, pero
+     aparece **B-2** (bloqueante nuevo: `/api/sync/*` y `/api/query/*` sin rol,
+     alcanzables con token `client-admin`) + M5 parcial (nombre del método de pago
+     corrupto) + menores nuevos. **Todo corregido en esta sesión**: B-2 (política
+     `bc-connector` = rol `integration`+`admin` en sync/query, verificada en vivo
+     403/401/200; ver `Auth/ConnectorPolicy.cs`), M5 (dato de dev `payment-method`
+     con U+FFFD reparado en BD; el código de proyección era correcto), n-1 (hero de
+     dev restaurado a las imágenes de demo), R2 (proporción del gráfico de
+     estadísticas a ~3.49:1) y n-4 (PVD/PVP por i18n con `catalog.price.*`).
+   - **Pendiente de cerrar el bucle**: ronda 3 de verificación visual/funcional en
+     curso; el auditor funcional de la ronda 2 se cortó por límite de sesión (repetir).
+   - **Menores no bloqueantes aplazados** (hardening/contrato, anotados en
+     `scratchpad/auditoria/tecnica-r2.md`): n-2 (el rate-limit cuenta también logins
+     correctos y particiona por IP sin `ForwardedHeaders`), n-3 (`keySlug` del catálogo
+     conserva acentos), m-7/m-9 (el catálogo y los documentos se cargan enteros en
+     memoria por petición — validar con volumen real antes del corte), autoalojar
+     Google Fonts (m-10). Ninguno afecta a la paridad del /goal.
+   - Aislamiento multi-cliente: probado con **un** cliente en la BD de dev; **repetir
+     con dos clientes sembrados** antes del corte (es donde se manifestarían B-1/B-2).
 2. **Fase BC** (`plan-portal.md`): envío real del pedido a BC vía sus API OData
    (contrato `docs/contrato-api/06-api-odata-bc.md`), PDFs vía `salesDocuments`,
    estados. Requiere del cliente: tenant + client id/secret OAuth del sandbox.
@@ -49,15 +73,31 @@ Método usado (pedido por el cliente): subagentes Opus por fase
 
 ```bash
 docker compose up -d                      # en backend/ (PostgreSQL 17)
-cd backend && dotnet test                 # 213/213
+cd backend && dotnet test                 # 330/330
 # Servidor para navegar (carpeta publicada para no bloquear builds):
 dotnet publish src/B2B.Api -c Release -o /tmp/portal-run
 ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5199 /tmp/portal-run/B2B.Api.exe
 ```
 
 - Portal: http://localhost:5199/es/es/dashboard — `integracion@dev.local` / `dev-password` → SELECCIONAR
-- CMS: http://localhost:5199/admin (mismas credenciales) — portada en Web → Portada
-- API docs: http://localhost:5199/docs
+- **CMS: http://localhost:5199/admin — `admin@dev.local` / `dev-password`** (rol `admin`).
+  Desde la corrección de la auditoría (B-1) el CMS es exclusivo del rol `admin`: el
+  usuario del portal y el de integración reciben **403** en `/api/admin/*` y el CMS
+  lo dice con un mensaje de permiso insuficiente. El administrador se siembra al
+  arrancar desde `Seed:AdminEmail` / `Seed:AdminPassword`
+  (`appsettings.Development.json`); en producción va por secretos del despliegue.
+- **Sync/Query del conector** (`/api/sync/*`, `/api/query/*`) exigen rol de servicio
+  desde la corrección de B-2: solo `integration` (la cuenta del Setup del conector) y
+  `admin`. Un token de cliente del portal (`client-admin`) recibe **403**. En dev,
+  `admin@dev.local` sirve para probar el sync a mano; el conector real usa su Integration
+  User. Ojo: en dev `integracion@dev.local` es el usuario de navegación del portal
+  (`client-admin`), no el del conector — son cuentas distintas por diseño.
+- API docs: http://localhost:5199/docs — **solo en Development**; fuera de ese entorno
+  `/docs` y `/openapi` devuelven 404 (m-4).
+- Fuera de Development el arranque **falla** si `Jwt:SigningKey` sigue siendo la clave
+  de desarrollo de `appsettings.json` (m-6): pásala por `Jwt__SigningKey`.
+- `POST /api/auth/login` está limitado a 10 intentos por minuto y por IP (m-5),
+  configurable con `Auth:Login:PermitLimit` / `Auth:Login:WindowSeconds`.
 - Los agentes de desarrollo usan el puerto **5198** para no chocar con el 5199 del usuario.
 - Tras `dotnet run`/tests, matar todo `B2B.Api.exe` (bloquea el build) — ojo: mata también el 5199.
 

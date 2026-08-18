@@ -2,7 +2,7 @@
 // Una fila por credencial; el agente multi-cliente tendrá varias.
 
 import { t } from '../i18n.js';
-import { esc, initial } from '../format.js';
+import { esc, initial, roleLabel, typeLabel } from '../format.js';
 import { state } from '../state.js';
 import { go } from '../router.js';
 import { icons } from '../ui/icons.js';
@@ -38,8 +38,8 @@ const row = (credential, index) => `
     <span class="avatar">${esc(initial(credential.name))}</span>
     <span class="id">
       <b>${esc(credential.name)}</b>
-      <span class="type">${esc(credential.type)}</span><br>
-      <span class="role">${esc(credential.role)}</span>
+      <span class="type">${esc(typeLabel(credential))}</span><br>
+      <span class="role">${esc(roleLabel(credential))}</span>
     </span>
     <button type="button" class="pick" data-pick="${index}">
       ${icons.login(16)} ${esc(t('credentials.select'))}

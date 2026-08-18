@@ -30,14 +30,14 @@ public class AdminMediaTests : IClassFixture<TestWebApplicationFactory>
         form.Add(file, "file", fileName);
 
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/media") { Content = form };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetTokenAsync(_client));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetAdminTokenAsync(_client));
         return await _client.SendAsync(request);
     }
 
     private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string route)
     {
         var request = new HttpRequestMessage(method, route);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetTokenAsync(_client));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetAdminTokenAsync(_client));
         return await _client.SendAsync(request);
     }
 
@@ -82,9 +82,47 @@ public class AdminMediaTests : IClassFixture<TestWebApplicationFactory>
         Assert.NotEqual(primera.GetProperty("url").GetString(), segunda.GetProperty("url").GetString());
     }
 
+    // F-07: el wordmark y los iconos de la portada son SVG; el CMS tiene que poder
+    // subirlos. La subida es solo-admin desde B-1 y el contenido se revisa antes de
+    // escribirlo: nada de <script> ni de manejadores de evento dentro del dibujo.
+    private static readonly byte[] Svg = System.Text.Encoding.UTF8.GetBytes(
+        """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><rect width="8" height="8"/></svg>""");
+
+    [Fact]
+    public async Task Subida_DeUnSvg_SeGuardaYSeLista()
+    {
+        var response = await UploadAsync(Svg, "Wordmark Lejan.svg", "image/svg+xml");
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var name = body.GetProperty("name").GetString()!;
+        Assert.EndsWith(".svg", body.GetProperty("url").GetString());
+        Assert.Equal("image/svg+xml", body.GetProperty("contentType").GetString());
+        Assert.True(File.Exists(Path.Combine(_factory.MediaRoot, name)));
+
+        var list = await (await SendAsync(HttpMethod.Get, "/api/admin/media")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(list.GetProperty("items").EnumerateArray(), i => i.GetProperty("name").GetString() == name);
+    }
+
+    [Theory]
+    [InlineData("""<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>""")]
+    [InlineData("""<svg xmlns="http://www.w3.org/2000/svg"><rect onload="alert(1)"/></svg>""")]
+    [InlineData("""<svg xmlns="http://www.w3.org/2000/svg"><a href="javascript:alert(1)"><rect/></a></svg>""")]
+    public async Task Subida_DeUnSvgConScript_Devuelve400YNoEscribeNada(string svg)
+    {
+        var antes = Directory.Exists(_factory.MediaRoot) ? Directory.GetFiles(_factory.MediaRoot).Length : 0;
+
+        var response = await UploadAsync(System.Text.Encoding.UTF8.GetBytes(svg), "trampa.svg", "image/svg+xml");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var despues = Directory.Exists(_factory.MediaRoot) ? Directory.GetFiles(_factory.MediaRoot).Length : 0;
+        Assert.Equal(antes, despues);
+    }
+
     [Theory]
     [InlineData("script.txt", "text/plain")]              // no es una imagen
-    [InlineData("marca.svg", "image/svg+xml")]            // SVG: ejecuta script en el mismo origen
+    [InlineData("marca.svg", "image/png")]                // extensión SVG, tipo que no cuadra
+    [InlineData("truco.png", "image/svg+xml")]            // tipo SVG, extensión que no cuadra
     [InlineData("truco.png", "text/html")]                // extensión de imagen, contenido no
     [InlineData("truco.php", "image/png")]                // tipo de imagen, extensión ejecutable
     [InlineData("sin-extension", "image/png")]

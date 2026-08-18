@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using B2B.Api.Auth;
 using B2B.Api.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,7 +37,7 @@ public static class QueryEndpoints
             var items = await query.Select(o => new { id = o.ExternalId }).ToListAsync();
 
             return Results.Ok(new { items });
-        }).RequireAuthorization();
+        }).RequireConnector();
 
         app.MapDelete("/api/catalog/offers/{id}", async (string id, AppDbContext db) =>
         {
@@ -51,7 +52,7 @@ public static class QueryEndpoints
 
             await db.SaveChangesAsync();
             return Results.Ok(new { id, deleted = doc is not null || offer is not null });
-        }).RequireAuthorization();
+        }).RequireConnector();
 
         app.MapMethods("/api/orders/search", ["GET", "POST"], async (HttpRequest request, AppDbContext db) =>
         {
@@ -62,7 +63,7 @@ public static class QueryEndpoints
             var orders = await db.SyncDocuments.Where(d => d.EntityType == "order").ToListAsync();
             var items = new JsonArray(orders.Select(o => JsonNode.Parse(o.Payload)).ToArray());
             return Results.Ok(new JsonObject { ["items"] = items });
-        }).RequireAuthorization();
+        }).RequireConnector();
     }
 
     private static async Task<string?> ReadBodyAsync(HttpRequest request)
