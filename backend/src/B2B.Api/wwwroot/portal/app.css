@@ -1,31 +1,39 @@
-/* Portal B2B lejan™ — tokens de marca e identidad del cascarón.
-   Misma paleta y tipografía que shop.html: negro, blanco y azul eléctrico. */
+/* Portal B2B lejan™ — sistema de diseño "Premium editorial".
+   Lienzo crema cálido, verde profundo de marca + terracota de acento, display
+   serif (Fraunces) sobre cuerpo Inter, tablas silenciosas y layout contenido.
+   Rediseño 2026-08 (ver tag v1-paridad-lejan para el estado de paridad con lejan). */
 
 :root {
-  --ink:#0d0d0d; --ink-2:#1c1c1e; --ink-3:#2e2e33;
-  /* La referencia va sobre blanco puro: --paper es el fondo de página y --surface
-     el gris muy tenue que se reserva para hovers y cabeceras de bloque. */
-  --paper:#ffffff; --surface:#f4f4f1; --card:#ffffff; --line:#e3e2dd;
-  /* Canal lateral de la referencia: ~25 px sobre 1600 (1,5 %), casi a sangre */
-  --gutter:1.5%;
-  /* --muted es texto secundario sobre blanco/papel: #6b6b74 llega a 4,5:1 sobre
-     ambos. --line y los filetes de tabla siguen siendo decorativos (no son bordes
-     de control) y se quedan claros. Los bordes de CONTROL usan --line-control. */
-  --muted:#6b6b74; --muted-2:#9a9aa2; --line-control:#8f8e88;
-  --blue:#2b2bff; --blue-deep:#1f1fd6; --blue-soft:#eaeaff;
-  --ok:#12813d; --low:#b97d10; --out:#c62b21;
-  --r:14px; --r-sm:8px;
-  --shadow:0 1px 2px rgba(13,13,13,.05), 0 10px 30px -18px rgba(13,13,13,.25);
-  --shadow-card:0 2px 4px rgba(13,13,13,.04), 0 24px 60px -30px rgba(13,13,13,.35);
+  /* Tinta cálida casi negra en vez del negro puro del portal original */
+  --ink:#221d17; --ink-2:#3a332a; --ink-3:#4e463a;
+  /* Papel crema (nunca blanco puro), superficie cálida para hovers/cabeceras,
+     tarjeta casi blanca cálida y filete cálido. */
+  --paper:#faf6ef; --surface:#efe8da; --card:#fffdf8; --line:#e7ded0;
+  /* Layout editorial: columna contenida y centrada, con canal lateral cómodo
+     (antes iba casi a sangre para replicar a lejan; ahora respira). */
+  --gutter:clamp(1.25rem, 5vw, 4rem); --maxw:1240px;
+  --muted:#6f665a; --muted-2:#9c9484; --line-control:#c7bda8;
+  /* Se conservan los nombres --blue* (los usan 100+ reglas): ahora son el VERDE
+     de marca. --accent es la terracota, para acentos puntuales (carrito, foco de
+     marca), nunca como color de cuerpo. */
+  --blue:#1f5c46; --blue-deep:#123f30; --blue-soft:#e6efe9;
+  --accent:#c4633a; --accent-deep:#a4502c; --accent-soft:#f6e6da;
+  --ok:#1f7a45; --low:#b07d18; --out:#bb3b2a;
+  --r:18px; --r-sm:11px;
+  --shadow:0 1px 2px rgba(34,29,23,.04), 0 14px 34px -22px rgba(34,29,23,.20);
+  --shadow-card:0 2px 6px rgba(34,29,23,.05), 0 34px 74px -38px rgba(34,29,23,.30);
   --ease:cubic-bezier(.16,1,.3,1);
-  --header-h:4.5rem;
+  --header-h:4.75rem;
+  /* Cabecera verde de marca con tinta crema */
+  --header-bg:#1c5340; --header-ink:#f3eee2; --header-ink-2:#b7c8bc;
+  --display:"Fraunces", Georgia, "Times New Roman", serif;
 }
 
 * { box-sizing:border-box; }
-html { scrollbar-color:#c9c8c1 var(--surface); }
+html { scrollbar-color:#c9bfab var(--surface); }
 body { margin:0; min-height:100vh; background:var(--paper); color:var(--ink);
-  font:14px/1.5 "Archivo",system-ui,sans-serif; font-variant-numeric:tabular-nums;
-  display:flex; flex-direction:column; }
+  font:15px/1.6 "Inter",system-ui,sans-serif; font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased; display:flex; flex-direction:column; }
 ::selection { background:var(--blue); color:#fff; }
 :focus-visible { outline:2px solid var(--blue); outline-offset:2px; border-radius:4px; }
 button { font:inherit; cursor:pointer; border:none; background:none; padding:0; color:inherit; }
@@ -38,15 +46,15 @@ main { flex:1; outline:none; }
   padding:.6rem 1rem; z-index:100; }
 .skip:focus { left:0; }
 
-.brand { font-family:"Archivo Black",sans-serif; letter-spacing:-.045em; text-transform:lowercase; }
+.brand { font-family:var(--display); font-weight:600; letter-spacing:-.01em; text-transform:lowercase; }
 .brand sup { font-size:.42em; letter-spacing:0; vertical-align:.95em; }
 
-/* ══════════════ Header negro ══════════════ */
-#chrome-header { position:sticky; top:0; z-index:20; background:var(--ink); color:#fff;
-  display:flex; align-items:center; gap:1.1rem; padding:0 1.6rem; height:var(--header-h); }
-/* Interino hasta que llegue el SVG del wordmark: el logo de la referencia mide
-   ~151×39 px dentro de un header de ~72 px, así que el texto se sube a 2.8rem. */
-#chrome-header .brand { font-size:2.8rem; color:#fff; text-decoration:none; line-height:1; }
+/* ══════════════ Header verde de marca ══════════════ */
+#chrome-header { position:sticky; top:0; z-index:20; background:var(--header-bg); color:var(--header-ink);
+  display:flex; align-items:center; gap:1.1rem; padding:0 clamp(1rem,4vw,2.4rem); height:var(--header-h);
+  border-bottom:1px solid rgba(0,0,0,.14); }
+/* Wordmark serif en crema; el italic de Fraunces le da carácter editorial */
+#chrome-header .brand { font-size:2.2rem; font-style:italic; color:var(--header-ink); text-decoration:none; line-height:1; }
 
 /* Caja BLANCA sobre el header negro: es el elemento de mayor contraste de la
    franja superior en la referencia (01-dashboard.png), con la lupa a la derecha. */
@@ -70,12 +78,12 @@ main { flex:1; outline:none; }
 .h-user { display:flex; align-items:center; gap:.6rem; position:relative; }
 .h-user > button { display:flex; align-items:center; gap:.6rem; padding:.3rem .4rem; border-radius:var(--r-sm);
   transition:background .15s var(--ease); }
-.h-user > button:hover { background:#26262b; }
-.avatar { width:2rem; height:2rem; border-radius:50%; background:#5c5c64; color:#fff; flex:none;
+.h-user > button:hover { background:rgba(255,255,255,.12); }
+.avatar { width:2.1rem; height:2.1rem; border-radius:50%; background:var(--accent); color:#fff; flex:none;
   display:grid; place-items:center; font-weight:700; font-size:.85rem; text-transform:uppercase; }
 .h-user .who { text-align:left; line-height:1.35; font-size:.8rem; }
-.h-user .who .l1 { color:#fff; white-space:nowrap; }
-.h-user .who .l2 { color:#b6b6be; }
+.h-user .who .l1 { color:var(--header-ink); white-space:nowrap; }
+.h-user .who .l2 { color:var(--header-ink-2); }
 
 .h-menu { position:absolute; top:calc(100% + .6rem); right:0; min-width:15rem; background:#fff; color:var(--ink);
   border-radius:var(--r-sm); box-shadow:var(--shadow-card); padding:.4rem; z-index:30; }
@@ -89,36 +97,39 @@ main { flex:1; outline:none; }
 .h-menu .m-title { display:block; padding:.5rem .75rem .15rem; font-size:.72rem; font-weight:700;
   letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
 
-.h-icon { color:#e7e7ec; padding:.45rem; border-radius:var(--r-sm); display:grid; place-items:center;
+.h-icon { color:var(--header-ink); padding:.45rem; border-radius:var(--r-sm); display:grid; place-items:center;
   transition:background .15s var(--ease), color .15s var(--ease); }
-.h-icon:hover { background:#26262b; }
-.h-icon[aria-pressed="true"] { background:#fff; color:var(--ink); }
-#chrome-header .sep { width:1px; height:1.6rem; background:#3a3a3f; }
+.h-icon:hover { background:rgba(255,255,255,.12); }
+.h-icon[aria-pressed="true"] { background:var(--header-ink); color:var(--blue); }
+#chrome-header .sep { width:1px; height:1.6rem; background:rgba(255,255,255,.22); }
 
-.h-lang { display:flex; align-items:center; gap:.35rem; border:1px solid #4a4a52; border-radius:var(--r-sm);
-  padding:.45rem .6rem .45rem .75rem; font-size:.85rem; font-weight:600; color:#fff; text-transform:uppercase;
-  transition:border-color .15s var(--ease); }
-.h-lang:hover { border-color:#fff; }
+.h-lang { display:flex; align-items:center; gap:.35rem; border:1px solid rgba(255,255,255,.3); border-radius:999px;
+  padding:.45rem .6rem .45rem .8rem; font-size:.82rem; font-weight:600; color:var(--header-ink); text-transform:uppercase;
+  transition:border-color .15s var(--ease), background .15s var(--ease); }
+.h-lang:hover { border-color:var(--header-ink); background:rgba(255,255,255,.08); }
 
-.h-cart { display:flex; align-items:center; gap:.55rem; background:var(--blue); color:#fff;
-  border-radius:var(--r-sm); padding:.68rem 1.1rem; font-weight:700; font-size:.85rem; letter-spacing:.02em;
-  transition:background .15s var(--ease); white-space:nowrap; }
-.h-cart:hover { background:var(--blue-deep); }
+/* Carrito: acento terracota, el único botón "acción" del header verde */
+.h-cart { display:flex; align-items:center; gap:.55rem; background:var(--accent); color:#fff;
+  border-radius:999px; padding:.68rem 1.25rem; font-weight:600; font-size:.83rem; letter-spacing:.02em;
+  transition:background .15s var(--ease), transform .15s var(--ease); white-space:nowrap; }
+.h-cart:hover { background:var(--accent-deep); transform:translateY(-1px); }
 
-/* ══════════════ Barra blanca de navegación ══════════════ */
-#chrome-nav { background:#fff; border-bottom:1px solid var(--line); padding:0 var(--gutter); }
-#chrome-nav a { display:inline-block; padding:1rem .2rem; margin-right:1.6rem; font-size:.95rem;
-  text-decoration:none; border-bottom:2px solid transparent; transition:border-color .15s var(--ease); }
-#chrome-nav a:hover { border-bottom-color:var(--ink); }
+/* ══════════════ Barra de navegación ══════════════ */
+/* El padding con max() alinea el contenido con la columna centrada de .page sin
+   necesitar un wrapper (el nav pinta <a> directo desde chrome.js). */
+#chrome-nav { background:var(--card); border-bottom:1px solid var(--line);
+  padding:0 max(var(--gutter), calc((100% - var(--maxw)) / 2)); }
+#chrome-nav a { display:inline-block; padding:.95rem .2rem; margin-right:1.6rem; font-size:.9rem;
+  letter-spacing:.01em; text-decoration:none; border-bottom:2px solid transparent; transition:border-color .15s var(--ease), color .15s var(--ease); }
+#chrome-nav a:hover { border-bottom-color:var(--blue); color:var(--blue); }
 /* La referencia no marca "Catálogo" como activo (m11): el estado sigue expuesto en
    aria-current, pero sin subrayado ni negrita. */
 
 /* ══════════════ Footer ══════════════ */
-/* Banda gris oscura con TODO el bloque centrado — copyright y los 5 iconos
-   sociales juntos en el centro, en blanco (03-orders.png). */
-#chrome-footer { background:#323232; color:#fff; margin-top:3rem;
-  display:flex; align-items:center; justify-content:center; gap:1.5rem; padding:1.05rem 1.6rem; flex-wrap:wrap; }
-#chrome-footer > span:first-child { font-size:.85rem; letter-spacing:.01em; }
+/* Banda de tinta cálida con el bloque centrado — copyright + 5 iconos sociales. */
+#chrome-footer { background:var(--ink); color:#e9e0d0; margin-top:4rem;
+  display:flex; align-items:center; justify-content:center; gap:1.5rem; padding:1.6rem; flex-wrap:wrap; }
+#chrome-footer > span:first-child { font-size:.82rem; letter-spacing:.04em; text-transform:uppercase; opacity:.85; }
 #chrome-footer .social { display:flex; align-items:center; gap:.9rem; }
 #chrome-footer .social a { padding:.25rem; border-radius:6px; color:#fff; opacity:.92;
   display:grid; place-items:center; transition:opacity .15s var(--ease), background .15s var(--ease); }
@@ -128,12 +139,13 @@ main { flex:1; outline:none; }
 /* ══════════════ Vistas con chrome ══════════════ */
 /* La referencia va casi a sangre: ~1,5 % de canal lateral, sin contenedor centrado.
    La cabecera negra de las tablas llega prácticamente al borde de la ventana. */
-.page { margin:0; padding:1.6rem var(--gutter) 3rem; }
-.crumbs { color:var(--muted); font-size:.82rem; margin:0 0 .6rem; }
+.page { max-width:var(--maxw); margin:0 auto; padding:2.4rem var(--gutter) 4.5rem; }
+.crumbs { color:var(--muted); font-size:.8rem; letter-spacing:.02em; margin:0 0 .7rem; text-transform:uppercase; }
 .crumbs a { text-decoration:none; }
-.crumbs a:hover { text-decoration:underline; }
+.crumbs a:hover { color:var(--blue); }
 .crumbs span { color:var(--ink); }
-h1.title { font-family:"Archivo Black",sans-serif; font-size:2.75rem; letter-spacing:-.035em; margin:0 0 1.75rem; }
+h1.title { font-family:var(--display); font-weight:500; font-size:clamp(2.2rem,4.2vw,3.2rem);
+  letter-spacing:-.015em; line-height:1.04; margin:0 0 2rem; }
 .cat-headline { display:flex; align-items:baseline; gap:.8rem; flex-wrap:wrap; }
 /* Vista sin distracciones: se va el H1 y las migas se quedan en "Inicio" (20-header-ojo.png) */
 body[data-focus="on"] .crumb, body[data-focus="on"] h1.title { display:none; }
@@ -150,14 +162,15 @@ body[data-focus="on"] .crumb, body[data-focus="on"] h1.title { display:none; }
 /* ══════════════ Portada: carrusel + tarjetas de acceso ══════════════ */
 /* Contenido servido por el CMS (portal_content). Las medidas siguen 01-dashboard.png:
    carrusel ~3.4:1 a ancho de página y dos tarjetas-imagen bajo el H1. */
-/* La portada va sobre blanco y sin marco (ni radio ni sombra), como la referencia */
-body:has(#hero) { background:#fff; }
+/* La portada va sobre el papel crema; el carrusel y las tarjetas son piezas
+   editoriales con radio y sombra suave (antes iban a sangre y sin marco). */
+body:has(#hero) { background:var(--paper); }
 
-.hero { margin:0; padding:1.6rem var(--gutter) 0; }
-.hero + .page { padding-top:4.7rem; }
+.hero { max-width:var(--maxw); margin:0 auto; padding:2.4rem var(--gutter) 0; }
+.hero + .page { padding-top:2.4rem; }
 
-.carousel { position:relative; overflow:hidden; border-radius:0; background:var(--ink-2);
-  aspect-ratio:3.4/1; box-shadow:none; }
+.carousel { position:relative; overflow:hidden; border-radius:var(--r); background:var(--ink-2);
+  aspect-ratio:3.4/1; box-shadow:var(--shadow-card); }
 .c-track { display:flex; height:100%; transition:transform .55s var(--ease); }
 .c-slide { position:relative; flex:0 0 100%; display:block; color:#fff; text-decoration:none; }
 .c-slide img { width:100%; height:100%; object-fit:cover; display:block; user-select:none; }
@@ -165,7 +178,7 @@ body:has(#hero) { background:#fff; }
 .c-caption { position:absolute; left:0; right:0; bottom:0; padding:2.4rem 2.2rem 3.2rem;
   display:flex; flex-direction:column; align-items:flex-start; gap:.35rem;
   background:linear-gradient(transparent, rgba(13,13,13,.72)); }
-.c-caption strong { font-family:"Archivo Black",sans-serif; font-size:clamp(1.3rem,2.6vw,2.2rem);
+.c-caption strong { font-family:var(--display); font-size:clamp(1.3rem,2.6vw,2.2rem);
   letter-spacing:-.03em; line-height:1.1; }
 .c-caption span { font-size:clamp(.9rem,1.2vw,1.05rem); color:#e9e9ee; }
 .c-caption .c-cta { margin-top:.7rem; background:var(--blue); color:#fff; font-weight:700;
@@ -192,15 +205,15 @@ body:has(#hero) { background:#fff; }
 .c-dots .c-play:hover { opacity:1; }
 .c-dots button:focus-visible { outline:2px solid #fff; outline-offset:1px; }
 
-.hero-skeleton { aspect-ratio:3.4/1; border-radius:0; background:#e9e8e3; }
-.tile-skeleton { aspect-ratio:16/9; border-radius:0; background:#e9e8e3; }
+.hero-skeleton { aspect-ratio:3.4/1; border-radius:var(--r); background:var(--surface); }
+.tile-skeleton { aspect-ratio:16/9; border-radius:var(--r); background:var(--surface); }
 .hero-skeleton, .tile-skeleton { background-image:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.65) 50%,transparent 80%);
   background-size:220% 100%; animation:sheen 1.4s var(--ease) infinite; }
 @keyframes sheen { from { background-position:180% 0; } to { background-position:-80% 0; } }
 
-.tiles { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; }
-.tile { position:relative; display:block; overflow:hidden; border-radius:0; aspect-ratio:16/9;
-  background:var(--ink); color:#fff; text-decoration:none; box-shadow:none; }
+.tiles { display:grid; grid-template-columns:repeat(2,1fr); gap:1.2rem; }
+.tile { position:relative; display:block; overflow:hidden; border-radius:var(--r); aspect-ratio:16/9;
+  background:var(--ink); color:#fff; text-decoration:none; box-shadow:var(--shadow); }
 /* Sobre la foto el azul se pierde: el foco se marca en blanco con halo azul */
 .tile:focus-visible { outline:3px solid #fff; outline-offset:-3px; box-shadow:0 0 0 3px var(--blue); }
 .tile img, .tile .t-art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
@@ -230,12 +243,13 @@ body:has(#hero) { background:#fff; }
 }
 
 /* ══════════════ Pantallas sin chrome (login / credenciales) ══════════════ */
-body[data-chrome="off"] { background:linear-gradient(135deg,#3f7fe0 0%,#5a9de8 45%,#7fb2ec 100%); }
+/* Degradado editorial verde→salvia sobre crema, en vez del azul del portal original */
+body[data-chrome="off"] { background:linear-gradient(155deg,#123f30 0%,#265b47 42%,#6f9070 78%,#c9d0a6 100%); }
 body[data-chrome="credentials"] {
-  background:linear-gradient(120deg,#5d9fe6 0%,#79b2df 35%,#9fc9b6 70%, #b9d69a 100%); }
+  background:linear-gradient(150deg,#1c5340 0%,#3d6d55 38%,#8aa17e 72%,#d8d3ab 100%); }
 .sheet { min-height:100vh; display:grid; place-items:center; padding:2rem 1rem; }
-.sheet .card { background:#fff; border-radius:4px; box-shadow:var(--shadow-card); padding:2.4rem 2.2rem; }
-.sheet .card .brand { display:block; text-align:center; font-size:3.1rem; color:var(--ink); margin:0 0 1.9rem; }
+.sheet .card { background:var(--card); border-radius:var(--r); box-shadow:var(--shadow-card); padding:2.8rem 2.4rem; }
+.sheet .card .brand { display:block; text-align:center; font-style:italic; font-size:3.2rem; color:var(--ink); margin:0 0 1.9rem; }
 
 /* Login (00-inicio.png) */
 .login-card { width:min(29rem,100%); }
@@ -309,7 +323,7 @@ body[data-chrome="credentials"] {
 .dlg { border:none; padding:0; background:transparent; max-width:min(28rem,92vw); }
 .dlg::backdrop { background:rgba(13,13,13,.45); }
 .dlg .panel { text-align:left; padding:1.5rem 1.6rem 1.3rem; box-shadow:var(--shadow-card); }
-.dlg h2 { font-family:"Archivo Black",sans-serif; font-size:1.15rem; letter-spacing:-.02em;
+.dlg h2 { font-family:var(--display); font-size:1.15rem; letter-spacing:-.02em;
   margin:0 0 .5rem; color:var(--ink); text-transform:uppercase; }
 .dlg p { margin:0; color:#3f3f46; font-size:.95rem; }
 .dlg label { display:block; margin-top:1rem; }
@@ -320,12 +334,16 @@ body[data-chrome="credentials"] {
 .dlg input:focus { border-color:var(--blue); }
 .dlg .dlg-actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1.4rem; flex-wrap:wrap; }
 
-/* Tabla de listado: cabecera negra en mayúsculas, como el portal actual */
-table.grid { width:100%; border-collapse:collapse; background:var(--card); }
-table.grid th { background:var(--ink); color:#fff; text-align:left; font-size:.74rem; letter-spacing:.07em;
-  text-transform:uppercase; padding:.85rem 1rem; font-weight:700; }
-table.grid td { padding:.9rem 1rem; border-bottom:1px solid var(--line); font-size:.9rem; }
-table.grid tbody tr:hover td { background:#fbfbf9; }
+/* Tabla de listado — editorial "silenciosa": sin cabecera negra. La cabecera es
+   una tira crema con tinta apagada y un filete inferior; las tarjetas de tabla
+   flotan sobre el papel con radio y sombra tenue. */
+table.grid { width:100%; border-collapse:separate; border-spacing:0; background:var(--card);
+  border:1px solid var(--line); border-radius:var(--r); overflow:hidden; box-shadow:var(--shadow); }
+table.grid th { background:var(--surface); color:var(--muted); text-align:left; font-size:.7rem; letter-spacing:.08em;
+  text-transform:uppercase; padding:.95rem 1.1rem; font-weight:600; border-bottom:1px solid var(--line); }
+table.grid td { padding:1rem 1.1rem; border-bottom:1px solid var(--line); font-size:.9rem; }
+table.grid tbody tr:last-child td { border-bottom:none; }
+table.grid tbody tr:hover td { background:var(--paper); }
 table.grid .grid-empty td { text-align:center; color:var(--muted); padding:1.6rem 1rem; }
 table.grid .grid-empty:hover td { background:transparent; }
 .grid-actions { width:3.5rem; text-align:right; }
@@ -432,12 +450,12 @@ body[data-focus="on"] .cat-count::before { content:none; }
 .item-art { color:var(--ink); opacity:.2; }
 
 .item-title { display:flex; align-items:flex-start; gap:1rem; }
-.item h2 { font-family:"Archivo Black",sans-serif; font-size:1.3rem; line-height:1.15; letter-spacing:-.02em;
+.item h2 { font-family:var(--display); font-size:1.3rem; line-height:1.15; letter-spacing:-.02em;
   margin:0; text-transform:uppercase; flex:1; }
 .item-fav { color:var(--ink); padding:.15rem; border-radius:6px; flex:none;
   transition:color .15s var(--ease), scale .15s var(--ease); }
 .item-fav:hover { scale:1.1; }
-.item-fav[aria-pressed="true"] { color:var(--blue); }
+.item-fav[aria-pressed="true"] { color:var(--accent); }
 
 .item-ref { margin:.85rem 0 0; font-size:.92rem; color:#3f3f46; }
 .item-ref b { font-weight:600; color:var(--ink); }
@@ -452,7 +470,7 @@ body[data-focus="on"] .cat-count::before { content:none; }
 .item-price { display:flex; align-items:baseline; gap:.7rem; margin:1.1rem 0 0; }
 .item-info .item-price { flex-direction:column; align-items:flex-start; gap:.1rem; }
 .item-price span { font-size:.9rem; color:#3f3f46; }
-.item-price b { font-family:"Archivo Black",sans-serif; font-size:1.7rem; letter-spacing:-.02em; }
+.item-price b { font-family:var(--display); font-size:1.7rem; letter-spacing:-.02em; }
 .item-pvp { margin:.2rem 0 0; color:var(--muted); font-size:.85rem; }
 .item-matrix .matrix-price { margin-top:1rem; }
 .item-matrix .matrix-price b { font-size:1.35rem; }
@@ -522,7 +540,7 @@ body[data-focus="on"] .cat-count::before { content:none; }
 
 .ck-lines-head { display:flex; align-items:center; justify-content:space-between; gap:1rem;
   flex-wrap:wrap; margin:2rem 0 .9rem; }
-.ck-lines-head h2 { font-family:"Archivo Black",sans-serif; font-size:1.4rem; letter-spacing:-.02em; margin:0; }
+.ck-lines-head h2 { font-family:var(--display); font-size:1.4rem; letter-spacing:-.02em; margin:0; }
 .ck-empty { background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm);
   padding:1.3rem 1.5rem; margin:0; font-size:1.05rem; font-weight:700; }
 
@@ -635,7 +653,7 @@ table.grid .num { white-space:nowrap; }
 .doc-modal { padding:1.4rem 1.6rem 1.5rem; text-align:left; color:var(--ink); }
 .doc-modal-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem;
   margin-bottom:1.2rem; }
-.doc-modal-head h2 { font-family:"Archivo Black",sans-serif; font-size:1.25rem; letter-spacing:-.02em;
+.doc-modal-head h2 { font-family:var(--display); font-size:1.25rem; letter-spacing:-.02em;
   margin:0; text-transform:uppercase; }
 .doc-modal-head p { margin:.25rem 0 0; color:var(--muted); font-size:.88rem; }
 .doc-modal-close { color:var(--muted); padding:.35rem; border-radius:6px; flex:none; }
@@ -671,7 +689,7 @@ table.grid .num { white-space:nowrap; }
 #cart-drawer:not(.on) { visibility:hidden; transition:translate .3s var(--ease), visibility 0s .3s; }
 #cart-drawer.on { translate:0 0; visibility:visible; }
 #cart-drawer .top { background:var(--ink); color:#fff; padding:1.05rem 1.2rem; display:flex; align-items:center; gap:.7rem; }
-#cart-drawer .top h2 { font-family:"Archivo Black",sans-serif; font-size:1rem; margin:0; text-transform:uppercase; }
+#cart-drawer .top h2 { font-family:var(--display); font-size:1rem; margin:0; text-transform:uppercase; }
 #cart-drawer .top .win { color:var(--muted-2); font-size:.78rem; }
 #cart-drawer .top button { margin-left:auto; color:var(--muted-2); }
 #cart-drawer .top button:hover { color:#fff; }
@@ -689,7 +707,7 @@ table.grid .num { white-space:nowrap; }
 .cart-drop { color:var(--muted); padding:.15rem; border-radius:5px; }
 .cart-drop:hover { color:var(--out); }
 .cart-total { display:flex; justify-content:space-between; font-size:1.05rem; margin-bottom:.9rem; }
-.cart-total b { font-family:"Archivo Black",sans-serif; letter-spacing:-.02em; }
+.cart-total b { font-family:var(--display); letter-spacing:-.02em; }
 .cart-note { margin:.6rem 0 0; text-align:center; color:var(--muted); font-size:.78rem; }
 #veil { position:fixed; inset:0; z-index:39; background:rgba(13,13,13,.35); opacity:0;
   pointer-events:none; transition:opacity .3s var(--ease); }
@@ -702,7 +720,7 @@ table.grid .num { white-space:nowrap; }
 
 .acc-head { display:flex; align-items:center; justify-content:space-between; gap:1rem;
   margin-bottom:1rem; min-height:2.6rem; }
-.acc-head h2 { font-family:"Archivo Black",sans-serif; font-size:1.35rem; letter-spacing:-.025em;
+.acc-head h2 { font-family:var(--display); font-size:1.35rem; letter-spacing:-.025em;
   margin:0; display:flex; align-items:center; gap:.6rem; }
 .acc-edit { padding:.55rem 1rem; }
 
@@ -729,9 +747,9 @@ table.grid .num { white-space:nowrap; }
 .acc-actions { display:flex; justify-content:flex-end; gap:.6rem; flex-wrap:wrap; margin-top:1.2rem; }
 
 /* Banda gris de "Cambiar contraseña": ocupa el ancho de la ventana bajo la página */
-.acc-band { background:#f3f2ef; border-top:1px solid var(--line); margin-top:2.5rem; }
-.acc-band-inner { margin:0; padding:2.2rem var(--gutter) 2.6rem; }
-.acc-band h2 { font-family:"Archivo Black",sans-serif; font-size:1.45rem; letter-spacing:-.025em; margin:0; }
+.acc-band { background:var(--surface); border-top:1px solid var(--line); margin-top:3rem; }
+.acc-band-inner { max-width:var(--maxw); margin:0 auto; padding:2.6rem var(--gutter) 3rem; }
+.acc-band h2 { font-family:var(--display); font-size:1.45rem; letter-spacing:-.025em; margin:0; }
 .acc-band-lead { margin:.25rem 0 1.3rem; color:#3f3f46; }
 .acc-password { display:grid; gap:.9rem; max-width:none; }
 .acc-password input { width:100%; border:1px solid var(--line-control); border-radius:var(--r-sm);
@@ -795,7 +813,7 @@ table.grid .num { white-space:nowrap; }
 .stat-tools { margin-bottom:1.6rem; }
 .stat-tools .tb-select input[type="date"] { border:none; background:#fff; padding:.5rem .7rem .5rem 0;
   min-width:8rem; }
-.stat-title { font-family:"Archivo Black",sans-serif; font-size:1.7rem; letter-spacing:-.03em;
+.stat-title { font-family:var(--display); font-size:1.7rem; letter-spacing:-.03em;
   margin:0 0 1.2rem; }
 
 /* M7: en la referencia el gráfico va a sangre, sin tarjeta ni borde */
