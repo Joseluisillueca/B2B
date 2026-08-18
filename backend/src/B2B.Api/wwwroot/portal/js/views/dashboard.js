@@ -8,7 +8,7 @@
 
 import { api } from '../api.js';
 import { t, lang } from '../i18n.js';
-import { esc } from '../format.js';
+import { esc, eur } from '../format.js';
 import { href } from '../router.js';
 import { state } from '../state.js';
 import { icons } from '../ui/icons.js';
@@ -50,12 +50,55 @@ const tileHtml = tile => {
     </a>`;
 };
 
+// Saludo según la hora local; el nombre sale del cliente del token
+const greeting = () => {
+  const h = new Date().getHours();
+  const key = h < 12 ? 'greetMorning' : h < 20 ? 'greetAfternoon' : 'greetEvening';
+  const name = state.credential?.name || state.me?.client?.name || '';
+  return name ? `${t(`dashboard.${key}`)}, ${name}` : t(`dashboard.${key}`);
+};
+
+// Bento de KPIs de la cuenta: convierte la portada en un cuadro de mando. Cada tarjeta
+// lleva la cifra grande en serif (Fraunces) y enlaza a la sección correspondiente.
+const kpiHtml = (to, label, value, sub, accent = false) => `
+  <a class="kpi${accent ? ' kpi-accent' : ''}" href="${href(to)}">
+    <span class="kpi-label">${esc(label)}</span>
+    <span class="kpi-value">${esc(value)}</span>
+    <span class="kpi-sub">${esc(sub)}</span>
+  </a>`;
+
+async function paintKpis(node) {
+  try {
+    const [orders, stats, invoices] = await Promise.all([
+      api.get('/api/portal/orders?take=1'),
+      api.get('/api/portal/statistics'),
+      api.get('/api/portal/invoices?take=500'),
+    ]);
+    const open = orders?.counts?.open ?? 0;
+    const debt = (invoices?.items ?? []).reduce((s, i) => s + Number(i.debt || 0), 0);
+    const overdue = invoices?.counts?.overdue ?? 0;
+    node.innerHTML =
+      kpiHtml('orders', t('dashboard.kpiOrders'), String(orders?.total ?? 0),
+        t('dashboard.kpiOrdersSub', { n: open })) +
+      kpiHtml('statistics', t('dashboard.kpiBilled'), eur(stats?.total ?? 0),
+        t('dashboard.kpiBilledSub', { n: stats?.count ?? 0 })) +
+      kpiHtml('invoices', t('dashboard.kpiDue'), eur(debt),
+        overdue ? t('dashboard.kpiDueSub', { n: overdue }) : t('dashboard.kpiDueNone'),
+        overdue > 0);
+    node.hidden = false;
+  } catch {
+    node.hidden = true;   // si algo falla, la portada sigue funcionando sin el bento
+  }
+}
+
 export default function dashboard(host) {
   host.innerHTML = `
     <section class="hero" id="hero" aria-busy="true">
       <div class="hero-skeleton"></div>
     </section>
-    <div class="page">
+    <div class="page dash">
+      <p class="dash-greet">${esc(greeting())}</p>
+      <div class="kpis" id="kpis" hidden></div>
       <h1 class="title">${esc(t('dashboard.title'))}</h1>
       <div class="tiles" id="tiles" aria-busy="true">
         <span class="tile-skeleton"></span><span class="tile-skeleton"></span>
@@ -64,6 +107,7 @@ export default function dashboard(host) {
 
   const hero = host.querySelector('#hero');
   const tiles = host.querySelector('#tiles');
+  paintKpis(host.querySelector('#kpis'));
 
   // La ventana de servicio activa se elige aquí: es lo que cuenta el botón azul
   // del header y lo que filtra precios y stock en el catálogo.
