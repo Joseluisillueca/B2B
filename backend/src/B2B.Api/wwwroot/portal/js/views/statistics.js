@@ -14,6 +14,7 @@ import { api } from '../api.js';
 import { t, lang } from '../i18n.js';
 import { esc, eur, date as fmtDate } from '../format.js';
 import { pageHead } from '../ui/chrome.js';
+import { state } from '../state.js';
 
 const LOCALES = { es: 'es-ES', en: 'en-GB', fr: 'fr-FR', it: 'it-IT' };
 const locale = () => LOCALES[lang()] || 'es-ES';
@@ -27,6 +28,10 @@ const PAD = { top: 24, right: 24, bottom: 52, left: 82 };
 export default async function statistics(host) {
   let query = readQuery();
   let data = null;
+  // Agente sin suplantar: estadísticas AGREGADAS de la cartera (mismo gráfico) +
+  // ranking de clientes. El endpoint agrega la cartera; los filtros del cliente no
+  // aplican, así que en este modo la toolbar no se pinta.
+  const agentMode = state.isAgent && !state.acting;
 
   host.innerHTML = `
     <div class="page">
@@ -66,7 +71,9 @@ export default async function statistics(host) {
     params.set('locale', lang());
 
     try {
-      data = await api.get(`/api/portal/statistics?${params}`);
+      data = agentMode
+        ? await api.agentStatistics(lang())
+        : await api.get(`/api/portal/statistics?${params}`);
     } catch {
       container.removeAttribute('aria-busy');
       container.innerHTML = `<div class="panel"><b>${esc(t('statistics.errorTitle'))}</b>${esc(t('statistics.errorBody'))}</div>`;
@@ -82,6 +89,8 @@ export default async function statistics(host) {
 
   // ── Filtros ────────────────────────────────────────────────────────────────
   function paintTools() {
+    // En modo agente la vista agrega toda la cartera: no hay filtros de cliente
+    if (agentMode) { tools.innerHTML = ''; return; }
     // "Temporada" y "Catálogo" no tienen origen en BC todavía (plan §5): sin datos
     // el select va vacío y deshabilitado en vez de ofrecer opciones que no filtran.
     const seasons = data.seasons || [];
@@ -142,7 +151,26 @@ export default async function statistics(host) {
 
     container.innerHTML = `
       <h2 class="stat-title">${esc(range)}</h2>
-      <div class="stat-chart">${chart(months)}</div>`;
+      <div class="stat-chart">${chart(months)}</div>
+      ${agentMode ? topClients() : ''}`;
+  }
+
+  // Ranking de clientes de la cartera por facturación (solo modo agente)
+  function topClients() {
+    const rows = data.topClients || [];
+    if (!rows.length) return '';
+    return `
+      <section class="stat-top">
+        <h3>${esc(t('agentStats.topClients'))}</h3>
+        <ol class="stat-top-list">
+          ${rows.map(row => `
+            <li>
+              <span class="stat-top-name"><b>${esc(row.client || '')}</b>
+                ${row.number ? `<span class="ag-cnum">${esc(row.number)}</span>` : ''}</span>
+              <span class="stat-top-amount">${esc(eur(row.total))}</span>
+            </li>`).join('')}
+        </ol>
+      </section>`;
   }
 
   function chart(months) {

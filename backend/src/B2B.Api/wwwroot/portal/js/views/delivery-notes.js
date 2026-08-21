@@ -9,9 +9,11 @@
 import { t } from '../i18n.js';
 import { esc, eur, date } from '../format.js';
 import { docList, linesTable } from '../ui/doc-list.js';
+import { agentDocList } from '../ui/agent-doc-list.js';
 import { statusChip } from '../ui/status-rail.js';
 import { modalFacts } from '../ui/modal.js';
 import { icons } from '../ui/icons.js';
+import { state } from '../state.js';
 
 const STATUSES = [
   { id: 'invoiced', tone: 'green' },
@@ -31,6 +33,24 @@ const trackLink = note => note.transportUrlTrack
   : '';
 
 export default async function deliveryNotes(host) {
+  if (state.isAgent && !state.acting) {
+    return agentDocList(host, {
+      type: 'delivery-note', key: 'delivery-notes', statuses: STATUSES,
+      columns: [
+        { label: t('delivery-notes.col.number') },
+        { label: t('delivery-notes.col.date') },
+        { label: t('delivery-notes.col.invoiced') },
+        { label: t('delivery-notes.col.amount'), className: 'num' }
+      ],
+      cells: note => [
+        esc(note.number),
+        esc(date(note.date)),
+        invoicedChip(note),
+        esc(eur(note.total))
+      ]
+    });
+  }
+
   await docList(host, {
     key: 'delivery-notes',
     endpoint: '/api/portal/delivery-notes',

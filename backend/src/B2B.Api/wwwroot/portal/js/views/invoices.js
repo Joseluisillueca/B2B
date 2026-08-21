@@ -12,8 +12,10 @@
 import { t } from '../i18n.js';
 import { esc, eur, date } from '../format.js';
 import { docList, linesTable } from '../ui/doc-list.js';
+import { agentDocList } from '../ui/agent-doc-list.js';
 import { statusChip } from '../ui/status-rail.js';
 import { modalFacts } from '../ui/modal.js';
+import { state } from '../state.js';
 
 const STATUSES = [
   { id: 'overdue', tone: 'red' },
@@ -30,6 +32,26 @@ const SORTS = ['date-desc', 'date-asc', 'amount-desc', 'amount-asc', 'debt-desc'
 const chip = invoice => statusChip(t(`invoices.status.${invoice.status}`), TONE[invoice.status] || 'none');
 
 export default async function invoices(host) {
+  if (state.isAgent && !state.acting) {
+    return agentDocList(host, {
+      type: 'invoice', key: 'invoices', statuses: STATUSES,
+      columns: [
+        { label: t('invoices.col.number') },
+        { label: t('invoices.col.date') },
+        { label: t('invoices.col.amount'), className: 'num' },
+        { label: t('invoices.col.debt'), className: 'num' },
+        { label: t('invoices.col.status') }
+      ],
+      cells: invoice => [
+        esc(invoice.number),
+        esc(date(invoice.date)),
+        esc(eur(invoice.total)),
+        invoice.debt ? `<b>${esc(eur(invoice.debt))}</b>` : '',
+        chip(invoice)
+      ]
+    });
+  }
+
   await docList(host, {
     key: 'invoices',
     endpoint: '/api/portal/invoices',

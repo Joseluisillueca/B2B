@@ -8,8 +8,10 @@
 import { t } from '../i18n.js';
 import { esc, eur, num, date } from '../format.js';
 import { docList, linesTable } from '../ui/doc-list.js';
+import { agentDocList } from '../ui/agent-doc-list.js';
 import { statusChip } from '../ui/status-rail.js';
 import { modalFacts } from '../ui/modal.js';
+import { state } from '../state.js';
 
 // Orden y colores del rail, tal cual la captura
 const STATUSES = [
@@ -32,6 +34,27 @@ const typeLabel = type => ({
 }[type] || type || '');
 
 export default async function orders(host) {
+  // Agente sin suplantar: vista agregada de la cartera con columna CLIENTE
+  if (state.isAgent && !state.acting) {
+    return agentDocList(host, {
+      type: 'order', key: 'orders', statuses: STATUSES,
+      columns: [
+        { label: t('orders.col.number') },
+        { label: t('orders.col.date') },
+        { label: t('orders.col.type') },
+        { label: t('orders.col.amount'), className: 'num' },
+        { label: t('orders.col.status') }
+      ],
+      cells: order => [
+        esc(order.number),
+        esc(date(order.date)),
+        esc(typeLabel(order.type)),
+        esc(eur(order.total)),
+        statusChip(statusLabel(order.status), TONE[order.status] || 'none')
+      ]
+    });
+  }
+
   await docList(host, {
     key: 'orders',
     endpoint: '/api/portal/orders',

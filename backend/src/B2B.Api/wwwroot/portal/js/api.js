@@ -70,6 +70,17 @@ export const api = {
   /** Bandeja de solicitudes de registro del agente */
   clientRequests: () => request('GET', '/api/agent/clients/requests'),
 
+  /** Documentos agregados de la cartera (pedidos/albaranes/facturas). `params` URLSearchParams */
+  agentDocuments: params => request('GET', `/api/agent/documents?${params}`),
+
+  /** Estadísticas agregadas de la cartera del agente */
+  agentStatistics: locale => request('GET', `/api/agent/statistics?locale=${locale}`),
+
+  /** Calendario de citas del agente */
+  appointments: params => request('GET', `/api/agent/appointments${params ? `?${params}` : ''}`),
+  createAppointment: body => request('POST', '/api/agent/appointments', body),
+  setAppointmentStatus: (id, status) => request('POST', `/api/agent/appointments/${id}/status`, { status }),
+
   /** Descarga autenticada: los CSV van con Bearer, así que no valen enlaces sueltos */
   async download(path, fallbackName) {
     const response = await fetch(path, {

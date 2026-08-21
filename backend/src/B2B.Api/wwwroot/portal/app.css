@@ -1274,6 +1274,64 @@ table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6
 .req-approved { background:#dcefe4; color:var(--blue-deep); }
 .req-rejected { background:var(--accent-soft); color:var(--accent-deep); }
 
+/* ── Vistas agregadas del agente (documentos con columna cliente) ── */
+.ag-client { display:inline-flex; flex-direction:column; align-items:flex-start; gap:.05rem; text-align:left; }
+.ag-cnum { font-size:.72rem; color:var(--muted); font-weight:400; }
+
+/* Top clientes de estadísticas del agente */
+.stat-top { margin:1.8rem 0 0; }
+.stat-top h3 { font-size:1rem; font-weight:600; margin:0 0 .7rem; color:var(--ink-2); }
+.stat-top-list { list-style:none; margin:0; padding:0; display:grid; gap:.4rem; counter-reset:top; max-width:40rem; }
+.stat-top-list li { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  padding:.6rem .8rem; background:var(--surface); border-radius:var(--r-sm); }
+.stat-top-list li::before { counter-increment:top; content:counter(top); font-variant-numeric:tabular-nums;
+  color:var(--muted-2); font-weight:600; margin-right:.6rem; }
+.stat-top-name { flex:1; display:flex; flex-direction:column; }
+.stat-top-amount { font-weight:600; font-variant-numeric:tabular-nums; }
+
+/* Intro de "Pedidos de selección" */
+.ms-intro { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
+  margin:0 0 1.2rem; }
+.ms-intro p { margin:0; color:var(--ink-2); max-width:44rem; }
+.ms-intro .btn-primary { text-decoration:none; white-space:nowrap; }
+
+/* ── Calendario de citas ── */
+.cal-grid { display:grid; grid-template-columns:22rem 1fr; gap:1.6rem; align-items:start; }
+.cal-form-wrap { padding:1.4rem 1.4rem 1.6rem; position:sticky; top:calc(var(--header-h) + 1rem); }
+.cal-form-wrap h2 { font-family:var(--display); font-size:1.15rem; margin:0 0 1rem; }
+.cal-form .acc-field { margin:0 0 .8rem; }
+.cal-form textarea { width:100%; border:1px solid var(--line-control); border-radius:var(--r-sm);
+  padding:.6rem .7rem; font:inherit; resize:vertical; }
+.cal-form input[type=datetime-local], .cal-form input[type=number], .cal-form input[type=text] {
+  width:100%; border:1px solid var(--line-control); border-radius:var(--r-sm); padding:.62rem .7rem; font:inherit; }
+.cal-list { list-style:none; margin:0; padding:0; display:grid; gap:.7rem; }
+.cal-item { display:grid; grid-template-columns:9rem 1fr auto; gap:1rem; align-items:start;
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm); padding:.9rem 1.1rem; }
+.cal-item.cal-canceled { opacity:.6; }
+.cal-when { display:flex; flex-direction:column; gap:.3rem; }
+.cal-when time { font-weight:600; font-size:.9rem; }
+.cal-kind { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+  padding:.12rem .5rem; border-radius:999px; width:fit-content; }
+.cal-kind-cita { background:#e2ecff; color:#274b8f; }
+.cal-kind-parte { background:#e6f0e9; color:var(--blue-deep); }
+.cal-body b { display:block; }
+.cal-client { display:inline-flex; align-items:center; gap:.25rem; font-size:.82rem; color:var(--muted); margin-top:.2rem; }
+.cal-notes { margin:.35rem 0 0; font-size:.85rem; color:var(--ink-2); }
+.cal-actions { display:flex; flex-direction:column; align-items:flex-end; gap:.35rem; }
+.cal-status { font-size:.75rem; font-weight:600; }
+.cal-status-pending { color:#8a5a00; }
+.cal-status-done { color:var(--blue-deep); }
+.cal-status-canceled { color:var(--accent-deep); }
+.cal-actions .btn-ghost { padding:.3rem .6rem; font-size:.8rem; }
+.cal-empty { text-align:center; color:var(--muted); padding:3rem 1rem; }
+.cal-empty p { margin:.6rem 0 0; }
+@media (max-width:60rem) {
+  .cal-grid { grid-template-columns:1fr; }
+  .cal-form-wrap { position:static; }
+  .cal-item { grid-template-columns:1fr; gap:.5rem; }
+  .cal-actions { flex-direction:row; align-items:center; }
+}
+
 /* ── Modal de suplantación (dlg-select) ── */
 .dlg-select { max-width:min(40rem,94vw); width:40rem; }
 .sel-panel { padding:1.6rem 1.7rem 1.4rem; }
