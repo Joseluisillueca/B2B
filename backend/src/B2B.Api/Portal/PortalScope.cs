@@ -29,7 +29,18 @@ public static class PortalScope
         if (user is null)
             return null;
 
-        return new PortalActor(user, user.ClientExternalId, await GroupIdsAsync(db, user.ClientExternalId));
+        // Suplantación del agente (Fase 1): cuando el token es de un comercial que ha
+        // elegido cliente lleva el claim `actingAgent` (su propio id) y `clientId` (el
+        // cliente elegido). El comercial no tiene ClientExternalId propio, así que el
+        // ámbito del cliente sale de ese claim del token —ya validado y firmado en
+        // /api/agent/impersonate contra la cartera del agente—. Para el resto de
+        // usuarios el ámbito sigue saliendo de su propio vínculo en BD, intacto.
+        var clientId = user.ClientExternalId;
+        if (!string.IsNullOrEmpty(principal.FindFirstValue("actingAgent"))
+            && principal.FindFirstValue("clientId") is { Length: > 0 } impersonated)
+            clientId = impersonated;
+
+        return new PortalActor(user, clientId, await GroupIdsAsync(db, clientId));
     }
 
     /// Los documentos del conector que son del cliente del token, y nada más.

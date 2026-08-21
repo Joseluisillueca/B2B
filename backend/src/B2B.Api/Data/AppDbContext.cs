@@ -27,10 +27,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             user.Property(u => u.Email).HasMaxLength(320);
             user.Property(u => u.ClientExternalId).HasMaxLength(100);
             user.Property(u => u.ClientNumber).HasMaxLength(50);
+            user.Property(u => u.AgentExternalId).HasMaxLength(100);
             user.Property(u => u.Role).HasMaxLength(50);
             user.Property(u => u.Culture).HasMaxLength(10);
             user.Property(u => u.Name).HasMaxLength(200);
             user.HasIndex(u => u.ClientExternalId);
+            user.HasIndex(u => u.AgentExternalId);
         });
 
         modelBuilder.Entity<SyncDocument>(doc =>

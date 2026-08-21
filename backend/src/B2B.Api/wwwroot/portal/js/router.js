@@ -12,6 +12,14 @@ const VIEWS = {
   'login': () => import('./views/login.js'),
   'credentials': () => import('./views/credentials.js'),
   'dashboard': () => import('./views/dashboard.js'),
+  'clients': () => import('./views/clients.js'),
+  // Vistas de agente aún sin contenido propio: "Próximamente" con el chrome de
+  // agente, nunca un 404 ni una pantalla rota.
+  'agent/model-selection': () => import('./views/agent-soon.js'),
+  'agent/calendar': () => import('./views/agent-soon.js'),
+  'agent/clients/new': () => import('./views/agent-soon.js'),
+  'agent/clients/edit': () => import('./views/agent-soon.js'),
+  'clients/requests': () => import('./views/agent-soon.js'),
   'catalog/catalog': () => import('./views/catalog.js'),
   'product': () => import('./views/product.js'),
   'checkout': () => import('./views/checkout.js'),
@@ -93,6 +101,10 @@ export async function resolve() {
   if (state.token && route.view === 'login') return go('dashboard', { replace: true });
   if (state.token && !state.credential && route.view !== 'credentials' && state.me?.credentials?.length)
     return go('credentials', { replace: true });
+  // Un agente sin cliente suplantado no tiene carrito propio: el checkout no
+  // aplica hasta que elige a nombre de quién compra.
+  if (state.isAgent && !state.acting && route.view === 'checkout')
+    return go('clients', { replace: true });
 
   document.body.dataset.chrome = BARE[route.view] || 'on';
   const module = await VIEWS[route.view]();

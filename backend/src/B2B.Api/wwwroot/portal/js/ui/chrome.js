@@ -23,6 +23,32 @@ const MENU = [
   'sat', 'statistics', 'business', 'profile', 'contact'
 ];
 
+// Megamenú del agente: cuatro grupos, tal cual el portal real. Cada entrada es
+// [ruta, claveDeTexto]; las rutas que aún no tienen vista propia caen en el
+// "Próximamente" del router, nunca en un 404.
+const AGENT_GROUPS = [
+  { title: 'agent.group.agent', items: [
+    ['clients', 'nav.clients'],
+    ['shopping-carts', 'nav.shopping-carts'],
+    ['agent/model-selection', 'nav.model-selection'],
+    ['agent/calendar', 'nav.calendar']
+  ] },
+  { title: 'agent.group.orders', items: [
+    ['orders', 'nav.orders'],
+    ['delivery-notes', 'nav.delivery-notes'],
+    ['invoices', 'nav.invoices']
+  ] },
+  { title: 'agent.group.support', items: [
+    ['contact', 'nav.contact-support'],
+    ['sat', 'nav.sat']
+  ] },
+  { title: 'agent.group.account', items: [
+    ['profile', 'nav.my-account'],
+    ['business', 'nav.business-data'],
+    ['statistics', 'nav.statistics']
+  ] }
+];
+
 const SOCIAL = [
   ['facebook', 'https://www.facebook.com/lejanbrand'],
   ['instagram', 'https://www.instagram.com/lejanbrand'],
@@ -55,24 +81,46 @@ export function renderChrome(route) {
 function paintHeader() {
   const me = state.me || {};
   const credential = state.credential || {};
+  const isAgent = state.isAgent;
+  const acting = state.acting;
   // El rol viene de BC en español; si la ficha trae roleKey se traduce (M-4)
   const role = roleLabel({ roleKey: credential.roleKey ?? me.roleKey, role: credential.role, rol: me.rol });
-  const line1 = `${me.email || ''}${role ? ` - ${role}` : ''}`;
-  const line2 = credential.name || me.client?.name || '';
+
+  // Quién opera: el cliente ve email + rol; el agente ve su nombre y, cuando
+  // suplanta, "{agente} — {cliente}" para que no haya duda de a nombre de quién compra.
+  let line1, line2;
+  if (isAgent) {
+    const agentName = credential.name || me.email || '';
+    line1 = acting ? `${agentName} — ${acting.client?.name || ''}` : agentName;
+    line2 = role;
+  } else {
+    line1 = `${me.email || ''}${role ? ` - ${role}` : ''}`;
+    line2 = credential.name || me.client?.name || '';
+  }
+
+  // El buscador de catálogo y el carrito solo tienen sentido en contexto de compra:
+  // el cliente siempre, el agente solo mientras suplanta a un cliente.
+  const showShop = !isAgent || !!acting;
+  const isAgentMenu = isAgent;
 
   header().innerHTML = `
-    <a class="brand" href="${href('dashboard')}" aria-label="lejan">lejan<sup>™</sup></a>
+    <a class="brand" href="${href(isAgent && !acting ? 'clients' : 'dashboard')}" aria-label="lejan">lejan<sup>™</sup></a>
 
+    ${showShop ? `
     <form class="h-search" role="search">
       <input type="search" name="q" placeholder="${esc(t('chrome.search'))}" aria-label="${esc(t('chrome.search'))}">
       <button type="submit" aria-label="${esc(t('chrome.search'))}">${icons.search(16)}</button>
-    </form>
+    </form>` : ''}
 
     <span class="spacer"></span>
 
-    <div class="h-user">
+    ${acting ? `<button type="button" class="h-release" id="releaseBtn">
+      ${icons.close(15)} <span>${esc(t('agent.deselect'))}</span>
+    </button>` : ''}
+
+    <div class="h-user${acting ? ' acting' : ''}">
       <button type="button" id="userBtn" aria-haspopup="menu" aria-expanded="false">
-        <span class="avatar">${esc(initial(me.email))}</span>
+        <span class="avatar">${esc(initial(isAgent ? (credential.name || me.email) : me.email))}</span>
         <span class="who"><span class="l1">${esc(line1)}</span><br><span class="l2">${esc(line2)}</span></span>
       </button>
     </div>
@@ -88,9 +136,10 @@ function paintHeader() {
       ${esc(lang())} ${icons.chevron(14)}
     </button>
 
-    <button type="button" class="h-cart" id="cartBtn">${cartButtonInner()}</button>`;
+    ${showShop ? `<button type="button" class="h-cart" id="cartBtn">${cartButtonInner()}</button>` : ''}`;
 
-  header().querySelector('.h-search').onsubmit = event => {
+  const search = header().querySelector('.h-search');
+  if (search) search.onsubmit = event => {
     event.preventDefault();
     const term = new FormData(event.target).get('q');
     go(`${href('catalog/catalog')}${term ? `?q=${encodeURIComponent(term)}` : ''}`);
@@ -98,9 +147,17 @@ function paintHeader() {
 
   header().querySelector('#focusBtn').onclick = toggleFocus;
 
-  header().querySelector('#userBtn').onclick = event => togglePopup(event.currentTarget, userMenu);
+  header().querySelector('#userBtn').onclick =
+    event => togglePopup(event.currentTarget, isAgentMenu ? agentMenu : userMenu);
   header().querySelector('#langBtn').onclick = event => togglePopup(event.currentTarget, langMenu);
-  header().querySelector('#cartBtn').onclick = openCart;
+  header().querySelector('#cartBtn')?.addEventListener('click', openCart);
+  header().querySelector('#releaseBtn')?.addEventListener('click', releaseClient);
+}
+
+/** Suelta al cliente suplantado y vuelve a la cartera de clientes del agente */
+function releaseClient() {
+  state.stopActing();
+  go('clients');
 }
 
 // En móvil el header solo deja sitio a marca, usuario y carrito: idioma y vista
@@ -117,6 +174,30 @@ const userMenu = () => `
     <button type="button" role="menuitem" class="m-only" data-focus-toggle
       aria-pressed="${state.prefs.focus}">${esc(t('chrome.focus'))}</button>
     <hr>
+    <button type="button" role="menuitem" class="out" data-logout>${esc(t('chrome.logout'))}</button>
+  </div>`;
+
+// Megamenú del agente: los cuatro grupos + idioma en móvil + "Deseleccionar
+// cliente" (solo suplantando) y "Cerrar sesión".
+const agentMenu = () => `
+  <div class="h-menu h-menu-agent" role="menu">
+    <div class="h-groups">
+      ${AGENT_GROUPS.map(group => `
+        <div class="h-group" role="group" aria-label="${esc(t(group.title))}">
+          <span class="h-group-title">${esc(t(group.title))}</span>
+          ${group.items.map(([view, label]) =>
+            `<a role="menuitem" href="${href(view)}"${view === current.view ? ' aria-current="page"' : ''}>${esc(t(label))}</a>`).join('')}
+        </div>`).join('')}
+    </div>
+    <hr class="m-only">
+    <div class="m-only" role="group" aria-label="${esc(t('chrome.language'))}">
+      <span class="m-title" aria-hidden="true">${esc(t('chrome.language'))}</span>
+      ${LANGS.map(code => `<a role="menuitem" href="/${current.market}/${code}/${current.view}"
+        ${code === lang() ? 'aria-current="true"' : ''}>${esc(t(`lang.${code}`))}</a>`).join('')}
+    </div>
+    <hr>
+    ${state.acting ? `<button type="button" role="menuitem" class="agent-deselect" data-deselect>
+      ${icons.close(14)} ${esc(t('agent.deselect'))}</button>` : ''}
     <button type="button" role="menuitem" class="out" data-logout>${esc(t('chrome.logout'))}</button>
   </div>`;
 
@@ -151,6 +232,10 @@ function togglePopup(button, template) {
     closePopups();
     toggleFocus();
   });
+  host.querySelector('[data-deselect]')?.addEventListener('click', () => {
+    closePopups();
+    releaseClient();
+  });
 
   // El cierre por clic fuera escuchaba `{ once: true }`: un clic DENTRO del propio
   // menú consumía el listener y lo dejaba abierto para siempre. Ahora se comprueba
@@ -181,8 +266,12 @@ function closePopups() {
     button.setAttribute('aria-expanded', 'false');
 }
 
-// Una sola entrada, igual que el portal actual: Catálogo
+// Una sola entrada, igual que el portal actual: Catálogo. El agente sin cliente no
+// tiene catálogo propio, así que la barra se recoge hasta que suplanta.
 function paintNav(route) {
+  const hideCatalog = state.isAgent && !state.acting;
+  nav().hidden = hideCatalog;
+  if (hideCatalog) { nav().innerHTML = ''; return; }
   const active = route.view === 'catalog/catalog' ? ' aria-current="page"' : '';
   nav().innerHTML = `<a href="${href('catalog/catalog')}"${active}>${esc(t('nav.catalog'))}</a>`;
 }

@@ -1175,3 +1175,90 @@ table.grid .num { white-space:nowrap; }
   .grid-owner, .grid-hide-sm { display:none; }
   table.grid th, table.grid td { padding:.75rem .6rem; }
 }
+
+/* ══════════════ Modo agente ══════════════ */
+/* Territorio del agente: cartera de clientes, suplantación y el chrome que cambia
+   cuando actúa "a nombre de" un cliente. Todo con los tokens del portal. */
+
+/* Header suplantando: al lado del badge, "Deseleccionar cliente" en terracota para
+   que la salida del contexto de compra del cliente destaque sobre el verde. */
+.h-release { display:flex; align-items:center; gap:.4rem; border:1px solid rgba(255,255,255,.28);
+  border-radius:999px; padding:.42rem .8rem; font-size:.78rem; font-weight:600; color:var(--header-ink);
+  white-space:nowrap; transition:background .15s var(--ease), border-color .15s var(--ease); }
+.h-release:hover { background:var(--accent); border-color:var(--accent); color:#fff; }
+.h-release svg { flex:none; }
+/* Suplantando, la identidad doble ("agente — cliente") lleva un filete terracota a
+   la izquierda del badge: recuerda de un vistazo que se compra por otro. */
+.h-user.acting > button { box-shadow:inset 3px 0 0 var(--accent); padding-left:.7rem; }
+
+/* Megamenú del agente: cuatro grupos en dos columnas, cada uno con su rótulo. */
+.h-menu-agent { min-width:min(32rem,88vw); padding:.7rem; }
+.h-menu-agent .h-groups { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.4rem 1rem; }
+.h-group { display:flex; flex-direction:column; }
+.h-group-title { padding:.35rem .75rem .2rem; font-size:.68rem; font-weight:700; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--accent-deep); }
+.h-menu-agent a[aria-current="page"] { background:var(--blue-soft); color:var(--blue-deep); font-weight:600; }
+.agent-deselect { display:flex; align-items:center; gap:.45rem; color:var(--accent-deep); font-weight:600; }
+.agent-deselect:hover { background:var(--accent-soft) !important; }
+.agent-deselect svg { flex:none; }
+
+/* ── Vista de clientes ── */
+.cl-requests { margin:-1.2rem 0 1.4rem; font-size:.88rem; }
+.cl-requests a { color:var(--blue); text-decoration:underline; text-underline-offset:3px; }
+.cl-requests a:hover { color:var(--blue-deep); }
+
+/* La toolbar reutiliza .doc-tools; el botón "Crear nuevo cliente" se va a la derecha */
+.cl-tools .cl-new { margin-left:auto; text-decoration:none; }
+/* Campos de texto (Ciudad, Segmento) con el mismo marco que los selectores */
+.cl-text { padding-left:0; }
+.cl-text input { border:none; background:transparent; min-width:8rem; padding:.62rem .7rem; font:inherit;
+  color:var(--ink); }
+.cl-text input::placeholder { color:var(--muted-2); }
+.cl-text:focus-within { border-color:var(--blue); }
+
+/* Booleanos de la tabla: check verde de marca o guion apagado, ambos rotulados */
+.cl-yes { display:inline-flex; color:var(--blue); }
+.cl-no { color:var(--muted-2); }
+
+/* Columna SELECCIONAR, alineada a la derecha como en la referencia */
+table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6rem; white-space:nowrap; }
+.cl-pick { display:inline-grid; place-items:center; width:2.15rem; height:2.15rem; border-radius:var(--r-sm);
+  border:1px solid var(--line-control); background:#fff; color:var(--blue);
+  transition:background .15s var(--ease), color .15s var(--ease), border-color .15s var(--ease); }
+.cl-pick:hover { background:var(--blue); color:#fff; border-color:var(--blue); }
+.cl-selected { display:inline-flex; align-items:center; gap:.4rem; color:var(--blue-deep); font-weight:600;
+  font-size:.82rem; }
+.cl-release { display:inline-grid; place-items:center; width:1.7rem; height:1.7rem; border-radius:50%;
+  color:var(--accent-deep); transition:background .15s var(--ease); }
+.cl-release:hover { background:var(--accent-soft); }
+
+/* ── Modal de suplantación (dlg-select) ── */
+.dlg-select { max-width:min(40rem,94vw); width:40rem; }
+.sel-panel { padding:1.6rem 1.7rem 1.4rem; }
+.sel-head { border-bottom:1px solid var(--line); padding-bottom:1rem; margin-bottom:1.1rem; }
+.sel-kicker { margin:0; font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--muted); }
+.sel-panel h2 { font-family:var(--display); font-weight:500; font-size:1.7rem; letter-spacing:-.02em;
+  text-transform:none; margin:.2rem 0 .5rem; }
+.sel-country { margin:0; color:var(--ink-2); font-size:.9rem; }
+.sel-country b { color:var(--ink); }
+.sel-actions-title { margin:0 0 .7rem; font-size:.72rem; font-weight:700; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--muted); }
+.sel-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.7rem; }
+.sel-card { display:flex; flex-direction:column; gap:.4rem; text-align:left; text-decoration:none;
+  border:1px solid var(--line-control); border-radius:var(--r-sm); padding:.95rem .9rem; background:#fff;
+  transition:border-color .15s var(--ease), background .15s var(--ease), transform .15s var(--ease); }
+.sel-card:hover:not([disabled]) { border-color:var(--blue); background:var(--blue-soft); transform:translateY(-2px); }
+.sel-card[disabled] { opacity:.55; cursor:progress; }
+.sel-card-title { font-weight:700; font-size:.82rem; letter-spacing:.02em; text-transform:uppercase;
+  color:var(--blue-deep); }
+.sel-card-desc { font-size:.8rem; color:var(--muted); line-height:1.35; }
+.sel-error { margin:1rem 0 0; color:var(--out); font-size:.86rem; }
+
+@media (max-width:52rem) {
+  .h-menu-agent { min-width:min(20rem,88vw); }
+  .h-menu-agent .h-groups { grid-template-columns:1fr; }
+  .h-release span { display:none; }
+  .sel-actions { grid-template-columns:1fr; }
+  .cl-tools .cl-new { margin-left:0; width:100%; }
+}

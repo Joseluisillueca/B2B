@@ -58,6 +58,12 @@ export const api = {
 
   me: () => request('GET', '/api/portal/me'),
 
+  /** Cartera de clientes del agente (contrato §agent). `params` es un URLSearchParams */
+  agentClients: params => request('GET', `/api/agent/clients?${params}`),
+
+  /** Suplanta a un cliente: devuelve { token, client }. El token opera como el cliente */
+  impersonate: clientId => request('POST', '/api/agent/impersonate', { clientId }),
+
   /** Descarga autenticada: los CSV van con Bearer, así que no valen enlaces sueltos */
   async download(path, fallbackName) {
     const response = await fetch(path, {

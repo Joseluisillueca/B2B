@@ -30,6 +30,7 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddAdminPolicy();
     options.AddConnectorPolicy();
+    options.AddAgentPolicy();
 });
 builder.Services.AddLoginRateLimiter(builder.Configuration);
 builder.Services.AddHttpClient();   // asistente del portal → API de Anthropic (opcional)
@@ -113,6 +114,7 @@ app.MapMediaEndpoints();
 app.MapModelImageEndpoints();
 app.MapShopEndpoints();
 app.MapPortalEndpoints();
+app.MapAgentEndpoints();
 app.MapCartEndpoints();
 app.MapDocumentEndpoints();
 app.MapAccountEndpoints();

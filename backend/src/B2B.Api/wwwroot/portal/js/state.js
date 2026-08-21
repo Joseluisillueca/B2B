@@ -7,6 +7,9 @@ const ME = 'b2b.portal.me';
 const CREDENTIAL = 'b2b.portal.credential';
 const CART = 'b2b.portal.cart';
 const PREFS = 'b2b.portal.prefs';
+// Suplantación de agente: token + ficha del cliente sobre el que se "actúa como".
+// Vive en sessionStorage para sobrevivir a recargas igual que la sesión.
+const ACTING = 'b2b.portal.acting';
 
 const read = (store, key, fallback) => {
   try { return JSON.parse(store.getItem(key)) ?? fallback; }
@@ -27,11 +30,21 @@ const emit = () => { for (const fn of [...listeners]) fn(); };
 export const lineKey = line => `${line.modelId}|${line.size}`;
 
 export const state = {
-  get token() { return sessionStorage.getItem(TOKEN) || ''; },
+  // El token EFECTIVO de las llamadas: si el agente está suplantando a un cliente
+  // manda el token de suplantación; si no, el de la sesión (login). api.js lee
+  // siempre `state.token`, así que basta con esto para que todo /api/portal/* opere
+  // como el cliente mientras dure la suplantación, y vuelva al agente al soltarla.
+  get token() {
+    const acting = read(sessionStorage, ACTING, null);
+    return (acting && acting.token) || sessionStorage.getItem(TOKEN) || '';
+  },
   set token(value) {
     if (value) sessionStorage.setItem(TOKEN, value);
     else sessionStorage.removeItem(TOKEN);
   },
+
+  /** Token propio de la sesión (agente/cliente), sin la capa de suplantación */
+  get baseToken() { return sessionStorage.getItem(TOKEN) || ''; },
 
   /** Ficha completa de /api/portal/me */
   get me() { return read(sessionStorage, ME, null); },
@@ -40,6 +53,29 @@ export const state = {
   /** Credencial elegida en la pantalla "SELECCIONA AHORA TUS CREDENCIALES" */
   get credential() { return read(sessionStorage, CREDENTIAL, null); },
   set credential(value) { write(sessionStorage, CREDENTIAL, value); },
+
+  /** ¿La credencial elegida (o la ficha) es de agente? */
+  get isAgent() {
+    const cred = state.credential;
+    return !!(cred?.agent || cred?.type === 'agent' || state.me?.isAgent);
+  },
+
+  /** { token, client } mientras el agente actúa como un cliente; null si no */
+  get acting() { return read(sessionStorage, ACTING, null); },
+  get actingClient() { return read(sessionStorage, ACTING, null)?.client || null; },
+
+  /** Entra en "actuando como cliente": guarda su token y ficha, y fija la ventana */
+  actAs({ token, client, window } = {}) {
+    write(sessionStorage, ACTING, { token, client });
+    if (window) write(localStorage, PREFS, { ...state.prefs, window });
+    emit();
+  },
+
+  /** Suelta la suplantación: vuelve al token del agente */
+  stopActing() {
+    sessionStorage.removeItem(ACTING);
+    emit();
+  },
 
   /** Preferencias locales: ventana de servicio activa y toggle del ojo */
   get prefs() { return read(localStorage, PREFS, { window: 'replenishment', focus: false }); },
@@ -100,5 +136,6 @@ export const state = {
     sessionStorage.removeItem(TOKEN);
     sessionStorage.removeItem(ME);
     sessionStorage.removeItem(CREDENTIAL);
+    sessionStorage.removeItem(ACTING);
   }
 };

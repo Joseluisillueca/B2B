@@ -13,6 +13,9 @@ public static class ClientIdentity
 {
     public const string IntegrationRole = "integration";
     public const string ClientAdminRole = "client-admin";
+    // Comercial del modelo de agente: entra al portal, ve su cartera y suplanta a
+    // cada cliente. Lo provisiona el sync `agent` (contrato 04 §4).
+    public const string AgentRole = "agent";
 
     // Etiquetas de la pantalla "SELECCIONA AHORA TUS CREDENCIALES" (01-tras-login.png).
     // Se mantienen por compatibilidad; el idioma lo resuelve el front con RoleKey (M-4).
@@ -31,6 +34,7 @@ public static class ClientIdentity
     {
         ClientAdminRole or AdminPolicy.Role => "admin",
         IntegrationRole => "integration",
+        AgentRole => "agent",
         _ => "user"
     };
 
@@ -49,7 +53,49 @@ public static class ClientIdentity
             case "client":
                 await RefreshClientNumberAsync(db, clientId: externalId, obj);
                 break;
+            case "agent":
+                await ProvisionAgentAsync(db, agentId: externalId, obj);
+                break;
         }
+    }
+
+    // Provisión del comercial (contrato 04 §4). Igual que el usuario admin del
+    // cliente: identidad por email en minúsculas, sin contraseña (en dev se le pone
+    // una aparte). El vínculo NO es a un cliente sino al propio documento `agent`:
+    // AgentExternalId = id del comercial, y su cartera (clientIds) se lee de ahí.
+    //
+    // REGLA cuando el email ya existía: el sync `agent` es autoritativo para ese
+    // email. Un email que llega como comercial SE CONVIERTE en agente —Role="agent",
+    // AgentExternalId fijado y el vínculo de cliente retirado (ClientExternalId/
+    // ClientNumber a null)— porque un agente y un cliente son identidades distintas y
+    // reutilizar el mismo email es una incidencia de datos en BC: gana el comercial.
+    // Así el rol y las políticas quedan coherentes (un usuario es cliente O agente).
+    private static async Task ProvisionAgentAsync(AppDbContext db, string agentId, JsonObject payload)
+    {
+        var email = Text(payload["email"]).Trim().ToLowerInvariant();
+        if (email.Length == 0)
+            return;   // Sin email no hay identidad con la que entrar al portal
+
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Email == email);
+        if (user is null)
+        {
+            user = new AppUser { Id = Guid.NewGuid(), Email = email, PasswordHash = string.Empty };
+            db.Users.Add(user);
+        }
+
+        user.AgentExternalId = agentId;
+        user.Role = AgentRole;
+        // El comercial no representa a un cliente concreto: no debe arrastrar vínculo
+        user.ClientExternalId = null;
+        user.ClientNumber = null;
+
+        var culture = Text(payload["culture"]);
+        if (culture.Length > 0)
+            user.Culture = culture;
+
+        var name = Text(payload["name"]).Trim();
+        if (name.Length > 0)
+            user.Name = name;
     }
 
     private static async Task ProvisionUserAsync(AppDbContext db, string clientId, JsonObject payload)

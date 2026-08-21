@@ -22,8 +22,12 @@ export default function credentials(host) {
 
   for (const button of host.querySelectorAll('[data-pick]')) {
     button.onclick = () => {
-      state.credential = list[Number(button.dataset.pick)];
-      go('dashboard', { replace: true });
+      const credential = list[Number(button.dataset.pick)];
+      state.credential = credential;
+      // El agente no aterriza en un carrito propio: su punto de partida es su
+      // cartera de clientes, desde donde suplanta. El cliente sigue al dashboard.
+      const isAgent = credential?.agent || credential?.type === 'agent';
+      go(isAgent ? 'clients' : 'dashboard', { replace: true });
     };
   }
 

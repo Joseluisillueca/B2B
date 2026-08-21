@@ -32,22 +32,34 @@ public static class PortalEndpoints
             // traduce el portal (roleKey en el usuario, typeKey/roleKey en la credencial).
             var roleKey = ClientIdentity.RoleKey(user.Role);
 
-            // Un usuario = una credencial hoy; el agente multi-cliente llega en fase posterior
-            object[] credentials = client is null
-                ? []
-                :
-                [
-                    new
-                    {
-                        clientId = client.id,
-                        clientNumber = client.number,
-                        name = client.name,
-                        type = "CLIENTE",
-                        typeKey = ClientIdentity.ClientCredentialType,
-                        role,
-                        roleKey
-                    }
-                ];
+            // El usuario del cliente tiene una credencial: su ficha de cliente.
+            var credentials = new List<object>();
+            if (client is not null)
+                credentials.Add(new
+                {
+                    clientId = client.id,
+                    clientNumber = client.number,
+                    name = client.name,
+                    type = "CLIENTE",
+                    typeKey = ClientIdentity.ClientCredentialType,
+                    role,
+                    roleKey
+                });
+
+            // Modelo de agente (Fase 1): el comercial entra con una credencial de tipo
+            // AGENTE. El front usa `agent:true` para llevarlo a /clients (su cartera)
+            // en vez de al dashboard de un cliente. No sustituye a la credencial de
+            // cliente: un mismo email es cliente O agente, nunca las dos cosas.
+            var isAgent = user.Role == ClientIdentity.AgentRole || !string.IsNullOrEmpty(user.AgentExternalId);
+            if (isAgent)
+                credentials.Add(new
+                {
+                    type = "agent",
+                    typeKey = ClientIdentity.AgentRole,
+                    roleKey = ClientIdentity.AgentRole,
+                    agent = true,
+                    name = string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name
+                });
 
             return Results.Ok(new
             {
@@ -56,6 +68,7 @@ public static class PortalEndpoints
                 rol = role,
                 roleKey,
                 culture = user.Culture,
+                isAgent,
                 credentials,
                 client,
                 // Preferencias de /profile: el catálogo necesita saber ya en el
@@ -106,7 +119,7 @@ public static class PortalEndpoints
     // Proyección canónica del cliente: lo que el portal necesita en cada vista
     // (nombre y número para la cabecera, canShop para el catálogo, segmentos y
     // métodos de pago para precios y checkout, direcciones para el envío).
-    private sealed record ClientCard(
+    internal sealed record ClientCard(
         string id, string? number, string name, JsonNode? fiscalInfo, bool canShop,
         string[] productSegments,
         // M5: {id, name} para el desplegable del checkout. payMethodIds mantiene la
@@ -119,7 +132,7 @@ public static class PortalEndpoints
     /// se lee en el checkout (05-checkout.png, "MÉTODO DE PAGO").
     private sealed record PayMethod(string id, string name);
 
-    private static async Task<ClientCard?> ClientCardAsync(AppDbContext db, string? clientId, string locale)
+    internal static async Task<ClientCard?> ClientCardAsync(AppDbContext db, string? clientId, string locale)
     {
         if (string.IsNullOrEmpty(clientId))
             return null;
