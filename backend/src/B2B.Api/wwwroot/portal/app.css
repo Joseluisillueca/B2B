@@ -1305,18 +1305,22 @@ table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6
 .cal-form input[type=datetime-local], .cal-form input[type=number], .cal-form input[type=text] {
   width:100%; border:1px solid var(--line-control); border-radius:var(--r-sm); padding:.62rem .7rem; font:inherit; }
 .cal-list { list-style:none; margin:0; padding:0; display:grid; gap:.7rem; }
-.cal-item { display:grid; grid-template-columns:9rem 1fr auto; gap:1rem; align-items:start;
+.cal-item { display:grid; grid-template-columns:9rem minmax(0,1fr) auto; gap:1rem; align-items:start;
   background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm); padding:.9rem 1.1rem; }
 .cal-item.cal-canceled { opacity:.6; }
-.cal-when { display:flex; flex-direction:column; gap:.3rem; }
+.cal-when { display:flex; flex-direction:column; gap:.3rem; min-width:0; }
 .cal-when time { font-weight:600; font-size:.9rem; }
 .cal-kind { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
   padding:.12rem .5rem; border-radius:999px; width:fit-content; }
 .cal-kind-cita { background:#e2ecff; color:#274b8f; }
 .cal-kind-parte { background:#e6f0e9; color:var(--blue-deep); }
-.cal-body b { display:block; }
-.cal-client { display:inline-flex; align-items:center; gap:.25rem; font-size:.82rem; color:var(--muted); margin-top:.2rem; }
-.cal-notes { margin:.35rem 0 0; font-size:.85rem; color:var(--ink-2); }
+/* Título y notas son texto libre (hasta 200/2000 chars): un token sin espacios
+   (email/URL/referencia) no debe estirar la fila ni empujar scroll horizontal. */
+.cal-body { min-width:0; }
+.cal-body b { display:block; overflow-wrap:anywhere; word-break:break-word; }
+.cal-client { display:inline-flex; align-items:center; gap:.25rem; font-size:.82rem; color:var(--muted); margin-top:.2rem;
+  overflow-wrap:anywhere; word-break:break-word; }
+.cal-notes { margin:.35rem 0 0; font-size:.85rem; color:var(--ink-2); overflow-wrap:anywhere; word-break:break-word; }
 .cal-actions { display:flex; flex-direction:column; align-items:flex-end; gap:.35rem; }
 .cal-status { font-size:.75rem; font-weight:600; }
 .cal-status-pending { color:#8a5a00; }
