@@ -111,9 +111,22 @@ a cada cliente para operar como si fuera él (reposición/programación fija la 
     el agente ve las suyas, el admin todas (en el portal real da 404; aquí funciona).
   - **Editar cliente** = suplantar + `/business` (flujo de solicitud de cambio, que ya
     teníamos), igual que el real.
-- **Fase 3 — PENDIENTE**: vistas agregadas del agente (Pedidos/Albaranes/Facturas/
-  Estadísticas con columna CLIENTE), pedidos de selección, calendario de citas,
-  jerarquía (Sales admin "Todos" vs agente "Yo").
+- **Fase 3 — HECHA y verificada** (394 tests + E2E Playwright en 5199):
+  - **Vistas agregadas de la cartera** (Pedidos/Albaranes/Facturas): `GET /api/agent/
+    documents?type=order|delivery-note|invoice` con columna CLIENTE, filtro por cliente,
+    rail de estados, `orderType`, búsqueda (también por cliente) y paginación. Front:
+    `ui/agent-doc-list.js`; orders/delivery-notes/invoices/statistics ramifican a modo
+    agente cuando `isAgent && !acting`. Al pulsar el cliente de una fila, suplanta y entra
+    en su listado (drill).
+  - **Jerarquía**: rol admin (Sales admin) ve TODAS las carteras; el agente, la suya.
+  - **Estadísticas agregadas** `GET /api/agent/statistics`: ventas por mes + top clientes.
+  - **Calendario de citas** (tabla `agent_appointments`): `GET/POST /api/agent/appointments`
+    + `.../{id}/status`. Agenda propia del agente, aislada; cita con cliente ajeno → 403.
+    Vista `views/calendar.js` (alta cita/parte, marcar hecha/cancelada).
+  - **Pedidos de selección** `/agent/model-selection`: tabla de programación (SCHEDULED)
+    de la cartera + CTA "Crear pedido de selección" (→ /clients → Programación).
+  - Aislamiento cubierto por `AgentPortfolioTests` (10 tests: agregación, A/B, jerarquía
+    admin, filtro cliente/tipo, estadísticas, calendario).
 
 ## Pendiente
 

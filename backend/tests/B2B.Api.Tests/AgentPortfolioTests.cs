@@ -238,6 +238,20 @@ public class AgentPortfolioTests : IClassFixture<AgentPortfolioTests.Factory>
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    // m-F3-P2: una nota larguísima se recorta, no revienta en 500 (Npgsql 22001)
+    [Fact]
+    public async Task Appointment_with_a_very_long_note_is_truncated_not_500()
+    {
+        var http = await AgentAsync(AgentAEmail);
+        var response = await http.PostAsJsonAsync("/api/agent/appointments", new
+        {
+            title = "Con nota larga",
+            start = "2026-09-03T09:00:00Z",
+            notes = new string('n', 5000)
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
     // ── Constructores de payload ──────────────────────────────────────────────────
 
     private static string ClientDoc(string number, string name) =>

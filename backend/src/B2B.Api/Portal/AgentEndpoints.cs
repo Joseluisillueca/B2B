@@ -418,6 +418,11 @@ public static class AgentEndpoints
             if (body.Start is not { } start)
                 return Results.BadRequest(new { error = "La fecha y hora de la cita son obligatorias." });
 
+            // m-F3-P2: las notas también se recortan al límite de la columna (2000),
+            // igual que el título; sin esto una nota larga reventaba en Npgsql 22001 (500).
+            var notes = string.IsNullOrWhiteSpace(body.Notes) ? null : body.Notes.Trim();
+            if (notes is { Length: > 2000 }) notes = notes[..2000];
+
             var kind = (body.Kind ?? "").Trim().ToLowerInvariant();
             if (!AppointmentKind.All.Contains(kind)) kind = AppointmentKind.Cita;
 
@@ -443,7 +448,7 @@ public static class AgentEndpoints
                 ClientId = clientId,
                 ClientName = clientName,
                 Title = title,
-                Notes = string.IsNullOrWhiteSpace(body.Notes) ? null : body.Notes.Trim(),
+                Notes = notes,
                 Kind = kind,
                 Start = start.UtcDateTime,
                 DurationMinutes = body.DurationMinutes is > 0 and <= 24 * 60 ? body.DurationMinutes.Value : 60,
