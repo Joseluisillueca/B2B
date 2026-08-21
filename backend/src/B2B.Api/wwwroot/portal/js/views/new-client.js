@@ -10,17 +10,21 @@
 // NO re-renderizando el formulario: así no se pierde lo que el agente ya ha tecleado.
 
 import { api, ApiError } from '../api.js';
-import { t } from '../i18n.js';
+import { t, lang } from '../i18n.js';
 import { esc } from '../format.js';
 import { go, href } from '../router.js';
 import { pageHead } from '../ui/chrome.js';
 import { icons } from '../ui/icons.js';
 
 const PHONE_CODES = ['+34', '+351', '+33', '+39', '+49', '+44', '+31', '+32', '+41', '+43', '+1'];
-const COUNTRIES = [
-  ['ES', 'España'], ['PT', 'Portugal'], ['FR', 'Francia'], ['IT', 'Italia'], ['DE', 'Alemania'],
-  ['GB', 'Reino Unido'], ['NL', 'Países Bajos'], ['BE', 'Bélgica'], ['AD', 'Andorra'], ['US', 'Estados Unidos']
-];
+// Países habituales (el real trae 239; ES por defecto). Se localizan al idioma de la
+// ruta con Intl.DisplayNames: en EN sale "Spain", en FR "Espagne", etc.
+const COUNTRY_CODES = ['ES', 'PT', 'FR', 'IT', 'DE', 'GB', 'NL', 'BE', 'AD', 'US'];
+const countryOptions = () => {
+  let names;
+  try { names = new Intl.DisplayNames([lang()], { type: 'region' }); } catch { names = null; }
+  return COUNTRY_CODES.map(iso => [iso, names?.of(iso) || iso]);
+};
 const PROVINCES = ['Álava', 'Albacete', 'Alicante', 'Almería', 'Asturias', 'Ávila', 'Badajoz', 'Barcelona',
   'Burgos', 'Cáceres', 'Cádiz', 'Cantabria', 'Castellón', 'Ciudad Real', 'Córdoba', 'A Coruña', 'Cuenca',
   'Girona', 'Granada', 'Guadalajara', 'Gipuzkoa', 'Huelva', 'Huesca', 'Illes Balears', 'Jaén', 'León',
@@ -52,7 +56,7 @@ const addressBlock = prefix => `
   <div class="biz-grid">
     ${field(`${prefix}.streetAddress`, t('newClient.street'))}
     ${field(`${prefix}.num`, t('newClient.num'))}
-    ${select(`${prefix}.countryIsoId`, t('newClient.country'), COUNTRIES, 'ES')}
+    ${select(`${prefix}.countryIsoId`, t('newClient.country'), countryOptions(), 'ES')}
     ${select(`${prefix}.province`, t('newClient.province'), [['', '—'], ...PROVINCES])}
     ${field(`${prefix}.city`, t('newClient.city'))}
     ${field(`${prefix}.zipCode`, t('newClient.zip'))}
