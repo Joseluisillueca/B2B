@@ -123,8 +123,20 @@ a cada cliente para operar como si fuera él (reposición/programación fija la 
   - **Calendario de citas** (tabla `agent_appointments`): `GET/POST /api/agent/appointments`
     + `.../{id}/status`. Agenda propia del agente, aislada; cita con cliente ajeno → 403.
     Vista `views/calendar.js` (alta cita/parte, marcar hecha/cancelada).
-  - **Pedidos de selección** `/agent/model-selection`: tabla de programación (SCHEDULED)
-    de la cartera + CTA "Crear pedido de selección" (→ /clients → Programación).
+  - **Pedidos de selección** (réplica del builder real, spec por subagente):
+    listado `/agent/model-selection` (Nombre/Fecha/Modelos/Clientes/Fecha envío/Estado)
+    + `/agent/model-selection/add`: nombre + **selector de modelos** (modal rejilla con
+    imagen/nombre/ref, buscador, ACEPTAR N MODELOS) + **selector de clientes** de la
+    cartera (tabla + / check, Seleccionar/Deseleccionar todo, panel "Clientes
+    seleccionados (N)" + Borrar todo) + **Realizar envío** (ENVIAR CORREO / GUARDAR SIN
+    ENVIAR / CANCELAR con validaciones nombre+≥1 modelo+≥1 cliente). Backend
+    `model_selections` + `/api/agent/{catalog-models,model-selections}`; clientes
+    limitados a la cartera, modelos validados contra el catálogo; enviar manda correo.
+    Auditado en 2 subagentes contra el portal REAL: **CUMPLE** (iguala la funcionalidad;
+    H1 traducido y mejor diseño que el real).
+  - **Diseño (feedback usuario)**: los `select` de formulario (alta de cliente y
+    calendario) usan `.acc-field select` (misma altura que inputs, flecha propia); el
+    formulario del calendario se apila limpio. Skill de diseño `refined`.
   - Aislamiento cubierto por `AgentPortfolioTests` (10 tests: agregación, A/B, jerarquía
     admin, filtro cliente/tipo, estadísticas, calendario).
 
