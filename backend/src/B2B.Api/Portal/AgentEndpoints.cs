@@ -138,8 +138,18 @@ public static class AgentEndpoints
             var email = ClientIdentity.Text(body["email"]).Trim().ToLowerInvariant();
             if (name.Length == 0)
                 return Results.BadRequest(new { error = "El nombre de la empresa es obligatorio." });
+            if (name.Length > 200)
+                return Results.BadRequest(new { error = "El nombre de la empresa es demasiado largo (máx. 200)." });
             if (!LooksLikeEmail(email))
                 return Results.BadRequest(new { error = "El email principal no es válido." });
+            if (email.Length > 320)
+                return Results.BadRequest(new { error = "El email es demasiado largo (máx. 320)." });
+
+            // Tope del payload (m-P3-2): la prealta se guarda íntegra en jsonb; sin límite
+            // un agente podría hinchar la BD. 64 KB sobra para el formulario real.
+            var payloadJson = body.ToJsonString();
+            if (payloadJson.Length > 64 * 1024)
+                return Results.BadRequest(new { error = "Los datos del formulario son demasiado grandes." });
 
             var preClient = BoolOr(body["createPreClient"] ?? body["preClient"], false);
 
@@ -152,7 +162,7 @@ public static class AgentEndpoints
                 Name = name,
                 Email = email,
                 PreClient = preClient,
-                PayloadJson = body.ToJsonString(),
+                PayloadJson = payloadJson,
                 Status = "pending"
             };
             db.ClientRegistrationRequests.Add(request);

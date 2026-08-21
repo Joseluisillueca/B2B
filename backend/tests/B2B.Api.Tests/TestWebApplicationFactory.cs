@@ -75,6 +75,9 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Contact:Root", ContactRoot);
         builder.UseSetting("Seed:PortalContent", SeedPortalContent ? "true" : "false");
         builder.UseSetting("Auth:Login:PermitLimit", LoginPermitLimit.ToString());
+        // El límite de activación (m-P2-1) también estorbaría a la batería: las pruebas
+        // del flujo de activación llaman al endpoint muchas veces desde la misma IP.
+        builder.UseSetting("Auth:Activation:PermitLimit", LoginPermitLimit.ToString());
 
         builder.ConfigureServices(services =>
         {

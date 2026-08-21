@@ -140,6 +140,22 @@ public class ClientRegistrationTests : IClassFixture<ClientRegistrationTests.Fac
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    // m-P2-2: nombre/email demasiado largos deben dar 400, no reventar en 500 al
+    // chocar con el límite de la columna (Npgsql 22001).
+    [Fact]
+    public async Task Over_long_fields_are_rejected_with_400_not_500()
+    {
+        var http = await AgentClientAsync(AgentAEmail);
+
+        var longName = await http.PostAsJsonAsync("/api/agent/clients",
+            new { name = new string('A', 250), email = "largo@cliente.test" });
+        Assert.Equal(HttpStatusCode.BadRequest, longName.StatusCode);
+
+        var longEmail = await http.PostAsJsonAsync("/api/agent/clients",
+            new { name = "Empresa", email = new string('a', 320) + "@cliente.test" });
+        Assert.Equal(HttpStatusCode.BadRequest, longEmail.StatusCode);
+    }
+
     // ── Bandeja + aislamiento ─────────────────────────────────────────────────────
 
     [Fact]

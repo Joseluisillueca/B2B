@@ -15,6 +15,10 @@ using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+// Auditoría Fase 2 (P2-2): sin manejador global, una excepción no controlada salía
+// como 500 desnudo (y en Development con stack trace). ProblemDetails da una respuesta
+// JSON limpia y uniforme fuera de desarrollo.
+builder.Services.AddProblemDetails();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
@@ -83,6 +87,11 @@ using (var scope = app.Services.CreateScope())
     if (app.Configuration.GetValue("Seed:PortalContent", true))
         PortalContentSeed.EnsureDemoContent(db);
 }
+
+// Fuera de desarrollo, una excepción no controlada se convierte en ProblemDetails
+// (sin stack trace). En desarrollo sigue mandando la página de excepción detallada.
+if (!app.Environment.IsDevelopment())
+    app.UseExceptionHandler();
 
 // Auditoría m-4: la superficie completa de la API sin autenticar no se publica
 // fuera de desarrollo.

@@ -1,5 +1,7 @@
+using B2B.Api.Auth;
 using B2B.Api.Data;
 using B2B.Api.Notifications;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace B2B.Api.Portal;
@@ -45,7 +47,7 @@ public static class ActivationEndpoints
             return ok
                 ? Results.NoContent()
                 : Results.BadRequest(new { error = "El enlace no es válido o ha caducado. Pide uno nuevo." });
-        }).AllowAnonymous();
+        }).AllowAnonymous().RequireRateLimiting(LoginRateLimiter.ActivationPolicyName);
 
         // Reenvío: sirve tanto para "no me llegó la activación" como para el enlace
         // "¿Olvidaste tu contraseña?" del login. SIEMPRE responde 200 aunque el email
@@ -68,7 +70,7 @@ public static class ActivationEndpoints
                 }
             }
             return Results.Ok(new { sent = true });
-        }).AllowAnonymous();
+        }).AllowAnonymous().RequireRateLimiting(LoginRateLimiter.ActivationPolicyName);
     }
 
     public sealed record SetPasswordRequest(string? Password, string? Repeat);

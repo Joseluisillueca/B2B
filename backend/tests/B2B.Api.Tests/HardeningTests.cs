@@ -114,6 +114,22 @@ public class HardeningTests
         Assert.Equal(HttpStatusCode.TooManyRequests, blocked.StatusCode);
     }
 
+    // m-P2-1: /api/activation/resend es público; sin freno permitía email bombing.
+    // El mismo LoginPermitLimit=3 de la fábrica cubre también la política "activation".
+    [Fact]
+    public async Task Activation_resend_TrasAgotarLosIntentos_Devuelve429()
+    {
+        using var factory = new LoginLimitFactory();
+        var client = factory.CreateClient();
+
+        for (var attempt = 1; attempt <= 3; attempt++)
+            Assert.Equal(HttpStatusCode.OK,
+                (await client.PostAsJsonAsync("/api/activation/resend", new { email = "quien@sea.test" })).StatusCode);
+
+        var blocked = await client.PostAsJsonAsync("/api/activation/resend", new { email = "quien@sea.test" });
+        Assert.Equal(HttpStatusCode.TooManyRequests, blocked.StatusCode);
+    }
+
     [Fact]
     public async Task Login_ElLimiteNoAfectaAlRestoDeLaApi()
     {
