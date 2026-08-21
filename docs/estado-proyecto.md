@@ -89,7 +89,13 @@ a cada cliente para operar como si fuera él (reposición/programación fija la 
   C200002, TEST 5 C100057), `admin@dev.local` (admin+CMS `/admin`),
   `integracion@dev.local` (cliente normal, es TEST 5). El agente sync está sembrado
   a mano en la BD compartida (no hay seeder en código).
-- **Fase 2 — HECHA y verificada** (382 tests + E2E Playwright en 5199):
+- **Fase 2 — HECHA, auditada y verificada** (384 tests + E2E Playwright en 5199).
+  **Auditoría en 2 subagentes (seguridad/backend + frontend/UX): CUMPLE, 0 P1.**
+  Corregidos sus P2: rate limiting en activación/reenvío (anti email-bombing),
+  validación de longitud (400 vs 500) + manejador global de excepciones (ProblemDetails),
+  tope de 64 KB al payload; y el P3 de localizar el selector de país del alta.
+  P3 residuales aceptados: enumeración por temporización en /resend, TOCTOU del token
+  (riesgo bajo, token secreto), complejidad de contraseña (solo longitud ≥8).
   - **Correo de activación** (pieza que faltaba: los usuarios se provisionaban sin
     contraseña y sin forma de fijarla). `IEmailSender` modo `log` (por defecto, guarda
     el correo en `sent_emails` para leer el enlace en dev) y modo `smtp` (Office 365).
