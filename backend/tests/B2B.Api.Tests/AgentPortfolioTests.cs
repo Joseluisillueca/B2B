@@ -72,6 +72,14 @@ public class AgentPortfolioTests : IClassFixture<AgentPortfolioTests.Factory>
 
             Doc("delivery-note", "DN-1", CP1, DeliveryDoc("A0001", CP1, 605, invoiced: true));
 
+            // Modelos de catálogo para el selector del pedido de selección
+            db.CatalogModels.Add(new CatalogModel { ExternalId = "MOD-1", Name = "Sandalia Sol", Active = true,
+                ExternalReference = "SS01", NameTranslationsJson = """{"es_ES":"Sandalia Sol"}""" });
+            db.CatalogModels.Add(new CatalogModel { ExternalId = "MOD-2", Name = "Bota Monte", Active = true,
+                ExternalReference = "BM02", NameTranslationsJson = """{"es_ES":"Bota Monte"}""" });
+            db.CatalogModels.Add(new CatalogModel { ExternalId = "MOD-3", Name = "Zapato Baja", Active = false,
+                ExternalReference = "ZB03", NameTranslationsJson = """{"es_ES":"Zapato Baja"}""" });
+
             var hasher = new PasswordHasher<AppUser>();
             foreach (var (email, agentId) in new[] { (AgentAEmail, AgentA), (AgentBEmail, AgentB) })
             {
@@ -252,10 +260,109 @@ public class AgentPortfolioTests : IClassFixture<AgentPortfolioTests.Factory>
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    // ── Pedidos de selección de modelos ───────────────────────────────────────────
+
+    [Fact]
+    public async Task Catalog_models_lists_only_active_and_filters_by_search()
+    {
+        var http = await AgentAsync(AgentAEmail);
+        var all = await http.GetFromJsonAsync<JsonElement>("/api/agent/catalog-models");
+        var names = all.GetProperty("items").EnumerateArray().Select(i => i.GetProperty("name").GetString()).ToList();
+        Assert.Contains("Sandalia Sol", names);
+        Assert.Contains("Bota Monte", names);
+        Assert.DoesNotContain("Zapato Baja", names);   // inactivo
+
+        var filtered = await http.GetFromJsonAsync<JsonElement>("/api/agent/catalog-models?search=bota");
+        Assert.Single(filtered.GetProperty("items").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Create_selection_saved_as_draft_stores_models_and_portfolio_clients()
+    {
+        var http = await AgentAsync(AgentAEmail);
+        var response = await http.PostAsJsonAsync("/api/agent/model-selections", new
+        {
+            name = "Temporada AW26",
+            modelIds = new[] { "MOD-1", "MOD-2" },
+            clientIds = new[] { CP1, CP2 },
+            send = false
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("draft", created.GetProperty("status").GetString());
+        Assert.Equal(2, created.GetProperty("models").GetInt32());
+        Assert.Equal(2, created.GetProperty("clients").GetInt32());
+
+        var list = await http.GetFromJsonAsync<JsonElement>("/api/agent/model-selections");
+        Assert.Contains(list.GetProperty("items").EnumerateArray(),
+            i => i.GetProperty("name").GetString() == "Temporada AW26");
+    }
+
+    [Fact]
+    public async Task Sending_a_selection_emails_the_selected_clients()
+    {
+        var http = await AgentAsync(AgentAEmail);
+        var response = await http.PostAsJsonAsync("/api/agent/model-selections", new
+        {
+            name = "Envío AW26",
+            modelIds = new[] { "MOD-1" },
+            clientIds = new[] { CP1 },
+            send = true
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("sent", created.GetProperty("status").GetString());
+        Assert.Equal(1, created.GetProperty("sent").GetInt32());
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.True(await db.SentEmails.AnyAsync(m => m.To == "C900001@cliente.test" && m.Subject.Contains("Envío AW26")));
+    }
+
+    [Fact]
+    public async Task Foreign_clients_are_dropped_and_selection_needs_a_real_client()
+    {
+        var http = await AgentAsync(AgentAEmail);
+        // Solo un cliente ajeno (de la cartera de B): no queda ninguno válido → 400
+        var response = await http.PostAsJsonAsync("/api/agent/model-selections", new
+        {
+            name = "Con cliente ajeno", modelIds = new[] { "MOD-1" }, clientIds = new[] { CP3 }
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("", new[] { "MOD-1" }, true)]      // sin nombre
+    [InlineData("Sin modelos", new string[0], true)] // sin modelos
+    [InlineData("Sin clientes", new[] { "MOD-1" }, false)] // sin clientes
+    public async Task Selection_validation_rejects_incomplete_input(string name, string[] modelIds, bool withClient)
+    {
+        var http = await AgentAsync(AgentAEmail);
+        var response = await http.PostAsJsonAsync("/api/agent/model-selections", new
+        {
+            name, modelIds, clientIds = withClient ? new[] { CP1 } : System.Array.Empty<string>()
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Model_selections_require_the_agent_role()
+    {
+        var anon = await _client.GetAsync("/api/agent/model-selections");
+        Assert.Equal(HttpStatusCode.Unauthorized, anon.StatusCode);
+        var token = await _factory.GetConnectorTokenAsync(_client);
+        var http = _factory.CreateClient();
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var forbidden = await http.GetAsync("/api/agent/model-selections");
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+    }
+
     // ── Constructores de payload ──────────────────────────────────────────────────
 
     private static string ClientDoc(string number, string name) =>
-        $$"""{ "externalReference": "{{number}}", "name": "{{name}}", "groupIds": [] }""";
+        $$"""
+        { "externalReference": "{{number}}", "name": "{{name}}", "groupIds": [], "email": "{{number}}@cliente.test" }
+        """;
 
     private static string AgentDoc(string id, string email, string name, params string[] clientIds) =>
         $$"""

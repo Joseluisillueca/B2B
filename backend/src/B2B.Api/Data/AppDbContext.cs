@@ -22,6 +22,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SentEmail> SentEmails => Set<SentEmail>();
     public DbSet<ClientRegistrationRequest> ClientRegistrationRequests => Set<ClientRegistrationRequest>();
     public DbSet<AgentAppointment> AgentAppointments => Set<AgentAppointment>();
+    public DbSet<ModelSelection> ModelSelections => Set<ModelSelection>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -217,6 +218,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             appt.Property(a => a.Status).HasMaxLength(20);
             // La agenda entra por (agente, fecha): el índice cubre ambas
             appt.HasIndex(a => new { a.AgentExternalId, a.Start });
+        });
+
+        modelBuilder.Entity<ModelSelection>(sel =>
+        {
+            sel.ToTable("model_selections");
+            sel.HasKey(s => s.Id);
+            sel.Property(s => s.AgentExternalId).HasMaxLength(100);
+            sel.Property(s => s.Name).HasMaxLength(200);
+            sel.Property(s => s.Status).HasMaxLength(20);
+            sel.Property(s => s.ModelIdsJson).HasColumnType("jsonb");
+            sel.Property(s => s.ClientIdsJson).HasColumnType("jsonb");
+            sel.HasIndex(s => new { s.AgentExternalId, s.CreatedAt });
         });
 
         modelBuilder.Entity<ContactMessage>(message =>

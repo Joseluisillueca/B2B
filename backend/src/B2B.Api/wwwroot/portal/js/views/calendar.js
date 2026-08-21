@@ -61,18 +61,18 @@ export default async function calendar(host) {
         <p class="acc-field"><label><span>${esc(t('calendar.field.title'))}</span>
           <input type="text" name="title" maxlength="200" required></label></p>
         <p class="acc-field"><label><span>${esc(t('calendar.field.client'))}</span>
-          <span class="tb-select"><select name="clientId">
+          <select name="clientId">
             <option value="">${esc(t('calendar.noClient'))}</option>
             ${clients.map(c => `<option value="${esc(c.id)}">${esc(c.name || c.number || c.id)}</option>`).join('')}
-          </select></span></label></p>
-        <div class="biz-grid">
-          <p class="acc-field"><label><span>${esc(t('calendar.field.kind'))}</span>
-            <span class="tb-select"><select name="kind">
-              ${KINDS.map(k => `<option value="${k}">${esc(t(`calendar.kind.${k}`))}</option>`).join('')}
-            </select></span></label></p>
+          </select></label></p>
+        <p class="acc-field"><label><span>${esc(t('calendar.field.kind'))}</span>
+          <select name="kind">
+            ${KINDS.map(k => `<option value="${k}">${esc(t(`calendar.kind.${k}`))}</option>`).join('')}
+          </select></label></p>
+        <div class="cal-row2">
           <p class="acc-field"><label><span>${esc(t('calendar.field.when'))}</span>
             <input type="datetime-local" name="start" required></label></p>
-          <p class="acc-field"><label><span>${esc(t('calendar.field.duration'))}</span>
+          <p class="acc-field cal-dur"><label><span>${esc(t('calendar.field.duration'))}</span>
             <input type="number" name="durationMinutes" min="15" max="480" step="15" value="60"></label></p>
         </div>
         <p class="acc-field"><label><span>${esc(t('calendar.field.notes'))}</span>

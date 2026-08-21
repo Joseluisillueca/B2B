@@ -486,6 +486,189 @@ public static class AgentEndpoints
             await db.SaveChangesAsync();
             return Results.NoContent();
         }).RequireAgent();
+
+        // ── Pedidos de selección de modelos (Fase 3) ───────────────────────────────
+        // Catálogo de modelos para el selector "Añadir más modelos" (id, nombre, ref).
+        app.MapGet("/api/agent/catalog-models", async (HttpRequest request, ClaimsPrincipal principal, AppDbContext db) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null)
+                return Results.Json(new { error = "Unknown user" }, statusCode: StatusCodes.Status401Unauthorized);
+
+            var locale = DocumentProjections.Locale(request.Query["locale"]);
+            var search = request.Query["search"].ToString().Trim();
+            var skip = Int(request.Query["skip"], 0);
+            var take = Math.Clamp(Int(request.Query["take"], 24), 1, 100);
+
+            var models = await db.CatalogModels.Where(m => m.Active).ToListAsync();
+            var imageByModel = (await db.SyncDocuments.Where(d => d.EntityType == "model-image").ToListAsync())
+                .ToDictionary(d => d.ExternalId, d => ModelImageUri(d.Payload), StringComparer.OrdinalIgnoreCase);
+            var rows = models
+                .Select(m => new
+                {
+                    id = m.ExternalId,
+                    name = ModelName(m, locale),
+                    reference = m.ExternalReference,
+                    image = imageByModel.GetValueOrDefault(m.ExternalId)
+                })
+                .Where(m => search.Length == 0
+                    || m.name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    || m.reference.Contains(search, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(m => m.name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var page = rows.Skip(skip).Take(take).ToList();
+            return Results.Ok(new { total = rows.Count, skip, take, items = page });
+        }).RequireAgent();
+
+        // Listado de selecciones del agente (admin ve todas)
+        app.MapGet("/api/agent/model-selections", async (ClaimsPrincipal principal, AppDbContext db) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null)
+                return Results.Json(new { error = "Unknown user" }, statusCode: StatusCodes.Status401Unauthorized);
+
+            var isAdmin = string.Equals(actor.User.Role, AdminPolicy.Role, StringComparison.Ordinal);
+            var query = db.ModelSelections.AsQueryable();
+            if (!isAdmin)
+                query = query.Where(s => s.AgentExternalId == actor.User.AgentExternalId);
+
+            var selections = await query.OrderByDescending(s => s.CreatedAt).Take(200).ToListAsync();
+            var items = selections.Select(s => new
+            {
+                s.Id,
+                s.Name,
+                models = CountJson(s.ModelIdsJson),
+                clients = CountJson(s.ClientIdsJson),
+                s.Status,
+                s.CreatedAt,
+                s.SentAt
+            });
+            return Results.Ok(new { items });
+        }).RequireAgent();
+
+        // Crear (guardar sin enviar) o crear+enviar el correo de selección a los clientes.
+        app.MapPost("/api/agent/model-selections", async (
+            ModelSelectionRequest body, ClaimsPrincipal principal, AppDbContext db, IEmailSender email) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null)
+                return Results.Json(new { error = "Unknown user" }, statusCode: StatusCodes.Status401Unauthorized);
+
+            var name = (body.Name ?? "").Trim();
+            if (name.Length == 0)
+                return Results.BadRequest(new { error = "Debe nombrar la selección." });
+            if (name.Length > 200) name = name[..200];
+
+            var modelIds = (body.ModelIds ?? []).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList();
+            if (modelIds.Count == 0)
+                return Results.BadRequest(new { error = "Debe añadir al menos un modelo." });
+
+            // Los clientes destino DEBEN ser de la cartera del agente (aislamiento)
+            var portfolio = await PortfolioAsync(db, actor);
+            var clientIds = (body.ClientIds ?? [])
+                .Where(id => !string.IsNullOrWhiteSpace(id) && portfolio.ContainsKey(id))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (clientIds.Count == 0)
+                return Results.BadRequest(new { error = "Debe seleccionar al menos un cliente." });
+
+            var send = body.Send == true;
+            var selection = new ModelSelection
+            {
+                Id = Guid.NewGuid(),
+                AgentExternalId = actor.User.AgentExternalId ?? "",
+                CreatedByUserId = actor.UserId,
+                CreatedAt = DateTime.UtcNow,
+                Name = name,
+                ModelIdsJson = new JsonArray([.. modelIds.Select(id => (JsonNode?)JsonValue.Create(id))]).ToJsonString(),
+                ClientIdsJson = new JsonArray([.. clientIds.Select(id => (JsonNode?)JsonValue.Create(id))]).ToJsonString(),
+                Status = send ? "sent" : "draft",
+                SentAt = send ? DateTime.UtcNow : null
+            };
+            db.ModelSelections.Add(selection);
+
+            var sentCount = 0;
+            if (send)
+            {
+                var modelNames = await ModelNamesAsync(db, modelIds, DocumentProjections.Locale(actor.User.Culture));
+                foreach (var clientId in clientIds)
+                {
+                    var payload = await PortalScope.ClientPayloadAsync(db, clientId);
+                    var to = ClientIdentity.Text(payload?["email"]).Trim();
+                    if (to.Length == 0) continue;
+                    var message = SelectionEmail(to, name, modelNames);
+                    EmailResult result;
+                    try { result = await email.SendAsync(message); }
+                    catch (Exception ex) { result = new EmailResult(false, email.Transport, ex.Message); }
+                    db.SentEmails.Add(new SentEmail
+                    {
+                        Id = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, To = to,
+                        Subject = message.Subject, Body = message.TextBody,
+                        Transport = result.Transport, Error = result.Ok ? null : result.Error
+                    });
+                    sentCount++;
+                }
+            }
+            await db.SaveChangesAsync();
+
+            return Results.Created($"/api/agent/model-selections/{selection.Id}", new
+            {
+                selection.Id, selection.Name, models = modelIds.Count, clients = clientIds.Count,
+                selection.Status, selection.SentAt, sent = sentCount
+            });
+        }).RequireAgent();
+    }
+
+    public sealed record ModelSelectionRequest(string? Name, List<string>? ModelIds, List<string>? ClientIds, bool? Send);
+
+    // Nombre del modelo en el idioma pedido, con respaldo al nombre por defecto
+    private static string ModelName(CatalogModel model, string locale)
+    {
+        try
+        {
+            if (JsonNode.Parse(model.NameTranslationsJson) is { } node
+                && DocumentProjections.Localized(node, locale) is { Length: > 0 } name)
+                return name;
+        }
+        catch (System.Text.Json.JsonException) { }
+        return model.Name;
+    }
+
+    private static async Task<List<string>> ModelNamesAsync(AppDbContext db, List<string> ids, string locale)
+    {
+        var models = await db.CatalogModels.Where(m => ids.Contains(m.ExternalId)).ToListAsync();
+        return [.. models.Select(m => ModelName(m, locale))];
+    }
+
+    private static string? ModelImageUri(string payload)
+    {
+        try { return (JsonNode.Parse(payload) as JsonObject)?["images"]?[0]?["image"]?["uri"]?.GetValue<string>(); }
+        catch (System.Text.Json.JsonException) { return null; }
+        catch (InvalidOperationException) { return null; }
+    }
+
+    private static int CountJson(string json)
+    {
+        try { return JsonNode.Parse(json) is JsonArray array ? array.Count : 0; }
+        catch (System.Text.Json.JsonException) { return 0; }
+    }
+
+    private static EmailMessage SelectionEmail(string to, string name, List<string> modelNames)
+    {
+        var list = string.Join("\n", modelNames.Select(m => $" · {m}"));
+        var text = $"Hola,\n\nTu comercial te ha preparado una selección de modelos «{name}» para tu pedido de temporada:\n\n{list}\n\nEntra en el portal B2B de lejan para hacer tu pedido.\n\nEquipo lejan B2B";
+        var items = string.Join("", modelNames.Select(m => $"<li>{System.Net.WebUtility.HtmlEncode(m)}</li>"));
+        var html = $"""
+            <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;color:#1a1a1a">
+              <p style="font-size:1.4rem;font-weight:700;color:#1f5c46">lejan<sup>™</sup></p>
+              <p>Tu comercial te ha preparado la selección <b>{System.Net.WebUtility.HtmlEncode(name)}</b> para tu pedido de temporada:</p>
+              <ul>{items}</ul>
+              <p>Entra en el portal B2B de lejan para hacer tu pedido.</p>
+              <p style="font-size:.85rem;color:#666">Equipo lejan B2B</p>
+            </div>
+            """;
+        return new EmailMessage(to, $"Selección de modelos: {name}", html, text);
     }
 
     public sealed record AppointmentRequest(

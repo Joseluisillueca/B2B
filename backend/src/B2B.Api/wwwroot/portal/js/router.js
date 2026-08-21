@@ -18,6 +18,7 @@ const VIEWS = {
   // Vistas de agente aún sin contenido propio: "Próximamente" con el chrome de
   // agente, nunca un 404 ni una pantalla rota.
   'agent/model-selection': () => import('./views/model-selection.js'),
+  'agent/model-selection/add': () => import('./views/model-selection-add.js'),
   'agent/calendar': () => import('./views/calendar.js'),
   'agent/clients/new': () => import('./views/new-client.js'),
   'clients/requests': () => import('./views/requests.js'),

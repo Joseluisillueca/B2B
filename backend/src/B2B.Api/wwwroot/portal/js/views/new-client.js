@@ -42,14 +42,12 @@ const field = (name, label, { type = 'text', wide = false } = {}) => `
 const select = (name, label, options, selected = '') => `
   <p class="acc-field"><label>
     <span>${esc(label)}</span>
-    <span class="tb-select">
-      <select name="${esc(name)}">
-        ${options.map(o => {
-          const [val, text] = Array.isArray(o) ? o : [o, o];
-          return `<option value="${esc(val)}"${val === selected ? ' selected' : ''}>${esc(text)}</option>`;
-        }).join('')}
-      </select>
-    </span>
+    <select name="${esc(name)}">
+      ${options.map(o => {
+        const [val, text] = Array.isArray(o) ? o : [o, o];
+        return `<option value="${esc(val)}"${val === selected ? ' selected' : ''}>${esc(text)}</option>`;
+      }).join('')}
+    </select>
   </label></p>`;
 
 const addressBlock = prefix => `

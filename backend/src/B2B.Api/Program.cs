@@ -155,6 +155,8 @@ app.MapGet("/portal", () => Results.Redirect("/es/es/dashboard"));
 app.MapFallbackToFile($"/{{market:regex({Locale})}}/{{lang:regex({Locale})}}", PortalShell);
 app.MapFallbackToFile($"/{{market:regex({Locale})}}/{{lang:regex({Locale})}}/{{view}}", PortalShell);
 app.MapFallbackToFile($"/{{market:regex({Locale})}}/{{lang:regex({Locale})}}/{{view}}/{{subview}}", PortalShell);
+// Rutas de agente con tres segmentos (p.ej. agent/model-selection/add, agent/clients/new)
+app.MapFallbackToFile($"/{{market:regex({Locale})}}/{{lang:regex({Locale})}}/{{seg1}}/{{seg2}}/{{seg3}}", PortalShell);
 app.MapFallbackToFile("/login", PortalShell);
 
 app.Run();

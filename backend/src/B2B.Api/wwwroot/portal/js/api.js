@@ -76,6 +76,13 @@ export const api = {
   /** Estadísticas agregadas de la cartera del agente */
   agentStatistics: locale => request('GET', `/api/agent/statistics?locale=${locale}`),
 
+  /** Catálogo de modelos para el selector de "pedido de selección" */
+  catalogModels: params => request('GET', `/api/agent/catalog-models?${params}`),
+
+  /** Pedidos de selección de modelos del agente */
+  modelSelections: () => request('GET', '/api/agent/model-selections'),
+  createModelSelection: body => request('POST', '/api/agent/model-selections', body),
+
   /** Calendario de citas del agente */
   appointments: params => request('GET', `/api/agent/appointments${params ? `?${params}` : ''}`),
   createAppointment: body => request('POST', '/api/agent/appointments', body),
