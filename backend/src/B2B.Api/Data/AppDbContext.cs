@@ -21,6 +21,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ActivationToken> ActivationTokens => Set<ActivationToken>();
     public DbSet<SentEmail> SentEmails => Set<SentEmail>();
     public DbSet<ClientRegistrationRequest> ClientRegistrationRequests => Set<ClientRegistrationRequest>();
+    public DbSet<AgentAppointment> AgentAppointments => Set<AgentAppointment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -201,6 +202,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // La bandeja entra por (agente, estado): el índice cubre ambas
             request.HasIndex(r => new { r.AgentExternalId, r.Status });
             request.HasIndex(r => r.CreatedAt);
+        });
+
+        modelBuilder.Entity<AgentAppointment>(appt =>
+        {
+            appt.ToTable("agent_appointments");
+            appt.HasKey(a => a.Id);
+            appt.Property(a => a.AgentExternalId).HasMaxLength(100);
+            appt.Property(a => a.ClientId).HasMaxLength(100);
+            appt.Property(a => a.ClientName).HasMaxLength(200);
+            appt.Property(a => a.Title).HasMaxLength(200);
+            appt.Property(a => a.Notes).HasMaxLength(2000);
+            appt.Property(a => a.Kind).HasMaxLength(20);
+            appt.Property(a => a.Status).HasMaxLength(20);
+            // La agenda entra por (agente, fecha): el índice cubre ambas
+            appt.HasIndex(a => new { a.AgentExternalId, a.Start });
         });
 
         modelBuilder.Entity<ContactMessage>(message =>

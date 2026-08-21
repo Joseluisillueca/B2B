@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -236,6 +237,314 @@ public static class AgentEndpoints
 
             return Results.Ok(new { items });
         }).RequireAgent();
+
+        // ── Documentos agregados de la cartera (Fase 3) ────────────────────────────
+        // Pedidos / albaranes / facturas de TODOS los clientes del agente en una sola
+        // tabla con columna CLIENTE. Jerarquía: el rol admin (Sales admin) ve la cartera
+        // completa; el agente, solo la suya. Se puede acotar a un cliente con ?client=.
+        app.MapGet("/api/agent/documents", async (HttpRequest request, ClaimsPrincipal principal, AppDbContext db) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null)
+                return Results.Json(new { error = "Unknown user" }, statusCode: StatusCodes.Status401Unauthorized);
+
+            var entity = (request.Query["type"].ToString().Trim().ToLowerInvariant()) switch
+            {
+                "order" => DocumentProjections.OrderEntity,
+                "delivery-note" => DocumentProjections.DeliveryNoteEntity,
+                "invoice" => DocumentProjections.InvoiceEntity,
+                _ => null
+            };
+            if (entity is null)
+                return Results.BadRequest(new { error = "type debe ser order, delivery-note o invoice." });
+
+            var portfolio = await PortfolioAsync(db, actor);
+            // ?client= acota a un cliente, pero SOLO si es de la cartera (aislamiento)
+            var wanted = request.Query["client"].ToString().Trim();
+            var ids = wanted.Length > 0
+                ? (portfolio.ContainsKey(wanted) ? new[] { wanted } : Array.Empty<string>())
+                : [.. portfolio.Keys];
+
+            var query = DocumentQuery.Read(request.Query);
+            var clientsList = portfolio.Values
+                .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(object (c) => new { id = c.Id, number = c.Number, name = c.Name })
+                .ToList();
+
+            if (ids.Length == 0)
+                return Results.Ok(new { total = 0, query.Skip, query.Take, status = query.Status,
+                    counts = new Dictionary<string, int> { ["all"] = 0 }, clients = clientsList, items = Array.Empty<object>() });
+
+            var docs = await LoadPortfolioDocsAsync(db, entity, ids);
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var orderType = request.Query["orderType"].ToString().Trim().ToUpperInvariant();
+
+            // Local genérica: proyecta cada doc a su fila, la envuelve con su cliente,
+            // pagina con el pipeline compartido y proyecta el item de salida.
+            IResult Page<T>(Func<string, JsonObject, T?> project, IReadOnlyList<string> statuses,
+                Func<AgentDocRow<T>, object> item, Func<T, bool>? keep = null) where T : class, IDocumentRow
+            {
+                var rows = docs
+                    .Select(d => project(d.ExternalId, d.Payload) is { } r && (keep is null || keep(r))
+                        ? new AgentDocRow<T>(portfolio[d.ClientId], r) : null)
+                    .OfType<AgentDocRow<T>>();
+                var page = DocumentProjections.Paginate(rows, query, statuses, DocumentProjections.ByDateDesc);
+                return Results.Ok(new
+                {
+                    page.Total, query.Skip, query.Take, status = query.Status,
+                    page.Counts, clients = clientsList,
+                    items = page.Items.Select(item)
+                });
+            }
+
+            return entity switch
+            {
+                DocumentProjections.OrderEntity => Page<OrderRow>(
+                    DocumentProjections.Order, DocumentProjections.OrderStatuses,
+                    r => new { client = Client(r), r.Inner.Id, r.Inner.Number, r.Inner.Date,
+                        r.Inner.Reference, r.Inner.Type, r.Inner.Units, r.Inner.Total, r.Inner.Currency, r.Inner.Status },
+                    keep: orderType.Length > 0 ? row => string.Equals(row.Type, orderType, StringComparison.OrdinalIgnoreCase) : null),
+
+                DocumentProjections.DeliveryNoteEntity => Page<DeliveryNoteRow>(
+                    DocumentProjections.DeliveryNote, DocumentProjections.DeliveryNoteStatuses,
+                    r => new { client = Client(r), r.Inner.Id, r.Inner.Number, r.Inner.Date,
+                        r.Inner.IsInvoiced, r.Inner.Total, r.Inner.Currency, r.Inner.Address, r.Inner.Status }),
+
+                _ => Page<InvoiceRow>(
+                    (id, p) => DocumentProjections.Invoice(id, p, query.Locale, today), DocumentProjections.InvoiceStatuses,
+                    r => new { client = Client(r), r.Inner.Id, r.Inner.Number, r.Inner.Date,
+                        r.Inner.PayMethod, r.Inner.Total, r.Inner.Debt, r.Inner.Currency, r.Inner.Status, r.Inner.DueDate })
+            };
+        }).RequireAgent();
+
+        // Estadísticas agregadas de la cartera: ventas facturadas por mes + top clientes.
+        app.MapGet("/api/agent/statistics", async (HttpRequest request, ClaimsPrincipal principal, AppDbContext db) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null)
+                return Results.Json(new { error = "Unknown user" }, statusCode: StatusCodes.Status401Unauthorized);
+
+            var portfolio = await PortfolioAsync(db, actor);
+            if (portfolio.Count == 0)
+                return Results.Ok(new { currency = "EUR", total = 0m, count = 0, months = Array.Empty<object>(), topClients = Array.Empty<object>() });
+
+            var locale = DocumentProjections.Locale(request.Query["locale"]);
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var to = new DateOnly(today.Year, today.Month, 1);
+            var from = to.AddMonths(-11);
+
+            var docs = await LoadPortfolioDocsAsync(db, DocumentProjections.InvoiceEntity, [.. portfolio.Keys]);
+            var invoices = docs
+                .Select(d => (d.ClientId, Row: DocumentProjections.Invoice(d.ExternalId, d.Payload, locale, today)))
+                .Where(x => x.Row.Date is { } date
+                    && DateOnly.FromDateTime(date.UtcDateTime) >= from)
+                .ToList();
+
+            var buckets = new List<object>();
+            var grand = 0m;
+            for (var cursor = from; cursor <= to; cursor = cursor.AddMonths(1))
+            {
+                var month = cursor;
+                var inMonth = invoices.Where(x => x.Row.Date!.Value.UtcDateTime.Year == month.Year
+                    && x.Row.Date!.Value.UtcDateTime.Month == month.Month).ToList();
+                var amount = inMonth.Sum(x => x.Row.Total);
+                grand += amount;
+                buckets.Add(new { month = month.ToString("yyyy-MM", CultureInfo.InvariantCulture), amount, count = inMonth.Count });
+            }
+
+            var topClients = invoices
+                .GroupBy(x => x.ClientId, StringComparer.OrdinalIgnoreCase)
+                .Select(g => new { client = portfolio[g.Key].Name, number = portfolio[g.Key].Number, total = g.Sum(x => x.Row.Total) })
+                .Where(c => c.total != 0)
+                .OrderByDescending(c => c.total)
+                .Take(10)
+                .ToList();
+
+            return Results.Ok(new
+            {
+                currency = "EUR",
+                total = grand,
+                count = invoices.Count,
+                clients = portfolio.Count,
+                from = from.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                to = to.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                months = buckets,
+                topClients
+            });
+        }).RequireAgent();
+
+        // ── Calendario de citas / partes de visita (Fase 3) ────────────────────────
+        // Agenda propia del comercial (no viene de BC). Cada agente ve y gestiona SOLO
+        // sus citas; el admin (sin AgentExternalId) las ve todas.
+        app.MapGet("/api/agent/appointments", async (HttpRequest request, ClaimsPrincipal principal, AppDbContext db) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null)
+                return Results.Json(new { error = "Unknown user" }, statusCode: StatusCodes.Status401Unauthorized);
+
+            var mine = db.AgentAppointments.AsQueryable();
+            if (!string.IsNullOrEmpty(actor.User.AgentExternalId))
+                mine = mine.Where(a => a.AgentExternalId == actor.User.AgentExternalId);
+
+            if (Day(request.Query["from"]) is { } from)
+                mine = mine.Where(a => a.Start >= from.ToDateTime(TimeOnly.MinValue));
+            if (Day(request.Query["to"]) is { } to)
+                mine = mine.Where(a => a.Start < to.AddDays(1).ToDateTime(TimeOnly.MinValue));
+
+            var items = await mine
+                .OrderBy(a => a.Start)
+                .Take(500)
+                .Select(a => new
+                {
+                    a.Id, a.ClientId, a.ClientName, a.Title, a.Notes, a.Kind,
+                    a.Start, a.DurationMinutes, a.Status
+                })
+                .ToListAsync();
+
+            return Results.Ok(new { items });
+        }).RequireAgent();
+
+        app.MapPost("/api/agent/appointments", async (
+            AppointmentRequest body, ClaimsPrincipal principal, AppDbContext db) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null)
+                return Results.Json(new { error = "Unknown user" }, statusCode: StatusCodes.Status401Unauthorized);
+
+            var title = (body.Title ?? "").Trim();
+            if (title.Length == 0)
+                return Results.BadRequest(new { error = "El título de la cita es obligatorio." });
+            if (title.Length > 200) title = title[..200];
+            if (body.Start is not { } start)
+                return Results.BadRequest(new { error = "La fecha y hora de la cita son obligatorias." });
+
+            var kind = (body.Kind ?? "").Trim().ToLowerInvariant();
+            if (!AppointmentKind.All.Contains(kind)) kind = AppointmentKind.Cita;
+
+            // Si se indica cliente, debe ser de la cartera del agente (aislamiento)
+            string? clientId = null, clientName = null;
+            var wanted = (body.ClientId ?? "").Trim();
+            if (wanted.Length > 0)
+            {
+                var portfolio = await PortfolioAsync(db, actor);
+                if (!portfolio.TryGetValue(wanted, out var info))
+                    return Results.Json(new { error = "El cliente no pertenece a la cartera del agente." },
+                        statusCode: StatusCodes.Status403Forbidden);
+                clientId = info.Id;
+                clientName = info.Name;
+            }
+
+            var appointment = new AgentAppointment
+            {
+                Id = Guid.NewGuid(),
+                AgentExternalId = actor.User.AgentExternalId ?? "",
+                CreatedByUserId = actor.UserId,
+                CreatedAt = DateTime.UtcNow,
+                ClientId = clientId,
+                ClientName = clientName,
+                Title = title,
+                Notes = string.IsNullOrWhiteSpace(body.Notes) ? null : body.Notes.Trim(),
+                Kind = kind,
+                Start = start.UtcDateTime,
+                DurationMinutes = body.DurationMinutes is > 0 and <= 24 * 60 ? body.DurationMinutes.Value : 60,
+                Status = "pending"
+            };
+            db.AgentAppointments.Add(appointment);
+            await db.SaveChangesAsync();
+
+            return Results.Created($"/api/agent/appointments/{appointment.Id}", new
+            {
+                appointment.Id, appointment.ClientId, appointment.ClientName, appointment.Title,
+                appointment.Notes, appointment.Kind, appointment.Start, appointment.DurationMinutes, appointment.Status
+            });
+        }).RequireAgent();
+
+        // Marcar una cita (hecha / cancelada / pendiente). Solo la del propio agente.
+        app.MapPost("/api/agent/appointments/{id:guid}/status", async (
+            Guid id, AppointmentStatusRequest body, ClaimsPrincipal principal, AppDbContext db) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null)
+                return Results.Json(new { error = "Unknown user" }, statusCode: StatusCodes.Status401Unauthorized);
+
+            var appointment = await db.AgentAppointments.SingleOrDefaultAsync(a => a.Id == id);
+            // 404 si no existe o no es del agente: no se confirma la existencia de la ajena
+            if (appointment is null ||
+                (!string.IsNullOrEmpty(actor.User.AgentExternalId) && appointment.AgentExternalId != actor.User.AgentExternalId))
+                return Results.NotFound(new { error = "La cita no existe." });
+
+            var status = (body.Status ?? "").Trim().ToLowerInvariant();
+            if (status is not ("pending" or "done" or "canceled"))
+                return Results.BadRequest(new { error = "Estado no válido." });
+
+            appointment.Status = status;
+            await db.SaveChangesAsync();
+            return Results.NoContent();
+        }).RequireAgent();
+    }
+
+    public sealed record AppointmentRequest(
+        string? ClientId, string? Title, string? Notes, string? Kind,
+        DateTimeOffset? Start, int? DurationMinutes);
+
+    public sealed record AppointmentStatusRequest(string? Status);
+
+    private static DateOnly? Day(Microsoft.Extensions.Primitives.StringValues value) =>
+        DateOnly.TryParse(value.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var day) ? day : null;
+
+    // ── Cartera para las vistas agregadas ──────────────────────────────────────
+    private sealed record ClientInfo(string Id, string Number, string Name);
+
+    // Envuelve una fila de documento con su cliente; delega el resto en la fila para
+    // reutilizar el pipeline de filtrado/paginación. El buscador encuentra además por
+    // número y nombre de cliente.
+    private sealed record AgentDocRow<T>(ClientInfo Client, T Inner) : IDocumentRow where T : IDocumentRow
+    {
+        public string Number => Inner.Number;
+        public DateTimeOffset? Date => Inner.Date;
+        public string Status => Inner.Status;
+        public string Season => Inner.Season;
+        public string SearchBlob => $"{Inner.SearchBlob} {Client.Number} {Client.Name}";
+    }
+
+    private static object Client<T>(AgentDocRow<T> row) where T : IDocumentRow =>
+        new { id = row.Client.Id, number = row.Client.Number, name = row.Client.Name };
+
+    /// Cartera del actor como mapa clientId → info. Rol admin (Sales admin) ve TODOS
+    /// los clientes; un agente, solo los de su documento `agent`.
+    private static async Task<Dictionary<string, ClientInfo>> PortfolioAsync(AppDbContext db, PortalActor actor)
+    {
+        var isAdmin = string.Equals(actor.User.Role, AdminPolicy.Role, StringComparison.Ordinal);
+        HashSet<string>? allowed = null;
+        if (!isAdmin)
+            allowed = new HashSet<string>(await AgentClientIdsAsync(db, actor.User.AgentExternalId), StringComparer.OrdinalIgnoreCase);
+
+        var clientDocs = await db.SyncDocuments.Where(d => d.EntityType == "client").ToListAsync();
+        var map = new Dictionary<string, ClientInfo>(StringComparer.OrdinalIgnoreCase);
+        foreach (var doc in clientDocs)
+        {
+            if (allowed is not null && !allowed.Contains(doc.ExternalId)) continue;
+            if (ClientIdentity.Parse(doc.Payload) is not { } payload) continue;
+            map[doc.ExternalId] = new ClientInfo(doc.ExternalId,
+                ClientIdentity.Text(payload["externalReference"]), ClientIdentity.Text(payload["name"]));
+        }
+        return map;
+    }
+
+    private static async Task<List<(string ClientId, string ExternalId, JsonObject Payload)>> LoadPortfolioDocsAsync(
+        AppDbContext db, string entity, string[] clientIds)
+    {
+        if (clientIds.Length == 0) return [];
+        var docs = await db.SyncDocuments
+            .Where(d => d.EntityType == entity && d.ParentId != null && clientIds.Contains(d.ParentId))
+            .ToListAsync();
+        return
+        [
+            .. docs
+                .Select(d => (d.ParentId!, d.ExternalId, Payload: ClientIdentity.Parse(d.Payload)))
+                .Where(d => d.Payload is not null)
+                .Select(d => (d.Item1, d.ExternalId, d.Payload!))
+        ];
     }
 
     // Validación de email deliberadamente laxa: un "@" con algo a cada lado y un punto
