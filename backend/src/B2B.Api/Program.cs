@@ -2,6 +2,7 @@ using System.Text;
 using B2B.Api.Admin;
 using B2B.Api.Auth;
 using B2B.Api.Data;
+using B2B.Api.Notifications;
 using B2B.Api.Portal;
 using B2B.Api.Shop;
 using B2B.Api.Sync;
@@ -34,6 +35,17 @@ builder.Services.AddAuthorization(options =>
 });
 builder.Services.AddLoginRateLimiter(builder.Configuration);
 builder.Services.AddHttpClient();   // asistente del portal → API de Anthropic (opcional)
+
+// Correo transaccional (activación de cuenta, recuperación de contraseña). Por
+// defecto modo "log": no envía nada real, el correo queda en sent_emails y su enlace
+// se puede leer en dev. Con Email:Mode=smtp usa un servidor real (p.ej. Office 365).
+var emailOptions = builder.Configuration.GetSection(EmailOptions.Section).Get<EmailOptions>() ?? new EmailOptions();
+builder.Services.AddSingleton(emailOptions);
+if (string.Equals(emailOptions.Mode, "smtp", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+else
+    builder.Services.AddSingleton<IEmailSender, LogEmailSender>();
+builder.Services.AddScoped<ActivationService>();
 
 // Auditoría m-6: la clave de firma de appsettings.json se auto-documenta como de
 // desarrollo, pero nada impedía arrancar producción con ella. Ahora sí.
@@ -120,6 +132,7 @@ app.MapDocumentEndpoints();
 app.MapAccountEndpoints();
 app.MapSatEndpoints();
 app.MapAssistantEndpoints();
+app.MapActivationEndpoints();
 
 // Portal del cliente: enrutado por History API sobre las rutas reales del portal
 // actual, /{market}/{lang}/{vista} (p.ej. /es/es/orders). Recargar cualquiera de

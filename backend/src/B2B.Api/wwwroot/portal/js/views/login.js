@@ -4,7 +4,7 @@ import { t } from '../i18n.js';
 import { esc } from '../format.js';
 import { api } from '../api.js';
 import { state } from '../state.js';
-import { go } from '../router.js';
+import { go, href } from '../router.js';
 
 export default function login(host) {
   host.innerHTML = `
@@ -16,7 +16,7 @@ export default function login(host) {
           placeholder="${esc(t('login.email'))}" aria-label="${esc(t('login.email'))}">
         <input class="field" type="password" name="password" autocomplete="current-password" required
           placeholder="${esc(t('login.password'))}" aria-label="${esc(t('login.password'))}">
-        <a class="forgot" href="#">${esc(t('login.forgot'))}</a>
+        <a class="forgot" href="${href('activate')}">${esc(t('login.forgot'))}</a>
 
         <button class="submit" type="submit">${esc(t('login.submit'))}</button>
         <p class="err" role="alert"></p>

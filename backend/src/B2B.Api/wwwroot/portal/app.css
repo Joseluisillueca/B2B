@@ -322,6 +322,21 @@ body[data-chrome="credentials"] {
 .login-card .legal { font-size:.8rem; color:#52525b; line-height:1.5; margin:1rem 0 0; }
 .login-card .err { color:var(--out); font-size:.85rem; min-height:1.3em; margin:.7rem 0 0; }
 
+/* Activación / recuperación de contraseña (Fase 2). Reutiliza la tarjeta del login */
+.activate-card h1 { font-family:var(--display); font-size:1.5rem; margin:0 0 .5rem; color:var(--ink); }
+.activate-card .activate-lead { color:var(--ink-2); margin:0 0 1.2rem; }
+.activate-card .activate-form .field { width:100%; border:1px solid #ccc; border-radius:4px;
+  padding:.85rem 1rem; font-size:1rem; margin:0 0 .9rem; }
+.activate-card .activate-form .field:focus { border-color:var(--blue); }
+.activate-card .activate-form .field:focus-visible { outline:2px solid var(--blue); outline-offset:1px; }
+.activate-card .activate-hint { font-size:.82rem; color:var(--muted); margin:-.3rem 0 1rem; }
+.activate-card .submit { width:100%; background:var(--blue); color:#fff; font-weight:700; letter-spacing:.04em;
+  border:none; border-radius:4px; padding:.9rem; font-size:.95rem; cursor:pointer; }
+.activate-card .submit:hover { background:var(--blue-deep); }
+.activate-card .submit[disabled] { opacity:.6; cursor:progress; }
+.activate-card .activate-ok { color:var(--blue-deep); font-size:.9rem; margin:.8rem 0 0; }
+.activate-card .forgot { display:block; text-align:center; font-size:.9rem; color:var(--blue); margin:1.2rem 0 0; }
+
 /* Selección de credenciales (01-tras-login.png) */
 .cred-card { width:min(46rem,100%); }
 .cred-card h1 { font-size:1.35rem; letter-spacing:-.01em; margin:0 0 1.6rem; }

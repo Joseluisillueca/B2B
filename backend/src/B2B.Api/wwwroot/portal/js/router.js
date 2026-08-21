@@ -10,6 +10,8 @@ export const DEFAULT_MARKET = 'es';
 // Vista → módulo. El literal de la ruta es el del portal actual, no se traduce.
 const VIEWS = {
   'login': () => import('./views/login.js'),
+  // Activación / recuperación de contraseña: pública, el usuario aún no tiene sesión
+  'activate': () => import('./views/activate.js'),
   'credentials': () => import('./views/credentials.js'),
   'dashboard': () => import('./views/dashboard.js'),
   'clients': () => import('./views/clients.js'),
@@ -35,7 +37,10 @@ const VIEWS = {
 };
 
 // Pantallas de acceso: card sobre degradado, sin header ni footer
-const BARE = { login: 'off', credentials: 'credentials' };
+const BARE = { login: 'off', activate: 'off', credentials: 'credentials' };
+
+// Rutas públicas: accesibles SIN token (el usuario todavía no puede iniciar sesión)
+const PUBLIC = new Set(['login', 'activate']);
 
 export const parse = (pathname = location.pathname) => {
   const parts = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
@@ -97,7 +102,7 @@ export async function resolve() {
 
   // Guardas de sesión: sin token solo se puede estar en el login; con token pero
   // sin credencial elegida se pasa por la pantalla de credenciales.
-  if (!state.token && route.view !== 'login') return go('/login', { replace: true });
+  if (!state.token && !PUBLIC.has(route.view)) return go('/login', { replace: true });
   if (state.token && route.view === 'login') return go('dashboard', { replace: true });
   if (state.token && !state.credential && route.view !== 'credentials' && state.me?.credentials?.length)
     return go('credentials', { replace: true });

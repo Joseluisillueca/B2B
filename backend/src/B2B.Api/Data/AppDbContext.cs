@@ -18,6 +18,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ReturnRequest> ReturnRequests => Set<ReturnRequest>();
     public DbSet<BusinessChangeRequest> BusinessChangeRequests => Set<BusinessChangeRequest>();
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
+    public DbSet<ActivationToken> ActivationTokens => Set<ActivationToken>();
+    public DbSet<SentEmail> SentEmails => Set<SentEmail>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -162,6 +164,28 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             request.Property(r => r.Status).HasMaxLength(20);
             request.Property(r => r.ChangesJson).HasColumnType("jsonb");
             request.HasIndex(r => new { r.ClientId, r.Status });
+        });
+
+        modelBuilder.Entity<ActivationToken>(token =>
+        {
+            token.ToTable("activation_tokens");
+            token.HasKey(t => t.Id);
+            token.Property(t => t.TokenHash).HasMaxLength(64);
+            token.Property(t => t.Purpose).HasMaxLength(20);
+            // El canje busca por hash: índice único para encontrarlo de un golpe
+            token.HasIndex(t => t.TokenHash).IsUnique();
+            token.HasIndex(t => t.UserId);
+        });
+
+        modelBuilder.Entity<SentEmail>(mail =>
+        {
+            mail.ToTable("sent_emails");
+            mail.HasKey(m => m.Id);
+            mail.Property(m => m.To).HasMaxLength(320);
+            mail.Property(m => m.Subject).HasMaxLength(300);
+            mail.Property(m => m.Transport).HasMaxLength(10);
+            mail.HasIndex(m => m.To);
+            mail.HasIndex(m => m.CreatedAt);
         });
 
         modelBuilder.Entity<ContactMessage>(message =>
