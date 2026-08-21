@@ -259,10 +259,10 @@ function openSelectModal(client) {
           <span class="sel-card-title">${esc(t('clients.modal.scheduled'))}</span>
           <span class="sel-card-desc">${esc(t('clients.modal.scheduledDesc'))}</span>
         </button>
-        <a class="sel-card" href="${href('agent/clients/edit')}?id=${encodeURIComponent(client.clientId)}">
+        <button type="button" class="sel-card" data-edit>
           <span class="sel-card-title">${esc(t('clients.modal.edit'))}</span>
           <span class="sel-card-desc">${esc(t('clients.modal.editDesc', { name: client.name || '' }))}</span>
-        </a>
+        </button>
       </div>
       <p class="sel-error" id="selError" hidden></p>
       <div class="dlg-actions">
@@ -295,6 +295,23 @@ function openSelectModal(client) {
       }
     };
   });
+
+  // Editar cliente = suplantar y abrir /business (misma vista "Mi empresa" del
+  // cliente, con su flujo de "solicitud de cambio"), igual que el portal real.
+  dialog.querySelector('[data-edit]').onclick = async () => {
+    dialog.querySelectorAll('.sel-card').forEach(button => { button.disabled = true; });
+    error.hidden = true;
+    try {
+      const result = await api.impersonate(client.clientId);
+      state.actAs({ token: result.token, client: result.client || client });
+      dialog.close();
+      go('business');
+    } catch {
+      dialog.querySelectorAll('.sel-card').forEach(button => { button.disabled = false; });
+      error.textContent = t('clients.modal.error');
+      error.hidden = false;
+    }
+  };
 
   dialog.showModal();
   dialog.querySelector('.sel-card')?.focus();

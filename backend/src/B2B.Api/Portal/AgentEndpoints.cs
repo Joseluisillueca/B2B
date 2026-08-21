@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using B2B.Api.Auth;
 using B2B.Api.Data;
+using B2B.Api.Notifications;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -119,6 +120,120 @@ public static class AgentEndpoints
             var (token, expiresAt) = IssueToken(config, actor.User, clientId: null, clientNumber: null, actingAgent: null);
             return Results.Ok(new { token, tokenExpiresIn = expiresAt.ToString(BcDateTimeFormat) });
         }).RequireAgent();
+
+        // Alta de cliente (prealta). El maestro vive en BC y el sync es de una vía, así
+        // que esto NO crea el cliente en BC: registra la solicitud para que compras la
+        // valide, y de inmediato provisiona el usuario del contacto y le manda el correo
+        // de activación (72h) para que fije su acceso sin esperar.
+        app.MapPost("/api/agent/clients", async (
+            JsonObject? body, ClaimsPrincipal principal, AppDbContext db, ActivationService activation) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null)
+                return Results.Json(new { error = "Unknown user" }, statusCode: StatusCodes.Status401Unauthorized);
+            if (body is null)
+                return Results.BadRequest(new { error = "Cuerpo de la solicitud vacío." });
+
+            var name = ClientIdentity.Text(body["name"]).Trim();
+            var email = ClientIdentity.Text(body["email"]).Trim().ToLowerInvariant();
+            if (name.Length == 0)
+                return Results.BadRequest(new { error = "El nombre de la empresa es obligatorio." });
+            if (!LooksLikeEmail(email))
+                return Results.BadRequest(new { error = "El email principal no es válido." });
+
+            var preClient = BoolOr(body["createPreClient"] ?? body["preClient"], false);
+
+            var request = new ClientRegistrationRequest
+            {
+                Id = Guid.NewGuid(),
+                CreatedAt = DateTime.UtcNow,
+                AgentExternalId = actor.User.AgentExternalId,
+                CreatedByUserId = actor.UserId,
+                Name = name,
+                Email = email,
+                PreClient = preClient,
+                PayloadJson = body.ToJsonString(),
+                Status = "pending"
+            };
+            db.ClientRegistrationRequests.Add(request);
+
+            // Provisiona el usuario del contacto por email. Si ya existía (agente u otro
+            // cliente), NO se pisa su rol ni su contraseña: solo se manda activación si
+            // aún no tiene contraseña. El sync de BC, cuando llegue el cliente, enlazará
+            // este mismo email con su ClientExternalId sin tocar la contraseña ya fijada.
+            var user = await db.Users.SingleOrDefaultAsync(u => u.Email == email);
+            if (user is null)
+            {
+                user = new AppUser
+                {
+                    Id = Guid.NewGuid(),
+                    Email = email,
+                    PasswordHash = "",
+                    Role = ClientIdentity.ClientAdminRole,
+                    Culture = "es_ES",
+                    Name = name
+                };
+                db.Users.Add(user);
+            }
+            await db.SaveChangesAsync();
+
+            var activationSent = false;
+            if (string.IsNullOrEmpty(user.PasswordHash))
+            {
+                await activation.SendAsync(user, ActivationPurpose.Activation);
+                activationSent = true;
+            }
+
+            return Results.Created($"/api/agent/clients/requests/{request.Id}", new
+            {
+                id = request.Id,
+                name = request.Name,
+                email = request.Email,
+                preClient = request.PreClient,
+                status = request.Status,
+                createdAt = request.CreatedAt,
+                activationSent
+            });
+        }).RequireAgent();
+
+        // Bandeja de solicitudes de registro (prealtas). El agente ve las suyas; el
+        // Sales admin (rol admin) ve todas. En el portal real esta ruta da 404: aquí sí
+        // funciona.
+        app.MapGet("/api/agent/clients/requests", async (ClaimsPrincipal principal, AppDbContext db) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null)
+                return Results.Json(new { error = "Unknown user" }, statusCode: StatusCodes.Status401Unauthorized);
+
+            var isAdmin = string.Equals(actor.User.Role, AdminPolicy.Role, StringComparison.Ordinal);
+            var query = db.ClientRegistrationRequests.AsQueryable();
+            if (!isAdmin)
+                query = query.Where(r => r.AgentExternalId == actor.User.AgentExternalId);
+
+            var items = await query
+                .OrderByDescending(r => r.CreatedAt)
+                .Take(200)
+                .Select(r => new
+                {
+                    id = r.Id,
+                    name = r.Name,
+                    email = r.Email,
+                    preClient = r.PreClient,
+                    status = r.Status,
+                    createdAt = r.CreatedAt
+                })
+                .ToListAsync();
+
+            return Results.Ok(new { items });
+        }).RequireAgent();
+    }
+
+    // Validación de email deliberadamente laxa: un "@" con algo a cada lado y un punto
+    // en el dominio. No se pretende validar RFC 5322, solo descartar erratas obvias.
+    private static bool LooksLikeEmail(string email)
+    {
+        var at = email.IndexOf('@');
+        return at > 0 && at < email.Length - 3 && email.IndexOf('.', at) > at;
     }
 
     public record ImpersonateRequest(string? ClientId);

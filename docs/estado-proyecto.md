@@ -89,10 +89,22 @@ a cada cliente para operar como si fuera él (reposición/programación fija la 
   C200002, TEST 5 C100057), `admin@dev.local` (admin+CMS `/admin`),
   `integracion@dev.local` (cliente normal, es TEST 5). El agente sync está sembrado
   a mano en la BD compartida (no hay seeder en código).
-- **Fase 2 — PENDIENTE** (esperando instrucciones del usuario): formulario de alta de
-  cliente (básica/fiscal/envío/contactos/precliente) + **correo de activación** (enlace
-  72h para fijar contraseña; SMTP configurable en `appsettings` + modo "log" en dev
-  para probar sin buzón real) + bandeja de solicitudes de registro.
+- **Fase 2 — HECHA y verificada** (382 tests + E2E Playwright en 5199):
+  - **Correo de activación** (pieza que faltaba: los usuarios se provisionaban sin
+    contraseña y sin forma de fijarla). `IEmailSender` modo `log` (por defecto, guarda
+    el correo en `sent_emails` para leer el enlace en dev) y modo `smtp` (Office 365).
+    Token de un solo uso, caduca 72h, hash SHA-256. Endpoints públicos
+    `/api/activation/{token}` (validar/canjear) y `/resend`. Página `/activate` +
+    i18n; el "¿Olvidaste tu contraseña?" del login lleva aquí. Config en
+    `appsettings` sección `Email`/`Portal`.
+  - **Alta de cliente** (`/agent/clients/new`, formulario real §2: básica + "Crear
+    precliente", fiscal + dirección, envío, emails de contacto, contacto). El sync es
+    de una vía, así que crea una **prealta** (`client_registration_requests`) + provisiona
+    el usuario del contacto + le envía activación. `POST /api/agent/clients`.
+  - **Bandeja de solicitudes** (`/clients/requests`, `GET /api/agent/clients/requests`):
+    el agente ve las suyas, el admin todas (en el portal real da 404; aquí funciona).
+  - **Editar cliente** = suplantar + `/business` (flujo de solicitud de cambio, que ya
+    teníamos), igual que el real.
 - **Fase 3 — PENDIENTE**: vistas agregadas del agente (Pedidos/Albaranes/Facturas/
   Estadísticas con columna CLIENTE), pedidos de selección, calendario de citas,
   jerarquía (Sales admin "Todos" vs agente "Yo").

@@ -1253,6 +1253,27 @@ table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6
   color:var(--accent-deep); transition:background .15s var(--ease); }
 .cl-release:hover { background:var(--accent-soft); }
 
+/* ── Alta de cliente (new-client) y bandeja de solicitudes (requests) ── */
+.nc-sub { font-size:.95rem; font-weight:600; color:var(--ink-2); margin:1.2rem 0 .5rem; }
+.nc-form .biz-check { margin:.4rem 0; }
+.nc-form textarea { width:100%; border:1px solid var(--line-control); border-radius:var(--r-sm);
+  padding:.62rem .7rem; font:inherit; color:var(--ink); resize:vertical; }
+.nc-form .acc-field.wide { grid-column:1 / -1; }
+.nc-add { margin-top:.6rem; }
+.nc-ship { border:1px solid var(--line); border-radius:var(--r-sm); padding:1rem; margin:.8rem 0; }
+.nc-ship-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:.6rem; }
+.nc-email { align-items:end; }
+.nc-email-x { display:flex; align-items:end; }
+.nc-actions { display:flex; gap:.8rem; justify-content:flex-end; margin-top:1.6rem; }
+.nc-actions .btn-ghost { text-decoration:none; display:inline-flex; align-items:center; }
+.requests .cl-tools { display:flex; gap:.8rem; align-items:center; margin-bottom:1.2rem; }
+.requests .cl-tools .btn-ghost { text-decoration:none; }
+.requests .cl-new { margin-left:auto; text-decoration:none; }
+.req-badge { display:inline-block; padding:.18rem .6rem; border-radius:999px; font-size:.78rem; font-weight:600; }
+.req-pending { background:#fdf0d5; color:#8a5a00; }
+.req-approved { background:#dcefe4; color:var(--blue-deep); }
+.req-rejected { background:var(--accent-soft); color:var(--accent-deep); }
+
 /* ── Modal de suplantación (dlg-select) ── */
 .dlg-select { max-width:min(40rem,94vw); width:40rem; }
 .sel-panel { padding:1.6rem 1.7rem 1.4rem; }

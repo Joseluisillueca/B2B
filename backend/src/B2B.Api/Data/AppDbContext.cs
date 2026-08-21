@@ -20,6 +20,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
     public DbSet<ActivationToken> ActivationTokens => Set<ActivationToken>();
     public DbSet<SentEmail> SentEmails => Set<SentEmail>();
+    public DbSet<ClientRegistrationRequest> ClientRegistrationRequests => Set<ClientRegistrationRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -186,6 +187,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             mail.Property(m => m.Transport).HasMaxLength(10);
             mail.HasIndex(m => m.To);
             mail.HasIndex(m => m.CreatedAt);
+        });
+
+        modelBuilder.Entity<ClientRegistrationRequest>(request =>
+        {
+            request.ToTable("client_registration_requests");
+            request.HasKey(r => r.Id);
+            request.Property(r => r.AgentExternalId).HasMaxLength(100);
+            request.Property(r => r.Name).HasMaxLength(200);
+            request.Property(r => r.Email).HasMaxLength(320);
+            request.Property(r => r.Status).HasMaxLength(20);
+            request.Property(r => r.PayloadJson).HasColumnType("jsonb");
+            // La bandeja entra por (agente, estado): el índice cubre ambas
+            request.HasIndex(r => new { r.AgentExternalId, r.Status });
+            request.HasIndex(r => r.CreatedAt);
         });
 
         modelBuilder.Entity<ContactMessage>(message =>

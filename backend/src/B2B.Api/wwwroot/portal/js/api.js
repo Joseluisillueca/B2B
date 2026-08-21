@@ -64,6 +64,12 @@ export const api = {
   /** Suplanta a un cliente: devuelve { token, client }. El token opera como el cliente */
   impersonate: clientId => request('POST', '/api/agent/impersonate', { clientId }),
 
+  /** Alta de cliente (prealta). `body` es el formulario anidado del alta */
+  createClient: body => request('POST', '/api/agent/clients', body),
+
+  /** Bandeja de solicitudes de registro del agente */
+  clientRequests: () => request('GET', '/api/agent/clients/requests'),
+
   /** Descarga autenticada: los CSV van con Bearer, así que no valen enlaces sueltos */
   async download(path, fallbackName) {
     const response = await fetch(path, {

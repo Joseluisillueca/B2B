@@ -19,9 +19,8 @@ const VIEWS = {
   // agente, nunca un 404 ni una pantalla rota.
   'agent/model-selection': () => import('./views/agent-soon.js'),
   'agent/calendar': () => import('./views/agent-soon.js'),
-  'agent/clients/new': () => import('./views/agent-soon.js'),
-  'agent/clients/edit': () => import('./views/agent-soon.js'),
-  'clients/requests': () => import('./views/agent-soon.js'),
+  'agent/clients/new': () => import('./views/new-client.js'),
+  'clients/requests': () => import('./views/requests.js'),
   'catalog/catalog': () => import('./views/catalog.js'),
   'product': () => import('./views/product.js'),
   'checkout': () => import('./views/checkout.js'),
