@@ -18,6 +18,11 @@ import { icons } from '../ui/icons.js';
 
 const PAGE = 12;
 
+// El país llega como ISO (ES); el modal de suplantación lo muestra con nombre.
+const COUNTRY = { ES: 'España', PT: 'Portugal', FR: 'Francia', IT: 'Italia',
+  DE: 'Alemania', GB: 'Reino Unido', US: 'Estados Unidos', AD: 'Andorra' };
+const countryName = code => COUNTRY[String(code || '').toUpperCase()] || code || '';
+
 const columns = () => [
   { label: t('clients.col.code') },
   { label: t('clients.col.name') },
@@ -209,7 +214,10 @@ export default async function clients(host) {
     });
     list.querySelector('[data-release]')?.addEventListener('click', () => {
       state.stopActing();
-      load();
+      // Igual que el botón del header: re-resolver la ruta re-pinta el chrome
+      // (carrito y "Deseleccionar" desaparecen) además de la lista. Con solo
+      // load() el header seguía mostrando la suplantación hasta recargar (P2-2).
+      go('clients');
     });
   }
 
@@ -239,7 +247,7 @@ function openSelectModal(client) {
         <p class="sel-kicker">${esc(t('clients.modal.title'))}</p>
         <h2>${esc(client.name || '')}</h2>
         <p class="sel-country">${esc(t('clients.modal.country'))}:
-          <b>${esc(client.country || '—')}</b></p>
+          <b>${esc(countryName(client.country) || '—')}</b></p>
       </div>
       <p class="sel-actions-title">${esc(t('clients.modal.actions'))}</p>
       <div class="sel-actions">

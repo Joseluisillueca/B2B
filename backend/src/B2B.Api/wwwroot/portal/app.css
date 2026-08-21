@@ -1131,7 +1131,9 @@ table.grid .num { white-space:nowrap; }
   .c-caption { padding:1.4rem 1.2rem 2.4rem; }
   .t-cart { top:1rem; left:1rem; }
   .t-label { right:1.1rem; bottom:.8rem; }
-  .page { padding:1.2rem 1rem 2.4rem; }
+  /* El FAB del asistente (fijo abajo-derecha) tapaba el pager en móvil (P3):
+     se reserva hueco inferior para que el último control quede por encima. */
+  .page { padding:1.2rem 1rem 6rem; }
   h1.title { font-size:1.9rem; }
   .sheet .card { padding:1.8rem 1.3rem; }
   .cred-row { flex-wrap:wrap; }
@@ -1203,6 +1205,10 @@ table.grid .num { white-space:nowrap; }
 .agent-deselect svg { flex:none; }
 
 /* ── Vista de clientes ── */
+/* La cartera del agente tiene 12 columnas (hasta SELECCIONAR): a 1240px el ancho
+   máximo estándar recorta la última columna y el botón de suplantar queda fuera de
+   vista sin scroll (P2-1). Se ensancha la página para que quepan todas. */
+.page.cl { max-width:1560px; }
 .cl-requests { margin:-1.2rem 0 1.4rem; font-size:.88rem; }
 .cl-requests a { color:var(--blue); text-decoration:underline; text-underline-offset:3px; }
 .cl-requests a:hover { color:var(--blue-deep); }

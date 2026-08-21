@@ -64,6 +64,39 @@ Método usado (pedido por el cliente): subagentes Opus por fase
 (implementador → revisor de diseño con skills `web-design-guidelines`/
 `frontend-design`/`impeccable` → corrector), auditoría propia por fase en bucle.
 
+## Modo AGENTE / Comercial (nuevo, replica b2b.lejanbrand.com/es/es/clients)
+
+Un comercial lleva varios clientes, entra al portal, ve su **cartera** y **suplanta**
+a cada cliente para operar como si fuera él (reposición/programación fija la ventana).
+
+- **Fase 1 — HECHA y AUDITADA (CUMPLE)**, commit `0c301c3` + correcciones de esta
+  sesión. Backend: rol `agent` provisionado por el sync `agent` (contrato 04 §4),
+  `GET /api/agent/clients` (cartera con filtros/paginación), `POST /api/agent/impersonate`
+  (token con `clientId`+`actingAgent`, **403** si el cliente no es de su cartera),
+  `POST /api/agent/token` (deseleccionar). Aislamiento verificado: cliente ajeno→403,
+  sin token→401, token de cliente en `/api/agent/*`→403, sin fuga cross-tenant.
+  Front: megamenú de agente, vista `/clients`, modal de suplantación, cabecera de
+  suplantación con carrito y "Deseleccionar".
+- **Auditoría Fase 1** (`scratchpad/audit-agente.md`): CUMPLE (0 P1, 2 P2, 3 P3).
+  Corregido y verificado con Playwright contra 5199: **P2-1** columna SELECCIONAR
+  recortada → se ensancha `.page.cl` a 1560px (sin overflow, botón visible);
+  **P2-2** la (X) de fila no refrescaba la cabecera → ahora re-resuelve la ruta
+  (`go('clients')`); **P3** país "ES"→"España" en el modal; **P3** el FAB del
+  asistente tapaba el pager en móvil → `padding-bottom` en `.page`. Diferido: P3
+  autocompletado en filtros Ciudad/Segmento (necesita endpoint de facetas).
+- **Cuentas dev** (todas `dev-password`, portal en http://localhost:5199/es/es/):
+  `agente@dev.local` (agente, cartera de 3: Calzados Ruiz C200001, Deportes Marin
+  C200002, TEST 5 C100057), `admin@dev.local` (admin+CMS `/admin`),
+  `integracion@dev.local` (cliente normal, es TEST 5). El agente sync está sembrado
+  a mano en la BD compartida (no hay seeder en código).
+- **Fase 2 — PENDIENTE** (esperando instrucciones del usuario): formulario de alta de
+  cliente (básica/fiscal/envío/contactos/precliente) + **correo de activación** (enlace
+  72h para fijar contraseña; SMTP configurable en `appsettings` + modo "log" en dev
+  para probar sin buzón real) + bandeja de solicitudes de registro.
+- **Fase 3 — PENDIENTE**: vistas agregadas del agente (Pedidos/Albaranes/Facturas/
+  Estadísticas con columna CLIENTE), pedidos de selección, calendario de citas,
+  jerarquía (Sales admin "Todos" vs agente "Yo").
+
 ## Pendiente
 
 1. **Auditoría integral final del /goal** — **CERRADA: CUMPLE en las tres
