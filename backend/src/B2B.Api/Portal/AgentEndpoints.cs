@@ -560,7 +560,16 @@ public static class AgentEndpoints
                 return Results.BadRequest(new { error = "Debe nombrar la selección." });
             if (name.Length > 200) name = name[..200];
 
-            var modelIds = (body.ModelIds ?? []).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList();
+            var requestedModels = (body.ModelIds ?? [])
+                .Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().Take(1000).ToList();
+            if (requestedModels.Count == 0)
+                return Results.BadRequest(new { error = "Debe añadir al menos un modelo." });
+            // m-F3sel-P3-1: los modelos se validan contra el catálogo (se descartan los
+            // inexistentes, igual que los clientes contra la cartera) para no guardar basura.
+            var modelIds = await db.CatalogModels
+                .Where(m => requestedModels.Contains(m.ExternalId))
+                .Select(m => m.ExternalId)
+                .ToListAsync();
             if (modelIds.Count == 0)
                 return Results.BadRequest(new { error = "Debe añadir al menos un modelo." });
 
@@ -583,8 +592,8 @@ public static class AgentEndpoints
                 Name = name,
                 ModelIdsJson = new JsonArray([.. modelIds.Select(id => (JsonNode?)JsonValue.Create(id))]).ToJsonString(),
                 ClientIdsJson = new JsonArray([.. clientIds.Select(id => (JsonNode?)JsonValue.Create(id))]).ToJsonString(),
-                Status = send ? "sent" : "draft",
-                SentAt = send ? DateTime.UtcNow : null
+                Status = "draft",
+                SentAt = null
             };
             db.ModelSelections.Add(selection);
 
@@ -609,6 +618,13 @@ public static class AgentEndpoints
                     });
                     sentCount++;
                 }
+            }
+            // m-F3sel-P3-2: "enviada" solo si de verdad salió algún correo. Si se pidió
+            // enviar pero ningún cliente tenía email, queda como borrador (no miente).
+            if (send && sentCount > 0)
+            {
+                selection.Status = "sent";
+                selection.SentAt = DateTime.UtcNow;
             }
             await db.SaveChangesAsync();
 

@@ -320,6 +320,18 @@ public class AgentPortfolioTests : IClassFixture<AgentPortfolioTests.Factory>
     }
 
     [Fact]
+    public async Task Nonexistent_models_are_dropped_and_selection_needs_a_real_model()
+    {
+        var http = await AgentAsync(AgentAEmail);
+        // Modelos que no existen en el catálogo → se descartan → 400
+        var response = await http.PostAsJsonAsync("/api/agent/model-selections", new
+        {
+            name = "Modelos basura", modelIds = new[] { "NO-EXISTE-1", "NO-EXISTE-2" }, clientIds = new[] { CP1 }
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Foreign_clients_are_dropped_and_selection_needs_a_real_client()
     {
         var http = await AgentAsync(AgentAEmail);
