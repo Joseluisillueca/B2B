@@ -136,6 +136,25 @@ function trapFocus(container, initial) {
   return () => { container.removeEventListener('keydown', onKey); previous?.focus?.(); };
 }
 
+// Pila de overlays (quick-view + lightbox). Escape cierra SOLO la capa superior, así
+// ampliar sobre el quick-view y pulsar Escape cierra el zoom y no el modal de debajo.
+const openOverlays = [];
+function pushOverlay(close) {
+  openOverlays.push(close);
+  const onKey = event => {
+    if (event.key === 'Escape' && openOverlays[openOverlays.length - 1] === close) {
+      event.stopPropagation();
+      close();
+    }
+  };
+  document.addEventListener('keydown', onKey);
+  return () => {
+    const i = openOverlays.indexOf(close);
+    if (i >= 0) openOverlays.splice(i, 1);
+    document.removeEventListener('keydown', onKey);
+  };
+}
+
 // Quick-view: abre el visor completo (giro + miniaturas) en un modal, sin salir de
 // la página. Lo usa el lookbook desde el badge 360° de las tarjetas.
 export function openViewerModal(images, name) {
@@ -146,14 +165,13 @@ export function openViewerModal(images, name) {
       <div class="viewer-modal-name">${esc(name)}</div>
       <div class="viewer-modal-mount"></div>
     </div>`;
-  let release;
-  const close = () => { release?.(); box.remove(); document.removeEventListener('keydown', onKey); };
-  const onKey = e => { if (e.key === 'Escape') close(); };
+  let release, popKey;
+  const close = () => { release?.(); popKey?.(); box.remove(); };
   box.addEventListener('click', e => { if (e.target === box || e.target.closest('.viewer-modal-close')) close(); });
-  document.addEventListener('keydown', onKey);
   document.body.appendChild(box);
   createViewer(box.querySelector('.viewer-modal-mount'), images, { name });
   release = trapFocus(box.querySelector('.viewer-modal-box'), box.querySelector('.viewer-modal-close'));
+  popKey = pushOverlay(close);
   requestAnimationFrame(() => box.classList.add('on'));
 }
 
@@ -166,12 +184,11 @@ function openZoom(src, name) {
   box.setAttribute('aria-label', name);
   box.innerHTML = `<button type="button" class="viewer-lightbox-close" aria-label="${esc(t('viewer.close'))}">✕</button>
     <img src="${esc(src)}" alt="${esc(name)}">`;
-  let release;
-  const close = () => { release?.(); box.remove(); document.removeEventListener('keydown', onKey); };
-  const onKey = e => { if (e.key === 'Escape') close(); };
+  let release, popKey;
+  const close = () => { release?.(); popKey?.(); box.remove(); };
   box.addEventListener('click', close);
-  document.addEventListener('keydown', onKey);
   document.body.appendChild(box);
   release = trapFocus(box, box.querySelector('.viewer-lightbox-close'));
+  popKey = pushOverlay(close);
   requestAnimationFrame(() => box.classList.add('on'));
 }
