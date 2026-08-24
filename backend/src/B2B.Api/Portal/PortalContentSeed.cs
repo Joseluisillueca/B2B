@@ -33,15 +33,18 @@ public static class PortalContentSeed
 
     // Lookbook "Colecciones lejan" — barefoot editorial. Portada (carrusel) con la voz
     // real de la marca; las historias comprables referencian modelos reales del catálogo.
+    // Imágenes y copy REALES de la web de la marca (lejanbrand.com, CDN de Shopify).
     private const string LookbookHero = """
     { "items": [
-      { "id": "lb-hero-1", "order": 0, "imageUrl": "/media/portal/demo-hero-carretera.svg",
-        "alt": "Colección barefoot de lejan — Otoño/Invierno 26",
-        "title": "Barefoot Bonito", "subtitle": "Salud y estilo en un mismo paso",
+      { "id": "lb-hero-1", "order": 0,
+        "imageUrl": "https://lejanbrand.com/cdn/shop/files/fw26-hero-launch-d-v2.jpg?v=1787069122&width=2880",
+        "alt": "Campaña Lejan Otoño/Invierno 26",
+        "title": "Barefoot Bonito", "subtitle": "El calzado que respeta la forma natural del pie",
         "ctaText": "Explorar la colección", "ctaHref": "/es/es/catalog/catalog" },
-      { "id": "lb-hero-2", "order": 1, "imageUrl": "/media/portal/demo-hero-taller.svg",
-        "alt": "Lejan One® FW26",
-        "title": "Lejan One® · FW26", "subtitle": "Tu pie, tal y como es",
+      { "id": "lb-hero-2", "order": 1,
+        "imageUrl": "https://lejanbrand.com/cdn/shop/files/lejan-one-burdeos-1.jpg?v=1786618655&width=2400",
+        "alt": "Lejan One® FW26 · Burgundy",
+        "title": "Lejan One® · FW26", "subtitle": "Imita la sensación de ir descalzo",
         "ctaText": "Ver novedades", "ctaHref": "/es/es/catalog/catalog" }
     ] }
     """;
@@ -50,22 +53,26 @@ public static class PortalContentSeed
     { "items": [
       { "id": "lb-pilares", "order": 0, "kicker": "Por qué barefoot",
         "title": "Horma ancha · Suela fina · Drop cero",
-        "body": "Tu pie, tal y como es. Espacio para los dedos, máxima flexibilidad y cero elevación para moverte libre cada día. Barefoot que respeta la forma natural del pie, sin renunciar al estilo.",
-        "imageUrl": "/media/portal/demo-hero-taller.svg", "accent": "#c4633a", "layout": "right", "refs": [] },
+        "body": "El calzado barefoot imita la sensación de ir descalzo y respeta la forma natural del pie. Espacio para los dedos, máxima flexibilidad y cero elevación para moverte libre cada día, sin renunciar al estilo.",
+        "imageUrl": "https://lejanbrand.com/cdn/shop/files/lejan-one-brownie-1.jpg?v=1786618654&width=2400",
+        "accent": "#c4633a", "layout": "right", "refs": [] },
       { "id": "lb-one", "order": 1, "kicker": "Lejan One® · FW26",
         "title": "La zapatilla de todos los días",
-        "body": "Mesh transpirable y horma que respeta tu paso. De la ciudad al finde, sin renuncias. Tallas 21–46, horma Standard y Wide.",
-        "imageUrl": "/media/portal/demo-hero-carretera.svg", "accent": "#1f5c46", "layout": "left",
+        "body": "Mesh transpirable y horma que respeta tu paso. De la ciudad al finde, sin renuncias. Tallas 21–46, horma Standard y Wide. Cambios de talla gratis.",
+        "imageUrl": "https://lejanbrand.com/cdn/shop/files/lejan-one-dark-blue-1.jpg?v=1786618655&width=2400",
+        "accent": "#c98a1e", "layout": "left",
         "refs": ["DEMO0004-0000-4000-9000-000000000004", "DEMO0005-0000-4000-9000-000000000005", "DEMO0007-0000-4000-9000-000000000007"] },
       { "id": "lb-melrose", "order": 2, "kicker": "Lejan Melrose®",
         "title": "Barefoot que viste",
         "body": "El barefoot que combina con todo: napa suave, suela fina y cero drop. Del día a día a la ocasión, con la libertad del pie descalzo.",
-        "imageUrl": "/media/portal/demo-hero-taller.svg", "accent": "#221d17", "layout": "right",
+        "imageUrl": "https://lejanbrand.com/cdn/shop/files/melrose_white_1_1.jpg?v=1772009997&width=2000",
+        "accent": "#221d17", "layout": "right",
         "refs": ["DEMO0001-0000-4000-9000-000000000001", "DEMO0002-0000-4000-9000-000000000002", "DEMO0003-0000-4000-9000-000000000003"] },
       { "id": "lb-cuidado", "order": 3, "kicker": "Cuídalas",
         "title": "Que aguanten tu ritmo",
-        "body": "Un gesto y siguen como el primer día. Kit de cuidado premium para que tu barefoot dure paso tras paso.",
-        "imageUrl": "/media/portal/demo-hero-carretera.svg", "accent": "#1f5c46", "layout": "left",
+        "body": "Un gesto y siguen como el primer día. Kit de cuidado premium para que tu barefoot dure paso tras paso. Envío gratis en pedidos +60€.",
+        "imageUrl": "https://lejanbrand.com/cdn/shop/files/lejan-one-burdeos-1.jpg?v=1786618655&width=2400",
+        "accent": "#c4633a", "layout": "left",
         "refs": ["DEMO0006-0000-4000-9000-000000000006"] }
     ] }
     """;

@@ -78,10 +78,13 @@ export default async function lookbook(host) {
     const refs = (story.refs || []).map(id => map.get(String(id))).filter(Boolean);
     const side = story.layout === 'left' ? 'lb-left' : 'lb-right';
     const accent = /^#[0-9a-fA-F]{3,8}$/.test(story.accent || '') ? story.accent : 'var(--accent)';
+    // Si el CMS no trae imagen editorial, no dejamos una caja vacía: caemos a la
+    // foto del primer producto del raíl (evita el efecto "imagen rota").
+    const media = story.imageUrl || (refs[0] && refs[0].imageUri) || '';
     return `
       <section class="lb-story ${side}" style="--lb-accent:${esc(accent)}">
         <div class="lb-story-media">
-          ${story.imageUrl ? `<img src="${esc(story.imageUrl)}" alt="${esc(story.alt || '')}" loading="lazy" decoding="async">` : ''}
+          ${media ? `<img src="${esc(media)}" alt="${esc(story.alt || story.title || '')}" loading="lazy" decoding="async">` : ''}
         </div>
         <div class="lb-story-text">
           ${story.kicker ? `<span class="lb-kicker">${esc(story.kicker)}</span>` : ''}

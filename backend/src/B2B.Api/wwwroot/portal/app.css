@@ -1455,45 +1455,50 @@ table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6
 .lb-empty { text-align:center; color:var(--muted); padding:3rem 1rem; }
 
 .lb-story { display:grid; grid-template-columns:1fr 1fr; gap:2rem 3rem; align-items:center;
-  padding:2.6rem 0; border-top:1px solid var(--line); }
+  padding:2.6rem 0; border-top:1px solid var(--line);
+  grid-template-areas:"media text" "shop shop"; }
+.lb-story.lb-right { grid-template-areas:"text media" "shop shop"; }
 .lb-story:first-child { border-top:none; }
-.lb-story.lb-left .lb-story-media { order:0; } .lb-story.lb-left .lb-story-text { order:1; }
-.lb-story.lb-right .lb-story-media { order:1; } .lb-story.lb-right .lb-story-text { order:0; }
+.lb-story-media { grid-area:media; }
+.lb-story-text { grid-area:text; }
+.lb-shop { grid-area:shop; }
 .lb-story-media { border-radius:var(--r); overflow:hidden; background:var(--surface); aspect-ratio:4/3; }
 .lb-story-media img { width:100%; height:100%; object-fit:cover; }
 .lb-story-text { max-width:34rem; }
 .lb-kicker { display:inline-block; font-size:.74rem; font-weight:700; letter-spacing:.08em;
-  text-transform:uppercase; color:var(--lb-accent); border-bottom:2px solid var(--lb-accent);
+  text-transform:uppercase; color:var(--accent-deep); border-bottom:2px solid var(--lb-accent);
   padding-bottom:.15rem; margin:0 0 .8rem; }
 .lb-story-text h2 { font-family:var(--display); font-size:2rem; line-height:1.1; margin:0 0 .7rem; color:var(--ink); }
 .lb-story-text p { color:var(--ink-2); font-size:1.02rem; line-height:1.6; margin:0; }
 
 /* "Compra el look": raíl horizontal de tarjetas (a lo ancho de la historia) */
-.lb-shop { grid-column:1 / -1; margin-top:1.6rem; }
+.lb-shop { grid-column:1 / -1; margin-top:1.6rem; min-width:0; }
 .lb-shop-title { font-family:var(--display); font-size:1.15rem; margin:0 0 1rem;
   display:inline-flex; align-items:center; gap:.5rem; }
 .lb-shop-title::before { content:""; width:1.6rem; height:2px; background:var(--lb-accent); display:inline-block; }
-.lb-rail { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(13rem,1fr); gap:1.2rem;
+.lb-rail { display:grid; grid-auto-flow:column; grid-auto-columns:21rem; justify-content:start; gap:1.2rem; min-width:0;
   overflow-x:auto; scroll-snap-type:x mandatory; padding:.2rem .2rem 1rem; }
 .lb-rail .pcard { scroll-snap-align:start; }
 /* En el lookbook la tarjeta NO es un enlace estirado: tiene su propia acción
    "Añadir", así que solo el nombre navega a la ficha (si no, el enlace tapa el botón). */
 .lb-pcard .pcard-link::after { content:none; }
 .lb-pcard .pcard-body { display:flex; flex-direction:column; gap:.35rem; }
-.lb-add, .lb-pcard .pcard-fav { position:relative; z-index:2; }
+.lb-add { position:relative; z-index:2; }
+.lb-rail .pcard { transition:transform .2s var(--ease), box-shadow .2s var(--ease); }
+.lb-rail .pcard:hover { transform:translateY(-4px); box-shadow:var(--shadow-card); }
 .lb-add { margin-top:.4rem; display:inline-flex; align-items:center; justify-content:center; gap:.35rem;
-  border:1px solid var(--blue); background:var(--blue); color:#fff; border-radius:var(--r-sm);
+  border:1px solid var(--blue); background:transparent; color:var(--blue-deep); border-radius:var(--r-sm);
   padding:.5rem .7rem; font:inherit; font-size:.85rem; font-weight:600; cursor:pointer; width:100%;
-  transition:background .15s var(--ease); }
-.lb-add:hover { background:var(--blue-deep); }
-.lb-add.on { background:#fff; color:var(--blue-deep); border-color:var(--line-control); }
+  transition:background .15s var(--ease), color .15s var(--ease); }
+.lb-add:hover { background:var(--blue); color:#fff; }
+.lb-add.on { background:var(--blue); color:#fff; border-color:var(--blue); }
 
 .lb-close { text-align:center; padding:3rem 1rem 1rem; }
 .lb-close p { font-family:var(--display); font-size:1.4rem; color:var(--ink); margin:0 0 1.2rem; }
 .lb-close .btn-primary { text-decoration:none; display:inline-flex; align-items:center; gap:.4rem; }
 
 /* Barra flotante "Tu selección" */
-.lb-selbar { position:fixed; right:1.5rem; bottom:1.5rem; z-index:44; }
+.lb-selbar { position:fixed; right:1.5rem; bottom:6rem; z-index:44; }
 .lb-selbar-toggle { display:inline-flex; align-items:center; gap:.5rem; background:var(--blue); color:#fff;
   border:none; border-radius:999px; padding:.75rem 1.3rem; font:inherit; font-weight:700; cursor:pointer;
   box-shadow:var(--shadow-card); }
@@ -1517,12 +1522,11 @@ table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6
 .lb-selhint { font-size:.8rem; color:var(--muted); margin:.8rem 0 0; }
 
 @media (max-width:52rem) {
-  .lb-story { grid-template-columns:1fr; gap:1.2rem; }
-  .lb-story.lb-left .lb-story-media, .lb-story.lb-right .lb-story-media { order:0; }
-  .lb-story.lb-left .lb-story-text, .lb-story.lb-right .lb-story-text { order:1; }
+  .lb-story, .lb-story.lb-right { grid-template-columns:1fr; gap:1.2rem;
+    grid-template-areas:"media" "text" "shop"; }
   .lb-story-text h2 { font-size:1.7rem; }
-  .lb-rail { grid-auto-columns:minmax(11rem,72%); }
-  .lb-selbar { right:1rem; bottom:1rem; }
+  .lb-rail { grid-auto-columns:minmax(11rem,72%); min-width:0; }
+  .lb-selbar { right:1rem; bottom:5.5rem; }
 }
 
 @media (max-width:60rem) {
