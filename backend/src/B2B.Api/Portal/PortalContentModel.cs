@@ -157,11 +157,34 @@ public static class PortalContentModel
         // referencias/ids de los modelos comprables de la historia (refs).
         if (key.StartsWith("lookbook.", StringComparison.Ordinal))
         {
-            foreach (var field in new[] { "kicker", "body", "accent", "layout" })
+            // Texto libre editorial: rótulo corto y cuerpo de la historia.
+            foreach (var field in new[] { "kicker", "body" })
             {
                 if (!TryText(source[field], out var text)) { error = $"\"{field}\" debe ser texto."; return false; }
                 item[field] = text;
             }
+
+            // accent: un color hex (#abc, #aabbcc, #aabbccdd) o vacío (el portal usa el de marca).
+            if (!TryText(source["accent"], out var accent)) { error = "\"accent\" debe ser texto."; return false; }
+            if (accent.Length > 0 && !IsHexColor(accent))
+            {
+                error = "\"accent\" debe ser un color hex, p. ej. #c4633a.";
+                return false;
+            }
+            item["accent"] = accent;
+
+            // layout: la foto a la izquierda o a la derecha del texto (por defecto, derecha).
+            if (!TryText(source["layout"], out var layout)) { error = "\"layout\" debe ser texto."; return false; }
+            layout = layout.ToLowerInvariant();
+            if (layout.Length == 0) layout = "right";
+            if (layout is not ("left" or "right"))
+            {
+                error = "\"layout\" debe ser \"left\" o \"right\".";
+                return false;
+            }
+            item["layout"] = layout;
+
+            // refs: ids/referencias de los modelos comprables del raíl "Compra el look".
             var refs = new JsonArray();
             if (source["refs"] is JsonArray refArray)
                 foreach (var reference in refArray)
@@ -224,6 +247,12 @@ public static class PortalContentModel
         (url.StartsWith('/') && !url.StartsWith("//")) ||
         url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
         url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+    // Color hex del acento de una historia: #RGB, #RGBA, #RRGGBB o #RRGGBBAA.
+    private static bool IsHexColor(string value) =>
+        value.Length is 4 or 5 or 7 or 9 &&
+        value[0] == '#' &&
+        value.Skip(1).All(Uri.IsHexDigit);
 
     private static bool TryText(JsonNode? node, out string value)
     {

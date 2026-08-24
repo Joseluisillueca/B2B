@@ -189,6 +189,64 @@ public class PortalContentTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    // ───────────────────────── Lookbook editorial ─────────────────────────
+
+    [Fact]
+    public async Task Admin_Lookbook_GuardaHistoriaConAcentoLayoutYRefs()
+    {
+        var put = await SendAsync(HttpMethod.Put, "/api/admin/content/lookbook.stories?locale=es", """
+            { "items": [ {
+                "kicker": "Por qué barefoot", "title": "Horma ancha",
+                "body": "Espacio para los dedos.", "accent": "#C4633A", "layout": "LEFT",
+                "refs": ["DEMO0001-0000-4000-9000-000000000001", "  ", "DEMO0002-0000-4000-9000-000000000002"]
+            } ] }
+            """);
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+        var body = await (await SendAsync(HttpMethod.Get, "/api/admin/content/lookbook.stories?locale=es"))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        var item = Assert.Single(body.GetProperty("items").EnumerateArray());
+        Assert.Equal("Por qué barefoot", item.GetProperty("kicker").GetString());
+        Assert.Equal("Espacio para los dedos.", item.GetProperty("body").GetString());
+        Assert.Equal("#C4633A", item.GetProperty("accent").GetString());
+        Assert.Equal("left", item.GetProperty("layout").GetString());   // normalizado a minúsculas
+        var refs = item.GetProperty("refs").EnumerateArray().Select(r => r.GetString()).ToList();
+        Assert.Equal(2, refs.Count);   // la referencia en blanco se descarta
+    }
+
+    [Fact]
+    public async Task Admin_Lookbook_LayoutVacio_PorDefectoDerecha()
+    {
+        await SendAsync(HttpMethod.Put, "/api/admin/content/lookbook.stories?locale=es",
+            """{ "items": [ { "title": "Sin layout" } ] }""");
+
+        var body = await (await SendAsync(HttpMethod.Get, "/api/admin/content/lookbook.stories?locale=es"))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("right",
+            Assert.Single(body.GetProperty("items").EnumerateArray()).GetProperty("layout").GetString());
+    }
+
+    [Theory]
+    [InlineData(""" "accent": "rojo" """)]
+    [InlineData(""" "accent": "#12" """)]
+    [InlineData(""" "accent": "c4633a" """)]     // sin almohadilla
+    [InlineData(""" "layout": "diagonal" """)]
+    public async Task Admin_Lookbook_CampoInvalido_Devuelve400(string extra)
+    {
+        var response = await SendAsync(HttpMethod.Put, "/api/admin/content/lookbook.stories?locale=es",
+            $$"""{ "items": [ { "title": "x", {{extra}} } ] }""");
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Admin_LookbookHero_ExigeImagen()
+    {
+        // lookbook.hero es un bloque de imagen: una portada sin imageUrl no se guarda
+        var response = await SendAsync(HttpMethod.Put, "/api/admin/content/lookbook.hero?locale=es",
+            """{ "items": [ { "title": "Sin imagen" } ] }""");
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     // ───────────────────────── Lectura desde el portal ─────────────────────────
 
     [Fact]

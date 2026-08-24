@@ -149,6 +149,55 @@
   .mi-actions button { margin-left:.35rem; }
   .mi-actions .del { color:var(--err); border-color:var(--line); background:transparent; }
   .mi-actions .del:hover { border-color:var(--err); }
+  /* ---------- Web / Lookbook ---------- */
+  .block[data-kind="lb-hero"] .c-thumb { aspect-ratio:3.4/1; }
+  .block[data-kind="lb-story"] .c-thumb { aspect-ratio:4/3; }
+  .lb-body { flex:1 1 100%; }
+  .lb-body textarea { width:100%; min-height:4.4rem; resize:vertical; font:inherit; font-size:.82rem;
+    padding:.4rem .55rem; border-radius:9px; border:1px solid var(--line); background:#fff; }
+  .lb-body textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(47,75,255,.15); outline:none; }
+  .lb-color { flex-direction:row !important; align-items:center; gap:.4rem; align-self:end; padding-bottom:.15rem; }
+  .lb-color input[type=color] { width:2.3rem; height:1.95rem; padding:.1rem; border:1px solid var(--line);
+    border-radius:8px; background:#fff; cursor:pointer; }
+  .lb-color input[type=text] { width:6rem; font:.76rem ui-monospace,Consolas,monospace; }
+  .lb-refs { flex:1 1 100%; border:1px dashed var(--line); border-radius:10px; padding:.6rem .7rem; background:#fff; }
+  .lb-refs-title { font-size:.72rem; color:var(--muted); margin-bottom:.45rem; display:flex; gap:.5rem; align-items:center; }
+  .lb-chips { display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.5rem; }
+  .lb-chips:empty { display:none; }
+  .lb-chip { display:inline-flex; align-items:center; gap:.4rem; background:#f0f4ff; border:1px solid #d8e0ff;
+    border-radius:999px; padding:.12rem .35rem .12rem .12rem; font-size:.78rem; }
+  .lb-chip img { width:1.5rem; height:1.5rem; border-radius:50%; object-fit:cover; background:#eceef3; }
+  .lb-chip .miss { color:var(--err); font:.72rem ui-monospace,Consolas,monospace; }
+  .lb-chip .x { background:none; border:none; color:var(--muted); cursor:pointer; padding:0 .15rem; font-size:.95rem; line-height:1; }
+  .lb-chip .x:hover { color:var(--err); }
+  .lb-picker { position:relative; max-width:26rem; }
+  .lb-picker input { width:100%; font-size:.82rem; padding:.4rem .55rem; }
+  .lb-picker-list { position:absolute; z-index:6; left:0; right:0; top:calc(100% + .2rem); background:#fff;
+    border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); max-height:15rem; overflow-y:auto; display:none; }
+  .lb-picker-list.on { display:block; }
+  .lb-picker-list button { display:flex; align-items:center; gap:.5rem; width:100%; text-align:left; background:none;
+    border:none; border-bottom:1px solid var(--line); padding:.4rem .55rem; font:inherit; font-size:.8rem; font-weight:500; cursor:pointer; }
+  .lb-picker-list button:hover { background:#f0f4ff; }
+  .lb-picker-list button:last-child { border-bottom:none; }
+  .lb-picker-list img, .lb-picker-list .ph { width:1.9rem; height:1.9rem; border-radius:6px; object-fit:cover; background:#eceef3; flex:none; }
+  .lb-picker-list .ref { color:var(--muted); font:.72rem ui-monospace,Consolas,monospace; margin-left:auto; padding-left:.5rem; }
+  .lb-picker-empty { padding:.5rem .6rem; color:var(--muted); font-size:.78rem; }
+  .block-actions { display:inline-flex; gap:.6rem; white-space:nowrap; }
+  .c-hint { flex:1 1 100%; font-size:.72rem; color:var(--muted); margin-top:-.1rem; }
+  .lb-hintlabel { font-weight:400; color:var(--muted); }
+  /* Vista previa en vivo de la historia dentro del editor */
+  .lbp-wrap { flex:1 1 100%; margin-bottom:.3rem; }
+  .lbp-label { font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:.25rem; }
+  .lbp { display:flex; align-items:center; gap:.7rem; background:#fbfcfe; border:1px solid var(--line); border-radius:10px; padding:.55rem .65rem; }
+  .lbp-img { width:5.5rem; flex:none; aspect-ratio:4/3; border-radius:7px; overflow:hidden; background:#eceef3; }
+  .lbp-img img { width:100%; height:100%; object-fit:cover; display:block; }
+  .lbp-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:.2rem; }
+  .lbp-kicker { align-self:flex-start; font-size:.62rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+    border-bottom:2px solid currentColor; padding-bottom:.1rem; }
+  .lbp-title { font-size:.98rem; font-weight:650; line-height:1.15; letter-spacing:-.01em;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lbp-count { font-size:.68rem; color:var(--muted); }
+
   #flash { position:fixed; left:50%; bottom:1.4rem; translate:-50% 0; z-index:20; padding:.6rem 1.1rem; border-radius:10px;
     box-shadow:var(--shadow); font-size:.85rem; display:none; max-width:min(46rem,90vw); }
   #flash.on { display:block; }
@@ -310,6 +359,7 @@ const VIEWS = {
     ['Estado','status','status']]},
 
   portada:   { title:'Portada del portal', crumb:'Web / Portada', content:true },
+  lookbook:  { title:'Lookbook', crumb:'Web / Lookbook', lookbook:true },
 
   comunicacion: { title:'Comunicación BC', crumb:'Salud / Comunicación', type:'', cols:[
     ['Tipo','__entityType','text'], ['Id externo','__externalId','id'], ['Recibido','__last','text']]},
@@ -324,7 +374,7 @@ const NAV = [
   { title:'Clientes', items:[['clientes','Clientes','client'],['grupos','Grupos de clientes','client-group'],
       ['usuariosCliente','Usuarios de cliente','client-user'],['direcciones','Direcciones envío','shipping-address'],['agentes','Agentes comerciales','agent']] },
   { title:'Pedidos', items:[['pedidos','Pedidos','order'],['facturas','Facturas','invoice'],['albaranes','Albaranes','delivery-note']] },
-  { title:'Web', items:[['portada','Portada'],['portal','Ver el portal']] },
+  { title:'Web', items:[['portada','Portada'],['lookbook','Lookbook'],['portal','Ver el portal']] },
   { title:'Salud', items:[['comunicacion','Comunicación BC'],['docs','Documentación API']] },
   { title:'Próximamente', soon:true, items:[[null,'SATs / Devoluciones'],[null,'Notificaciones'],[null,'Sistema']] },
 ];
@@ -424,6 +474,7 @@ function show(key) {
   $('title').textContent = v.title;
   if (v.dashboard) renderDashboard();
   else if (v.content) renderContent();
+  else if (v.lookbook) renderLookbook();
   else if (v.manager) renderModelImages();
   else renderList();
 }
@@ -627,9 +678,11 @@ function paintBlock(block) {
         <span class="help">${block.help}</span>
         <div class="spacer"></div>
         <span class="badge">${stamp}</span>
-        <button class="btn-ghost" data-action="add">+ Añadir</button>
-        <button class="btn-ghost" data-action="clear">Vaciar</button>
-        <button class="btn-primary" data-action="save">Publicar</button>
+        <span class="block-actions">
+          <button class="btn-ghost" data-action="add">+ Añadir</button>
+          <button class="btn-ghost" data-action="clear">Vaciar</button>
+          <button class="btn-primary" data-action="save">Publicar</button>
+        </span>
       </header>
       ${data.items.length
         ? `<div class="c-list">${data.items.map((item, i) => paintItem(block, item, i, data.items.length)).join('')}</div>`
@@ -903,6 +956,390 @@ async function clearModelImage(model) {
     flash('Imagen quitada.');
     paintModelImageRows();
   } catch (e) { flash(e.message, 'err'); }
+}
+
+/* ---------- Web / Lookbook ---------- */
+// Editor del Lookbook "Colecciones lejan": portada (carrusel) + historias editoriales
+// con su raíl de productos comprables. Escribe las claves lookbook.hero y
+// lookbook.stories de portal_content; el portal las lee en /es/es/lookbook.
+const LB_BLOCKS = [
+  { key:'lookbook.hero', title:'Portada del lookbook', kind:'lb-hero',
+    help:'Carrusel de apertura del lookbook. Medida recomendada: 2880×1200 px o mayor (apaisado).' },
+  { key:'lookbook.stories', title:'Historias', kind:'lb-story',
+    help:'Cada historia: una foto, un texto editorial, un color de acento y los productos de su raíl «Compra el look».' },
+];
+const LB_LAYOUTS = [['right','Foto a la derecha'],['left','Foto a la izquierda']];
+
+let lbLocale = '*';
+let lbBlocks = {};   // clave -> { items, updatedAt, updatedBy }
+let lbModels = [];   // modelos del catálogo, para el selector de productos
+
+async function renderLookbook() {
+  $('content').innerHTML = '<p class="muted">Cargando el lookbook…</p>';
+  await Promise.all([lbLoad(), lbLoadModels()]);
+  paintLookbook();
+}
+
+async function lbLoad() {
+  lbBlocks = {};
+  for (const block of LB_BLOCKS) {
+    try {
+      const data = await api(`/api/admin/content/${block.key}?locale=${encodeURIComponent(lbLocale)}`);
+      lbBlocks[block.key] = { items: data.items || [], updatedAt: data.updatedAt, updatedBy: data.updatedBy };
+    } catch {
+      lbBlocks[block.key] = { items: [], updatedAt: null, updatedBy: null };   // bloque aún sin publicar
+    }
+  }
+}
+
+async function lbLoadModels() {
+  try { lbModels = (await api('/api/admin/model-images')).items || []; }
+  catch { lbModels = []; }
+}
+
+const lbModelById = id => lbModels.find(m => m.externalId === id);
+
+function paintLookbook() {
+  $('content').innerHTML = `
+    <div class="toolbar">
+      <div class="tabs">${LOCALES.map(([code, label]) =>
+        `<button data-lb-locale="${code}" class="${code === lbLocale ? 'on' : ''}">${label}</button>`).join('')}</div>
+      <span class="muted">El portal usa el idioma pedido y, si no lo tiene, el contenido <b>Común</b>.</span>
+      <div class="spacer"></div>
+      <a class="btn-ghost" href="/es/es/lookbook" target="_blank" style="text-decoration:none">Ver el lookbook ↗</a>
+    </div>
+    ${LB_BLOCKS.map(paintLbBlock).join('')}`;
+
+  document.querySelectorAll('[data-lb-locale]').forEach(b =>
+    b.onclick = () => { lbLocale = b.dataset.lbLocale; renderLookbook(); });
+  LB_BLOCKS.forEach(wireLbBlock);
+}
+
+function paintLbBlock(block) {
+  const data = lbBlocks[block.key];
+  const stamp = data.updatedAt
+    ? `Publicado el ${new Date(data.updatedAt).toLocaleString()}${data.updatedBy ? ' por ' + esc(data.updatedBy) : ''}`
+    : 'Sin publicar en este idioma';
+  const paint = block.kind === 'lb-hero' ? paintLbHeroItem : paintLbStoryItem;
+  const emptyMsg = block.kind === 'lb-hero'
+    ? 'Sin portada. Pulsa <b>+ Añadir</b> — mientras tanto el lookbook abre directamente con las historias.'
+    : 'Sin historias. Pulsa <b>+ Añadir</b> para crear la primera.';
+  return `
+    <div class="card block" data-lb-block="${block.key}" data-kind="${block.kind}">
+      <header>
+        <h2>${block.title}</h2>
+        <span class="help">${block.help}</span>
+        <div class="spacer"></div>
+        <span class="badge">${stamp}</span>
+        <span class="block-actions">
+          <button class="btn-ghost" data-action="add">+ Añadir</button>
+          <button class="btn-ghost" data-action="clear">Vaciar</button>
+          <button class="btn-primary" data-action="save">Publicar</button>
+        </span>
+      </header>
+      ${data.items.length
+        ? `<div class="c-list">${data.items.map((item, i) => paint(item, i, data.items.length)).join('')}</div>`
+        : `<div class="empty">${emptyMsg}</div>`}
+    </div>`;
+}
+
+const lbField = (item, name, label, type = 'text', extra = '') => `
+  <label class="grow">${label}
+    <input type="${type}" data-field="${name}" value="${esc(type === 'datetime-local' ? toInput(item[name]) : item[name] || '')}" ${extra}>
+  </label>`;
+
+const lbEmptyThumb = kind => `<span>sin imagen<br>${kind === 'lb-hero' ? 'apaisada' : '4:3'}</span>`;
+
+const lbActions = (index, total) => `
+  <div class="c-actions">
+    <button data-action="up" ${index === 0 ? 'disabled' : ''} title="Subir">↑</button>
+    <button data-action="down" ${index === total - 1 ? 'disabled' : ''} title="Bajar">↓</button>
+    <button class="del" data-action="del">Eliminar</button>
+  </div>`;
+
+function paintLbHeroItem(item, index, total) {
+  return `
+    <div class="c-item ${item.active === false ? 'off' : ''}" data-index="${index}">
+      <div class="c-thumb">${item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt="">` : lbEmptyThumb('lb-hero')}</div>
+      <div>
+        <div class="c-row">
+          ${lbField(item, 'imageUrl', 'Imagen (URL)')}
+          <button class="btn-ghost" data-action="upload" style="align-self:end">Subir…</button>
+          <label class="chk"><input type="checkbox" data-field="active" ${item.active === false ? '' : 'checked'}> Activo</label>
+        </div>
+        <div class="c-row">
+          ${lbField(item, 'title', 'Título')}
+          ${lbField(item, 'subtitle', 'Subtítulo')}
+          ${lbField(item, 'alt', 'Texto alternativo')}
+        </div>
+        <div class="c-row">
+          ${lbField(item, 'ctaText', 'Texto del botón')}
+          ${lbField(item, 'ctaHref', 'Enlace', 'text', 'placeholder="/es/es/catalog/catalog"')}
+          ${lbField(item, 'imageUrlMobile', 'Imagen móvil (opcional)')}
+        </div>
+        <div class="c-hint">Fechas opcionales: si las dejas vacías, la portada se ve siempre.</div>
+        <div class="c-row">
+          ${lbField(item, 'publishFrom', 'Publicar desde', 'datetime-local')}
+          ${lbField(item, 'publishTo', 'Publicar hasta', 'datetime-local')}
+        </div>
+      </div>
+      ${lbActions(index, total)}
+    </div>`;
+}
+
+function paintLbStoryItem(item, index, total) {
+  const validHex = /^#[0-9a-fA-F]{6}$/.test(item.accent || '');
+  const layout = item.layout === 'left' ? 'left' : 'right';
+  return `
+    <div class="c-item ${item.active === false ? 'off' : ''}" data-index="${index}">
+      <div class="c-thumb">${item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt="">` : lbEmptyThumb('lb-story')}</div>
+      <div>
+        <div class="lbp-wrap">
+          <div class="lbp-label">Vista previa</div>
+          <div data-preview>${lbStoryPreview(item)}</div>
+        </div>
+        <div class="c-row">
+          ${lbField(item, 'imageUrl', 'Imagen (URL)')}
+          <button class="btn-ghost" data-action="upload" style="align-self:end">Subir…</button>
+          <label class="lb-color" title="Déjalo vacío para usar el color de marca">Acento <span class="lb-hintlabel">(vacío = marca)</span>
+            <input type="color" data-field="accentColor" value="${validHex ? item.accent : '#1f5c46'}">
+            <input type="text" data-field="accent" value="${esc(item.accent || '')}" placeholder="(marca)" maxlength="9">
+          </label>
+          <label>Disposición
+            <select data-field="layout">${LB_LAYOUTS.map(([v, l]) =>
+              `<option value="${v}" ${layout === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+          </label>
+          <label class="chk"><input type="checkbox" data-field="active" ${item.active === false ? '' : 'checked'}> Activo</label>
+        </div>
+        <div class="c-row">
+          ${lbField(item, 'kicker', 'Etiqueta (kicker)', 'text', 'placeholder="p. ej. NUEVA TEMPORADA"')}
+          ${lbField(item, 'title', 'Título')}
+        </div>
+        <div class="c-row lb-body">
+          <label class="grow">Texto
+            <textarea data-field="body">${esc(item.body || '')}</textarea>
+          </label>
+        </div>
+        <div class="c-row">
+          <div class="lb-refs">
+            <div class="lb-refs-title">Productos del raíl «Compra el look»${item.refs && item.refs.length ? ` · ${item.refs.length}` : ''}</div>
+            <div class="lb-chips">${(item.refs || []).map(lbRefChip).join('')}</div>
+            <div class="lb-picker">
+              <input type="search" data-ref-search aria-label="Buscar producto para el raíl"
+                placeholder="Buscar producto por referencia o nombre…" autocomplete="off">
+              <div class="lb-picker-list"></div>
+            </div>
+          </div>
+        </div>
+        <div class="c-hint">Fechas opcionales: si las dejas vacías, la historia se ve siempre.</div>
+        <div class="c-row">
+          ${lbField(item, 'publishFrom', 'Publicar desde', 'datetime-local')}
+          ${lbField(item, 'publishTo', 'Publicar hasta', 'datetime-local')}
+        </div>
+      </div>
+      ${lbActions(index, total)}
+    </div>`;
+}
+
+// Vista previa en vivo de la historia: mini-tarjeta que imita el portal (imagen,
+// kicker con el acento, título y disposición foto izq/dcha).
+function lbStoryPreview(item) {
+  const accent = /^#[0-9a-fA-F]{3,8}$/.test(item.accent || '') ? item.accent : 'var(--accent)';
+  const img = item.imageUrl
+    ? `<div class="lbp-img"><img src="${esc(item.imageUrl)}" alt=""></div>`
+    : `<div class="lbp-img"></div>`;
+  const text = `<div class="lbp-text">
+      <span class="lbp-kicker" style="color:${esc(accent)}">${esc(item.kicker || 'ETIQUETA')}</span>
+      <span class="lbp-title">${esc(item.title || 'Título de la historia')}</span>
+      <span class="lbp-count">${(item.refs || []).length} producto(s) en el raíl</span>
+    </div>`;
+  return `<div class="lbp">${item.layout === 'left' ? img + text : text + img}</div>`;
+}
+
+function lbRefChip(id) {
+  const model = lbModelById(id);
+  const remove = `<button type="button" class="x" data-ref-del="${esc(id)}" title="Quitar">✕</button>`;
+  if (!model)
+    return `<span class="lb-chip"><img alt=""><span class="miss" title="Este id ya no está en el catálogo">${esc(id)} ⚠</span>${remove}</span>`;
+  const name = esc(model.name || model.reference || id);
+  const title = esc([model.name, model.reference].filter(Boolean).join(' · '));
+  const thumb = model.imageUri ? `<img src="${esc(model.imageUri)}" alt="">` : `<img alt="">`;
+  return `<span class="lb-chip" title="${title}">${thumb}${name}${remove}</span>`;
+}
+
+function lbPickerResults(query, selected) {
+  const q = (query || '').trim().toLowerCase();
+  const chosen = new Set(selected || []);
+  const all = lbModels.filter(m => !chosen.has(m.externalId) &&
+    (!q || (m.reference || '').toLowerCase().includes(q) || (m.name || '').toLowerCase().includes(q)));
+  const matches = all.slice(0, 25);
+  if (!matches.length) return `<div class="lb-picker-empty">Sin productos que coincidan.</div>`;
+  const more = all.length > matches.length
+    ? `<div class="lb-picker-empty">Mostrando 25 de ${all.length} — sigue escribiendo para afinar.</div>` : '';
+  return matches.map(m => `
+    <button type="button" data-ref-add="${esc(m.externalId)}">
+      ${m.imageUri ? `<img src="${esc(m.imageUri)}" alt="">` : `<span class="ph"></span>`}
+      <span>${esc(m.name || '—')}</span><span class="ref">${esc(m.reference || '')}</span>
+    </button>`).join('') + more;
+}
+
+// Actualiza SOLO los chips + contador + lista + preview de una historia, sin repintar
+// toda la vista: así al añadir productos el buscador sigue abierto y con el foco.
+function lbSyncRefs(cItem, item, searchValue) {
+  const chips = cItem.querySelector('.lb-chips');
+  if (chips) chips.innerHTML = (item.refs || []).map(lbRefChip).join('');
+  const title = cItem.querySelector('.lb-refs-title');
+  if (title) title.textContent = `Productos del raíl «Compra el look»${item.refs && item.refs.length ? ` · ${item.refs.length}` : ''}`;
+  const list = cItem.querySelector('.lb-picker-list');
+  if (list) list.innerHTML = lbPickerResults(searchValue || '', item.refs || []);
+  const preview = cItem.querySelector('[data-preview]');
+  if (preview) preview.innerHTML = lbStoryPreview(item);
+}
+
+function wireLbBlock(block) {
+  const root = document.querySelector(`[data-lb-block="${block.key}"]`);
+  const items = lbBlocks[block.key].items;
+  const indexOf = el => Number(el.closest('.c-item').dataset.index);
+  const isStory = block.kind === 'lb-story';
+
+  const openPicker = el => {
+    const cItem = el.closest('.c-item');
+    const item = items[indexOf(el)];
+    const list = cItem.querySelector('.lb-picker-list');
+    list.innerHTML = lbPickerResults(cItem.querySelector('[data-ref-search]').value, item.refs || []);
+    list.classList.add('on');
+  };
+
+  // Escribir no repinta (se perdería el foco): solo actualiza el modelo y la preview
+  root.oninput = event => {
+    // Buscador del selector de productos: filtra la lista, sin tocar la historia
+    if (event.target.closest('[data-ref-search]')) { openPicker(event.target); return; }
+
+    const input = event.target.closest('[data-field]');
+    if (!input) return;
+    const cItem = input.closest('.c-item');
+    const item = items[indexOf(input)];
+    const name = input.dataset.field;
+
+    if (name === 'active') { item.active = input.checked; cItem.classList.toggle('off', !input.checked); return; }
+    if (name === 'publishFrom' || name === 'publishTo') { item[name] = fromInput(input.value); return; }
+    if (name === 'accentColor') {
+      // El selector de color escribe el campo de texto, que es la fuente de verdad
+      item.accent = input.value;
+      const text = cItem.querySelector('[data-field="accent"]');
+      if (text) text.value = input.value;
+    } else {
+      item[name] = input.value;
+      if (name === 'accent') {
+        const color = cItem.querySelector('[data-field="accentColor"]');
+        if (color && /^#[0-9a-fA-F]{6}$/.test(input.value)) color.value = input.value;
+      }
+      if (name === 'imageUrl') {
+        const thumb = cItem.querySelector('.c-thumb');
+        thumb.innerHTML = item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt="">` : lbEmptyThumb(block.kind);
+      }
+    }
+    if (isStory) {
+      const preview = cItem.querySelector('[data-preview]');
+      if (preview) preview.innerHTML = lbStoryPreview(item);
+    }
+  };
+
+  root.onclick = event => {
+    // Al enfocar el buscador, abre la lista con los productos disponibles
+    if (event.target.closest('[data-ref-search]')) { openPicker(event.target); return; }
+
+    // Añadir / quitar un producto del raíl: actualización incremental (no repinta la vista)
+    const add = event.target.closest('[data-ref-add]');
+    if (add) {
+      const cItem = add.closest('.c-item');
+      const item = items[indexOf(add)];
+      item.refs = item.refs || [];
+      if (!item.refs.includes(add.dataset.refAdd)) item.refs.push(add.dataset.refAdd);
+      const search = cItem.querySelector('[data-ref-search]');
+      lbSyncRefs(cItem, item, search ? search.value : '');
+      cItem.querySelector('.lb-picker-list').classList.add('on');
+      if (search) search.focus();
+      return;
+    }
+    const del = event.target.closest('[data-ref-del]');
+    if (del) {
+      const cItem = del.closest('.c-item');
+      const item = items[indexOf(del)];
+      item.refs = (item.refs || []).filter(r => r !== del.dataset.refDel);
+      const search = cItem.querySelector('[data-ref-search]');
+      lbSyncRefs(cItem, item, search ? search.value : '');
+      return;
+    }
+
+    // Pulsar fuera de un selector cierra los que estén abiertos
+    root.querySelectorAll('.lb-picker-list.on').forEach(l => l.classList.remove('on'));
+
+    const button = event.target.closest('[data-action]');
+    if (!button) return;
+    const action = button.dataset.action;
+
+    if (action === 'add') {
+      items.push(block.kind === 'lb-hero'
+        ? { imageUrl:'', title:'', active:true }
+        : { imageUrl:'', kicker:'', title:'', body:'', accent:'', layout:'right', refs:[], active:true });
+      return paintLookbook();
+    }
+    if (action === 'save') return lbSave(block);
+    if (action === 'clear') {
+      if (!items.length || confirm('¿Vaciar este bloque en este idioma? El lookbook dejará de mostrarlo.')) lbDelete(block);
+      return;
+    }
+    if (action === 'upload') return lbPickImage(items[indexOf(button)]);
+
+    const index = indexOf(button);
+    if (action === 'del') items.splice(index, 1);
+    if (action === 'up' && index > 0) items.splice(index - 1, 0, items.splice(index, 1)[0]);
+    if (action === 'down' && index < items.length - 1) items.splice(index + 1, 0, items.splice(index, 1)[0]);
+    paintLookbook();
+  };
+}
+
+function lbPickImage(item) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/png,image/jpeg,image/webp,image/avif,image/gif,image/svg+xml';
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/admin/media', { method:'POST', headers:{ Authorization:'Bearer ' + token }, body: form });
+      if (res.status === 401) { logout(); throw new Error('Sesión caducada'); }
+      if (res.status === 403) { denied(); throw new Error(SIN_PERMISO); }
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'HTTP ' + res.status);
+      item.imageUrl = data.url;
+      flash(`Imagen subida: ${data.name}`);
+      paintLookbook();
+    } catch (e) { flash(e.message, 'err'); }
+  };
+  input.click();
+}
+
+async function lbSave(block) {
+  // El orden de la lista manda; el backend valida y normaliza el resto
+  const items = lbBlocks[block.key].items.map((item, order) => ({ ...item, order }));
+  try {
+    const saved = await apiSend('PUT', `/api/admin/content/${block.key}?locale=${encodeURIComponent(lbLocale)}`, { items });
+    lbBlocks[block.key] = { items: saved.items, updatedAt: saved.updatedAt, updatedBy: saved.updatedBy };
+    flash(`${block.title}: publicado. Recarga el lookbook para verlo.`);
+    paintLookbook();
+  } catch (e) { flash(`${block.title}: ${e.message}`, 'err'); }
+}
+
+async function lbDelete(block) {
+  try { await apiSend('DELETE', `/api/admin/content/${block.key}?locale=${encodeURIComponent(lbLocale)}`); }
+  catch { /* si no existía, ya está vacío */ }
+  lbBlocks[block.key] = { items: [], updatedAt: null, updatedBy: null };
+  flash(`${block.title}: bloque vaciado en este idioma.`);
+  paintLookbook();
 }
 
 /* ---------- detalle ---------- */
