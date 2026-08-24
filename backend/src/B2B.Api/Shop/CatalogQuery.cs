@@ -115,6 +115,7 @@ public sealed record CatalogRow(
     IReadOnlyDictionary<string, string> Attributes,
     IReadOnlyList<CatalogAttributeEntry> AttributeList,
     string? ImageUri,
+    IReadOnlyList<string> Images,
     IReadOnlyList<CatalogVariant> Variants,
     decimal? Pvd,
     decimal? Pvp,
@@ -180,10 +181,11 @@ public static class CatalogService
             .GroupBy(o => o.ModelId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
         var imageByModel = imageDocs.ToDictionary(d => d.ExternalId, ImageUri, StringComparer.OrdinalIgnoreCase);
+        var imagesByModel = imageDocs.ToDictionary(d => d.ExternalId, Images, StringComparer.OrdinalIgnoreCase);
 
         var windowKey = window?.ExternalId;
         var all = models
-            .Select(model => Build(model, productsByModel, offersByModel, stockByProduct, imageByModel,
+            .Select(model => Build(model, productsByModel, offersByModel, stockByProduct, imageByModel, imagesByModel,
                 context, windowKey, now, vocabulary, query.Locale))
             .ToList();
 
@@ -242,6 +244,7 @@ public static class CatalogService
         Dictionary<string, List<Offer>> offersByModel,
         Dictionary<string, IReadOnlyDictionary<string, decimal>> stockByProduct,
         Dictionary<string, string?> imageByModel,
+        Dictionary<string, List<string>> imagesByModel,
         PriceContext context,
         string? windowKey,
         DateTimeOffset now,
@@ -294,6 +297,7 @@ public static class CatalogService
                 // portal traduce por ValueSlug si quiere.
                 ValueLabel: pair.Value))],
             ImageUri: imageByModel.GetValueOrDefault(model.ExternalId),
+            Images: imagesByModel.GetValueOrDefault(model.ExternalId) ?? [],
             Variants: variants,
             Pvd: pvd,
             Pvp: pvp,
@@ -437,6 +441,23 @@ public static class CatalogService
         }
         catch (JsonException) { return null; }
         catch (InvalidOperationException) { return null; }
+    }
+
+    // Galería completa del modelo: todas las uris de payload["images"][*]["image"]["uri"].
+    // El visor multi-ángulo de la ficha las usa como fotogramas del giro.
+    private static List<string> Images(SyncDocument doc)
+    {
+        try
+        {
+            if ((JsonNode.Parse(doc.Payload) as JsonObject)?["images"] is not JsonArray array) return [];
+            var uris = new List<string>();
+            foreach (var node in array)
+                if (node?["image"]?["uri"]?.GetValue<string>() is { Length: > 0 } uri)
+                    uris.Add(uri);
+            return uris;
+        }
+        catch (JsonException) { return []; }
+        catch (InvalidOperationException) { return []; }
     }
 
     private static List<string> Strings(string json)

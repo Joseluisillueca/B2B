@@ -15,6 +15,7 @@ import { state } from '../state.js';
 import { go, href } from '../router.js';
 import { carousel } from '../ui/carousel.js';
 import { icons } from '../ui/icons.js';
+import { openViewerModal } from '../ui/viewer.js';
 
 const preferred = () => (state.me?.prefs?.showPrices === 'pvp' ? 'pvp' : 'pvd');
 const priceOf = (item, kind) =>
@@ -109,6 +110,9 @@ export default async function lookbook(host) {
           ${item.imageUri
             ? `<img src="${esc(item.imageUri)}" alt="" loading="lazy" decoding="async">`
             : `<span class="item-art" aria-hidden="true">${icons.shoe(52)}</span>`}
+          ${(item.images && item.images.length > 1)
+            ? `<button type="button" class="pcard-360" data-spin="${esc(item.modelId)}"
+                 title="${esc(t('viewer.spinRole'))}" aria-label="${esc(t('viewer.spinRole'))}">↻ 360°</button>` : ''}
           <button type="button" class="item-fav pcard-fav" data-fav="${esc(item.modelId)}"
             aria-pressed="${item.favorite ? 'true' : 'false'}"
             aria-label="${esc(favLabel(item.favorite))}" title="${esc(favLabel(item.favorite))}">
@@ -142,6 +146,15 @@ export default async function lookbook(host) {
           paintFav(button, !on);   // revierte si falla la red
           if (item) item.favorite = !on;
         }
+      };
+    });
+
+    // Badge 360°: abre el visor multi-ángulo en un quick-view sin salir del lookbook
+    body.querySelectorAll('[data-spin]').forEach(button => {
+      button.onclick = event => {
+        event.preventDefault();
+        const item = byId.get(String(button.dataset.spin));
+        if (item?.images?.length) openViewerModal(item.images, item.name || '');
       };
     });
 

@@ -331,6 +331,13 @@
   "catalog.errorBody": "Please try again in a few seconds.",
 
   "product.add": "Add",
+  "viewer.spinRole": "360° view",
+  "viewer.dragHint": "Drag to rotate",
+  "viewer.zoomHint": "Click to zoom",
+  "viewer.prev": "Previous angle",
+  "viewer.next": "Next angle",
+  "viewer.frame": "Angle {n}",
+  "viewer.close": "Close",
   "product.pickSizes": "Choose sizes and quantities",
   "product.downloadTech": "Download technical sheet",
   "product.downloadGallery": "Download gallery",

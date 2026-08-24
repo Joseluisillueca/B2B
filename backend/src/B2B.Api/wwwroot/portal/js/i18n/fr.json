@@ -331,6 +331,13 @@
   "catalog.errorBody": "Réessayez dans quelques secondes.",
 
   "product.add": "Ajouter",
+  "viewer.spinRole": "Vue 360°",
+  "viewer.dragHint": "Faites glisser pour tourner",
+  "viewer.zoomHint": "Cliquez pour agrandir",
+  "viewer.prev": "Angle précédent",
+  "viewer.next": "Angle suivant",
+  "viewer.frame": "Angle {n}",
+  "viewer.close": "Fermer",
   "product.pickSizes": "Choisissez tailles et quantités",
   "product.downloadTech": "Télécharger la fiche technique",
   "product.downloadGallery": "Télécharger la galerie",

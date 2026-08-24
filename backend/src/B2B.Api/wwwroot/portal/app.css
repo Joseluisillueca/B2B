@@ -634,10 +634,65 @@ body[data-focus="on"] .cat-count::before { content:none; }
 
 .product-grid { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
   gap:clamp(1.6rem,4vw,3.6rem); align-items:start; }
-.product-media { margin:0; aspect-ratio:4/5; background:var(--surface); border-radius:var(--r);
-  overflow:hidden; display:grid; place-items:center; position:sticky; top:calc(var(--header-h) + 1.5rem); }
-.product-media img { width:100%; height:100%; object-fit:cover; display:block; }
-.product-media .item-art { color:var(--ink); opacity:.2; }
+.product-media { margin:0; position:sticky; top:calc(var(--header-h) + 1.5rem); }
+
+/* ── Visor multi-ángulo (giro 360 con fotogramas + zoom) ── */
+.viewer { display:flex; flex-direction:column; gap:.8rem; }
+.viewer-stage { position:relative; aspect-ratio:4/5; background:#fff; border-radius:var(--r);
+  overflow:hidden; display:grid; place-items:center; }
+.viewer-spin .viewer-stage { cursor:grab; touch-action:pan-y; }
+.viewer-spin.dragging .viewer-stage { cursor:grabbing; }
+.viewer-frame { grid-area:1 / 1; width:100%; height:100%; object-fit:contain; display:block;
+  opacity:0; transition:opacity .18s var(--ease); user-select:none; -webkit-user-drag:none; }
+.viewer-frame.on { opacity:1; }
+.viewer-empty { aspect-ratio:4/5; background:var(--surface); border-radius:var(--r); display:grid; place-items:center; }
+.viewer-empty .item-art { color:var(--ink); opacity:.2; }
+
+.viewer-badge { position:absolute; top:.8rem; left:.8rem; z-index:2; display:inline-flex; align-items:center; gap:.35rem;
+  background:rgba(31,92,70,.92); color:#fff; font-size:.72rem; font-weight:700; letter-spacing:.04em;
+  padding:.28rem .6rem .28rem .5rem; border-radius:999px; }
+.viewer-badge svg { display:block; }
+.viewer-zoom { position:absolute; top:.8rem; right:.8rem; z-index:2; width:2rem; height:2rem; display:grid; place-items:center;
+  background:rgba(255,255,255,.92); color:var(--ink); border-radius:50%; box-shadow:var(--shadow-card);
+  opacity:0; transition:opacity .2s; pointer-events:none; }
+.viewer-stage:hover .viewer-zoom { opacity:1; }
+.viewer-hint { position:absolute; bottom:.8rem; left:50%; translate:-50% 0; z-index:2; font-size:.74rem; color:var(--ink-2);
+  background:rgba(250,246,239,.9); padding:.25rem .75rem; border-radius:999px; pointer-events:none; transition:opacity .3s; }
+.viewer-hint.gone { opacity:0; }
+
+.viewer-controls { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:.5rem; align-items:center; }
+.viewer-nav { width:2.2rem; height:2.2rem; flex:none; display:grid; place-items:center; border:1px solid var(--line);
+  background:var(--card); border-radius:50%; color:var(--ink-2); cursor:pointer; transition:border-color .15s, color .15s; }
+.viewer-nav:hover { border-color:var(--blue); color:var(--blue); }
+.viewer-thumbs { display:flex; gap:.5rem; overflow-x:auto; padding:.15rem; scrollbar-width:thin; min-width:0; }
+.viewer-thumb { flex:none; width:3.4rem; aspect-ratio:1/1; padding:0; border:1px solid var(--line); border-radius:10px;
+  overflow:hidden; background:#fff; cursor:pointer; opacity:.65; transition:opacity .15s, border-color .15s, box-shadow .15s; }
+.viewer-thumb img { width:100%; height:100%; object-fit:contain; display:block; }
+.viewer-thumb:hover { opacity:1; }
+.viewer-thumb.on { opacity:1; border-color:var(--blue); box-shadow:0 0 0 1px var(--blue); }
+
+.viewer-lightbox { position:fixed; inset:0; z-index:100; background:rgba(23,20,16,.9); display:grid; place-items:center;
+  padding:clamp(1rem,4vw,3rem); opacity:0; transition:opacity .2s; cursor:zoom-out; }
+.viewer-lightbox.on { opacity:1; }
+.viewer-lightbox img { max-width:100%; max-height:100%; object-fit:contain; border-radius:6px; }
+.viewer-lightbox-close { position:absolute; top:1.2rem; right:1.4rem; width:2.6rem; height:2.6rem; border:none;
+  background:rgba(255,255,255,.16); color:#fff; border-radius:50%; font-size:1.05rem; cursor:pointer; }
+.viewer-lightbox-close:hover { background:rgba(255,255,255,.3); }
+
+/* Badge 360° en las tarjetas del lookbook + quick-view modal */
+.pcard-360 { position:absolute; top:.6rem; left:.6rem; z-index:3; display:inline-flex; align-items:center; gap:.25rem;
+  background:rgba(31,92,70,.92); color:#fff; border:none; border-radius:999px; padding:.2rem .55rem;
+  font:inherit; font-size:.7rem; font-weight:700; letter-spacing:.02em; cursor:pointer; transition:background .15s; }
+.pcard-360:hover { background:var(--blue-deep); }
+.viewer-modal { position:fixed; inset:0; z-index:100; background:rgba(23,20,16,.6); display:grid; place-items:center;
+  padding:clamp(1rem,4vw,2.5rem); opacity:0; transition:opacity .2s; }
+.viewer-modal.on { opacity:1; }
+.viewer-modal-box { position:relative; background:var(--card); border-radius:var(--r); box-shadow:var(--shadow-card);
+  width:min(30rem,95vw); max-height:90vh; overflow:auto; padding:1.2rem; }
+.viewer-modal-close { position:absolute; top:.7rem; right:.7rem; z-index:4; width:2rem; height:2rem; border:none;
+  background:var(--surface); color:var(--ink); border-radius:50%; cursor:pointer; font-size:.9rem; }
+.viewer-modal-close:hover { background:var(--line); }
+.viewer-modal-name { font-family:var(--display); font-size:1.1rem; margin:0 2rem .8rem 0; color:var(--ink); }
 .product-skeleton { aspect-ratio:4/5; height:auto; }
 
 .product-panel { min-width:0; }

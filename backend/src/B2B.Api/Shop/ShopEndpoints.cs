@@ -47,6 +47,7 @@ public static class ShopEndpoints
                     attributes = row.Attributes,
                     attributeList = row.AttributeList,
                     imageUri = row.ImageUri,
+                    images = row.Images,
                     pvd = row.Pvd,
                     pvp = row.Pvp,
                     currency = row.Currency,

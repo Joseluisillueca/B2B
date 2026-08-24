@@ -10,6 +10,7 @@ import { state } from '../state.js';
 import { href } from '../router.js';
 import { icons } from '../ui/icons.js';
 import { sizeMatrix, bindMatrix } from '../ui/size-matrix.js';
+import { createViewer } from '../ui/viewer.js';
 
 // Precio de la ficha: una sola línea, la de la preferencia MOSTRAR PRECIOS del perfil
 // (PVD por defecto). Si el artículo no trae ese precio se enseña el otro (mismo criterio
@@ -126,11 +127,7 @@ export default async function product(host, route) {
       </nav>
 
       <div class="product-grid">
-        <figure class="product-media">
-          ${item.imageUri
-            ? `<img src="${esc(item.imageUri)}" alt="${esc(item.name || '')}" decoding="async">`
-            : `<span class="item-art" aria-hidden="true">${icons.shoe(90)}</span>`}
-        </figure>
+        <figure class="product-media" id="media"></figure>
 
         <div class="product-panel">
           <div class="product-head">
@@ -169,6 +166,11 @@ export default async function product(host, route) {
         </div>
       </div>
     </div>`;
+
+  // ── Visor multi-ángulo (giro 360 + zoom); degrada a la portada o a placeholder ──
+  createViewer(host.querySelector('#media'),
+    item.images?.length ? item.images : (item.imageUri ? [item.imageUri] : []),
+    { name: item.name || reference });
 
   // ── Matriz de tallas: el mismo componente del catálogo mete en el carrito ──
   const buy = host.querySelector('#buy');
