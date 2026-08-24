@@ -282,6 +282,126 @@ public static class AccountEndpoints
             });
         }).RequireAuthorization();
 
+        // ── Cuadros de mando (panel del comprador) ────────────────────────────
+        // Varios paneles sobre las compras del cliente (o del cliente suplantado por
+        // el agente): facturación por mes, top modelos, curva de tallas, reparto por
+        // familia y embudo de pedidos. Mismo aislamiento que el resto: los documentos
+        // salen de PortalScope.DocumentsAsync (por clientId del token), nunca de la query.
+        app.MapGet("/api/portal/dashboard", async (
+            HttpRequest request, ClaimsPrincipal principal, AppDbContext db) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null) return Unknown();
+
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var to = Day(request.Query["to"]) ?? today;
+            var from = Day(request.Query["from"]) ?? new DateOnly(to.Year, to.Month, 1).AddMonths(-12);
+            if (from > to) (from, to) = (to, from);
+            var locale = DocumentProjections.Locale(request.Query["locale"]);
+
+            bool InRange(DateTimeOffset? moment) => moment is { } dt
+                && DateOnly.FromDateTime(dt.UtcDateTime) >= from
+                && DateOnly.FromDateTime(dt.UtcDateTime) <= to;
+
+            var invoiceDocs = await PortalScope.DocumentsAsync(db, principal, DocumentProjections.InvoiceEntity);
+            var orderDocs = await PortalScope.DocumentsAsync(db, principal, DocumentProjections.OrderEntity);
+
+            var invoices = invoiceDocs
+                .Select(doc => (doc, row: DocumentProjections.Invoice(doc.Id, doc.Payload, locale, today)))
+                .Where(entry => InRange(entry.row.Date))
+                .ToList();
+
+            // Nombre y familia del catálogo, para agrupar por modelo/familia con un
+            // nombre limpio (la línea de factura trae el nombre con la talla dentro).
+            var models = await db.CatalogModels.ToListAsync();
+            var nameByRef = models
+                .GroupBy(m => m.ExternalReference, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First().Name, StringComparer.OrdinalIgnoreCase);
+            var familyByRef = models
+                .GroupBy(m => m.ExternalReference, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First().FamilyId, StringComparer.OrdinalIgnoreCase);
+
+            var lines = invoices
+                .SelectMany(entry => DocumentProjections.DocumentLines(entry.doc.Payload, locale))
+                .ToList();
+
+            // Facturación por mes (mismo criterio y buckets que /api/portal/statistics)
+            var months = new List<object>();
+            var total = 0m;
+            var cursor = new DateOnly(from.Year, from.Month, 1);
+            var lastMonth = new DateOnly(to.Year, to.Month, 1);
+            for (var guard = 0; cursor <= lastMonth && guard < MaxMonths; cursor = cursor.AddMonths(1), guard++)
+            {
+                var month = cursor;
+                var amount = invoices
+                    .Where(entry => entry.row.Date is { } date
+                        && date.UtcDateTime.Year == month.Year && date.UtcDateTime.Month == month.Month)
+                    .Sum(entry => entry.row.Total);
+                total += amount;
+                months.Add(new { month = month.ToString("yyyy-MM", CultureInfo.InvariantCulture), amount });
+            }
+
+            var topModels = lines
+                .GroupBy(line => line.Reference, StringComparer.OrdinalIgnoreCase)
+                .Select(g => new
+                {
+                    reference = g.Key,
+                    name = nameByRef.GetValueOrDefault(g.Key ?? "") ?? g.Key,
+                    units = g.Sum(line => line.Quantity),
+                    amount = g.Sum(line => line.Amount)
+                })
+                .OrderByDescending(model => model.amount)
+                .Take(8)
+                .ToList();
+
+            var sizeCurve = lines
+                .Where(line => line.Size.Length > 0)
+                .GroupBy(line => line.Size)
+                .Select(g => new { size = g.Key, units = g.Sum(line => line.Quantity) })
+                .OrderBy(row => int.TryParse(row.size, out var n) ? n : int.MaxValue).ThenBy(row => row.size)
+                .ToList();
+
+            var byFamily = lines
+                .GroupBy(line => familyByRef.GetValueOrDefault(line.Reference ?? "") is { Length: > 0 } fam ? fam : "—")
+                .Select(g => new { family = g.Key, amount = g.Sum(line => line.Amount), units = g.Sum(line => line.Quantity) })
+                .OrderByDescending(row => row.amount)
+                .ToList();
+
+            var orders = orderDocs
+                .Select(doc => DocumentProjections.Order(doc.Id, doc.Payload))
+                .OfType<OrderRow>()
+                .ToList();
+            var funnel = DocumentProjections.OrderStatuses
+                .Select(status => new
+                {
+                    status,
+                    count = orders.Count(order => order.Status == status),
+                    amount = orders.Where(order => order.Status == status).Sum(order => order.Total)
+                })
+                .Where(row => row.count > 0)
+                .ToList();
+
+            return Results.Ok(new
+            {
+                from = from.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                to = to.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                currency = "EUR",
+                kpis = new
+                {
+                    invoiced = total,
+                    units = lines.Sum(line => line.Quantity),
+                    invoices = invoices.Count,
+                    orders = orders.Count,
+                    avgTicket = invoices.Count > 0 ? total / invoices.Count : 0m
+                },
+                months,
+                topModels,
+                sizeCurve,
+                byFamily,
+                funnel
+            });
+        }).RequireAuthorization();
+
         // ── Contacto (07-contact.png) ─────────────────────────────────────────
         app.MapPost("/api/portal/contact", async (
             HttpRequest request, ClaimsPrincipal principal, AppDbContext db,

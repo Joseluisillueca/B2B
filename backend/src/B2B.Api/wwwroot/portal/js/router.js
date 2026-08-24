@@ -33,6 +33,7 @@ const VIEWS = {
   'sat': () => import('./views/sat.js'),
   'pay': () => import('./views/pay.js'),
   'statistics': () => import('./views/statistics.js'),
+  'boards': () => import('./views/boards.js'),
   'business': () => import('./views/business.js'),
   'profile': () => import('./views/profile.js'),
   'contact': () => import('./views/contact.js')

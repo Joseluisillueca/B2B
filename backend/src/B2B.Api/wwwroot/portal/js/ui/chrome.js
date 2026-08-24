@@ -20,7 +20,7 @@ const veil = () => document.getElementById('veil');
 // Secciones del menú de usuario, en el orden del portal actual
 const MENU = [
   'lookbook', 'orders', 'delivery-notes', 'invoices', 'shopping-carts',
-  'sat', 'statistics', 'business', 'profile', 'contact'
+  'sat', 'statistics', 'boards', 'business', 'profile', 'contact'
 ];
 
 // Megamenú del agente: cuatro grupos, tal cual el portal real. Cada entrada es
@@ -46,7 +46,8 @@ const AGENT_GROUPS = [
   { title: 'agent.group.account', items: [
     ['profile', 'nav.my-account'],
     ['business', 'nav.business-data'],
-    ['statistics', 'nav.statistics']
+    ['statistics', 'nav.statistics'],
+    ['boards', 'nav.boards']
   ] }
 ];
 
