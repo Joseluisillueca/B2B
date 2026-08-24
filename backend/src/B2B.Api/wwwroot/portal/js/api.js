@@ -83,6 +83,12 @@ export const api = {
   modelSelections: () => request('GET', '/api/agent/model-selections'),
   createModelSelection: body => request('POST', '/api/agent/model-selections', body),
 
+  /** Pagos con tarjeta (Stripe/mock). Devuelven { paymentId, url } al que redirigir */
+  payInvoice: (invoiceId, locale) => request('POST', `/api/portal/payments/invoice/${encodeURIComponent(invoiceId)}?locale=${locale || ''}`),
+  payOrder: (orderId, locale) => request('POST', `/api/portal/payments/order/${orderId}?locale=${locale || ''}`),
+  paymentStatus: id => request('GET', `/api/portal/payments/${id}`),
+  payments: () => request('GET', '/api/portal/payments'),
+
   /** Calendario de citas del agente */
   appointments: params => request('GET', `/api/agent/appointments${params ? `?${params}` : ''}`),
   createAppointment: body => request('POST', '/api/agent/appointments', body),

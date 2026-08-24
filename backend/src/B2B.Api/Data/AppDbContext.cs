@@ -23,6 +23,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ClientRegistrationRequest> ClientRegistrationRequests => Set<ClientRegistrationRequest>();
     public DbSet<AgentAppointment> AgentAppointments => Set<AgentAppointment>();
     public DbSet<ModelSelection> ModelSelections => Set<ModelSelection>();
+    public DbSet<Payment> Payments => Set<Payment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -230,6 +231,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             sel.Property(s => s.ModelIdsJson).HasColumnType("jsonb");
             sel.Property(s => s.ClientIdsJson).HasColumnType("jsonb");
             sel.HasIndex(s => new { s.AgentExternalId, s.CreatedAt });
+        });
+
+        modelBuilder.Entity<Payment>(pay =>
+        {
+            pay.ToTable("payments");
+            pay.HasKey(p => p.Id);
+            pay.Property(p => p.ClientId).HasMaxLength(100);
+            pay.Property(p => p.Kind).HasMaxLength(20);
+            pay.Property(p => p.TargetId).HasMaxLength(100);
+            pay.Property(p => p.Description).HasMaxLength(200);
+            pay.Property(p => p.Currency).HasMaxLength(10);
+            pay.Property(p => p.Provider).HasMaxLength(20);
+            pay.Property(p => p.SessionId).HasMaxLength(255);
+            pay.Property(p => p.Secret).HasMaxLength(64);
+            pay.Property(p => p.Status).HasMaxLength(20);
+            pay.Property(p => p.Amount).HasColumnType("numeric(12,2)");
+            pay.HasIndex(p => new { p.ClientId, p.Kind, p.TargetId });
         });
 
         modelBuilder.Entity<ContactMessage>(message =>

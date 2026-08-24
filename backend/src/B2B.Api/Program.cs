@@ -3,6 +3,7 @@ using B2B.Api.Admin;
 using B2B.Api.Auth;
 using B2B.Api.Data;
 using B2B.Api.Notifications;
+using B2B.Api.Payments;
 using B2B.Api.Portal;
 using B2B.Api.Shop;
 using B2B.Api.Sync;
@@ -50,6 +51,15 @@ if (string.Equals(emailOptions.Mode, "smtp", StringComparison.OrdinalIgnoreCase)
 else
     builder.Services.AddSingleton<IEmailSender, LogEmailSender>();
 builder.Services.AddScoped<ActivationService>();
+
+// Pagos con tarjeta. Por defecto modo "mock" (simula la pasarela en dev, sin cobrar);
+// con Payments:Mode=stripe usa Stripe Checkout con las claves configuradas.
+var paymentOptions = builder.Configuration.GetSection(PaymentOptions.Section).Get<PaymentOptions>() ?? new PaymentOptions();
+builder.Services.AddSingleton(paymentOptions);
+if (string.Equals(paymentOptions.Mode, "stripe", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddSingleton<IPaymentGateway, StripePaymentGateway>();
+else
+    builder.Services.AddSingleton<IPaymentGateway, MockPaymentGateway>();
 
 // Auditoría m-6: la clave de firma de appsettings.json se auto-documenta como de
 // desarrollo, pero nada impedía arrancar producción con ella. Ahora sí.
@@ -142,6 +152,7 @@ app.MapAccountEndpoints();
 app.MapSatEndpoints();
 app.MapAssistantEndpoints();
 app.MapActivationEndpoints();
+app.MapPaymentEndpoints();
 
 // Portal del cliente: enrutado por History API sobre las rutas reales del portal
 // actual, /{market}/{lang}/{vista} (p.ej. /es/es/orders). Recargar cualquiera de

@@ -30,6 +30,7 @@ const VIEWS = {
   'delivery-notes': () => import('./views/delivery-notes.js'),
   'invoices': () => import('./views/invoices.js'),
   'sat': () => import('./views/sat.js'),
+  'pay': () => import('./views/pay.js'),
   'statistics': () => import('./views/statistics.js'),
   'business': () => import('./views/business.js'),
   'profile': () => import('./views/profile.js'),

@@ -9,13 +9,15 @@
 // vista para no romper la paridad y porque el mapeo ya está listo para el día que
 // BC mande cobros parciales.
 
-import { t } from '../i18n.js';
+import { t, lang } from '../i18n.js';
 import { esc, eur, date } from '../format.js';
+import { api } from '../api.js';
 import { docList, linesTable } from '../ui/doc-list.js';
 import { agentDocList } from '../ui/agent-doc-list.js';
 import { statusChip } from '../ui/status-rail.js';
 import { modalFacts } from '../ui/modal.js';
 import { state } from '../state.js';
+import { icons } from '../ui/icons.js';
 
 const STATUSES = [
   { id: 'overdue', tone: 'red' },
@@ -52,6 +54,27 @@ export default async function invoices(host) {
     });
   }
 
+  // Facturas ya pagadas con tarjeta desde el portal (registro local, pendiente de
+  // conciliación en BC): se marcan para no volver a ofrecer el pago.
+  let paidLocal = new Set();
+  try {
+    const data = await api.payments();
+    paidLocal = new Set((data.items || [])
+      .filter(p => p.kind === 'invoice' && p.status === 'paid')
+      .map(p => String(p.targetId)));
+  } catch { /* si falla, simplemente no se marca nada */ }
+
+  // Deuda + acción de pago: si ya se pagó por el portal, un check; si hay deuda, el
+  // botón "Pagar con tarjeta"; si no debe nada, en blanco.
+  const debtCell = invoice => {
+    if (paidLocal.has(String(invoice.id)))
+      return `<span class="inv-paid">${icons.check(15)} ${esc(t('invoices.paidCard'))}</span>`;
+    if (!invoice.debt) return '';
+    return `<span class="inv-debt"><b>${esc(eur(invoice.debt))}</b>
+      <button type="button" class="inv-pay" data-pay="${esc(invoice.id)}">
+        ${icons.card ? icons.card(14) : ''} ${esc(t('invoices.pay'))}</button></span>`;
+  };
+
   await docList(host, {
     key: 'invoices',
     endpoint: '/api/portal/invoices',
@@ -73,11 +96,22 @@ export default async function invoices(host) {
       esc(date(invoice.date)),
       esc(invoice.payMethod || ''),
       esc(eur(invoice.total)),
-      // La deuda de una factura cobrada es 0: se deja en blanco para que salte a
-      // la vista la fila que sí debe algo
-      invoice.debt ? `<b>${esc(eur(invoice.debt))}</b>` : '',
+      debtCell(invoice),
       chip(invoice)
     ],
+
+    // El botón de pago redirige a la pasarela (Stripe/mock) con la URL que da el backend
+    onRendered: list => list.querySelectorAll('[data-pay]').forEach(button => {
+      button.onclick = async () => {
+        button.disabled = true;
+        try {
+          const r = await api.payInvoice(button.dataset.pay, lang());
+          window.location.href = r.url;
+        } catch {
+          button.disabled = false;
+        }
+      };
+    }),
 
     detail: invoice => ({
       title: t('invoices.detail', { n: invoice.number }),

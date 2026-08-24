@@ -8,7 +8,7 @@
 // pedido registrado y pendiente de envío, y vacía el carrito.
 
 import { api } from '../api.js';
-import { t } from '../i18n.js';
+import { t, lang } from '../i18n.js';
 import { esc, eur, date } from '../format.js';
 import { state, lineKey } from '../state.js';
 import { href, go } from '../router.js';
@@ -32,7 +32,13 @@ const payOption = method => {
   return { value: String(method ?? ''), label: String(method ?? '') };
 };
 
-const payOptions = client => (client.payMethods || []).map(payOption);
+// Además de las formas de pago del cliente (BC), el portal ofrece pago con TARJETA
+// (Stripe): al elegirla, TERMINAR PEDIDO pasa por la pasarela antes de cerrar.
+const CARD = '__card__';
+const payOptions = client => [
+  ...(client.payMethods || []).map(payOption),
+  { value: CARD, label: t('checkout.payCard') }
+];
 
 const payLabel = (client, value) =>
   payOptions(client).find(option => option.value === value)?.label || value || '';
@@ -309,6 +315,23 @@ export default function checkout(host) {
     $('submit').onclick = async event => {
       const button = event.currentTarget;
       button.disabled = true;
+
+      // Pago con tarjeta: se crea el pedido y se redirige a la pasarela; al volver,
+      // la página de resultado muestra si el pago cuajó.
+      if (form.payMethod === CARD) {
+        try {
+          const order = await api.post('/api/portal/orders', payload(defaultName()));
+          const pay = await api.payOrder(order.id, lang());
+          state.clearCart();
+          window.location.href = pay.url;
+        } catch {
+          button.disabled = false;
+          error = t('checkout.payError');
+          render();
+        }
+        return;
+      }
+
       try {
         sent = await api.post('/api/portal/orders', payload(defaultName()));
         state.clearCart();

@@ -28,6 +28,7 @@ export const icons = {
   fileDown: size => svg('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M12 11v5m0 0 2-2m-2 2-2-2"/>', size),
   alert: size => svg('<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16v.5"/>', size),
   check: size => svg('<path d="m5 12.5 4.5 4.5L19 7.5"/>', size),
+  card: size => svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/>', size),
   truck: size => svg('<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/>', size),
   left: size => svg('<path d="m14 6-6 6 6 6"/>', size),
   right: size => svg('<path d="m10 6 6 6-6 6"/>', size),

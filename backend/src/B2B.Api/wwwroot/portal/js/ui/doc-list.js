@@ -99,7 +99,7 @@ export function linesTable(lines, { delivered = false } = {}) {
  */
 export async function docList(host, config) {
   const { key, endpoint, crumb, statuses, sorts, columns, cells, detail,
-    filters = true, action = null } = config;
+    filters = true, action = null, onRendered = null } = config;
 
   let query = readQuery();
   let data = null;
@@ -301,6 +301,9 @@ export async function docList(host, config) {
     list.querySelectorAll('[data-open]').forEach(button => {
       button.onclick = () => open(button.dataset.open);
     });
+
+    // Gancho para acciones propias de la vista (p. ej. el botón de pago en facturas)
+    onRendered?.(list, data);
   }
 
   async function open(id) {
