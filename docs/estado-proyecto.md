@@ -140,6 +140,30 @@ a cada cliente para operar como si fuera él (reposición/programación fija la 
   - Aislamiento cubierto por `AgentPortfolioTests` (10 tests: agregación, A/B, jerarquía
     admin, filtro cliente/tipo, estadísticas, calendario).
 
+## Pago con tarjeta (Stripe) — HECHO y auditado (CUMPLE)
+
+- Abstracción `IPaymentGateway` con dos modos (como el correo): **`mock`** (por
+  defecto, pasarela simulada en dev — página `/pay/mock/{id}` — para probar sin claves
+  ni dinero) y **`stripe`** (Stripe Checkout real, `Stripe.net` 52.3.0: página alojada
+  + webhook con verificación de firma + reconciliación por `Session.Get`). Config en
+  `appsettings` sección `Payments` (Mode/Currency/Stripe.SecretKey/WebhookSecret); la
+  secret NUNCA va al frontend.
+- Tabla `payments`. Endpoints: `POST /api/portal/payments/invoice/{id}` (paga la deuda
+  de la factura) y `/order/{id}` (paga líneas+21% IVA del pedido); `GET /{id}` estado y
+  `GET /api/portal/payments` lista; confirmación mock `POST /api/pay/mock/{id}` (por
+  secreto del enlace); webhook `POST /api/pay/stripe/webhook`.
+- Front: botón **"Pagar con tarjeta"** en facturas con deuda (+ "Pagada (tarjeta)"),
+  opción **"Tarjeta (Stripe)"** en el checkout, página de resultado `/pay` (consulta el
+  estado real, no se fía del redirect). i18n es/en/fr/it.
+- Seguridad (auditada, 2 subagentes): ámbito por token, no doble cobro (reutiliza el
+  pago pending en curso — P1 corregido), webhook 400 solo si firma inválida (P2), GET
+  acotado por UserId si no hay clientId (P3), moneda del pago + `throwOnApiVersionMismatch:false`.
+  **10 tests** de pagos, 414 en verde. Verificado E2E en 5199 (factura→pasarela→pagado;
+  checkout con tarjeta 174,24€).
+- Para pago REAL: `Payments:Mode=stripe` + `Payments:Stripe:SecretKey=sk_...` (test:
+  `sk_test_`) + webhook en el panel de Stripe apuntando a `/api/pay/stripe/webhook` con
+  su `whsec_` en `Payments:Stripe:WebhookSecret`. Tarjeta de prueba 4242 4242 4242 4242.
+
 ## Pendiente
 
 1. **Auditoría integral final del /goal** — **CERRADA: CUMPLE en las tres
