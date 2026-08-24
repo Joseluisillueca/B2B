@@ -5,10 +5,6 @@ import { esc } from '../format.js';
 import { t } from '../i18n.js';
 import { icons } from './icons.js';
 
-const spinIcon = size => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-  <path d="M4 12a8 8 0 0 1 13.7-5.6M20 12a8 8 0 0 1-13.7 5.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-  <path d="M17 3v3.6h-3.6M7 21v-3.6h3.6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-
 // Monta el visor dentro de `host`. images: array de urls. opts.name: alt/título.
 export function createViewer(host, images, opts = {}) {
   const frames = (images || []).filter(Boolean);
@@ -29,9 +25,9 @@ export function createViewer(host, images, opts = {}) {
         ${frames.map((src, i) => `<img src="${esc(src)}" class="viewer-frame${i === 0 ? ' on' : ''}"
             alt="${esc(name)}${many ? ` — ${i + 1}/${frames.length}` : ''}" draggable="false"
             decoding="async"${i === 0 ? '' : ' loading="lazy"'}>`).join('')}
-        <span class="viewer-zoom" data-zoom aria-hidden="true">${icons.search ? icons.search(16) : '⤢'}</span>
+        <button type="button" class="viewer-zoom" data-zoom aria-label="${esc(t('viewer.zoom'))}">${icons.search(16)}</button>
         ${many
-          ? `<span class="viewer-badge">${spinIcon(14)} 360°</span>
+          ? `<span class="viewer-badge">${icons.spin(14)} ${esc(t('viewer.badge'))}</span>
              <span class="viewer-hint" data-hint>${esc(t('viewer.dragHint'))}</span>`
           : `<span class="viewer-hint viewer-zoomhint">${esc(t('viewer.zoomHint'))}</span>`}
       </div>
@@ -109,12 +105,35 @@ export function createViewer(host, images, opts = {}) {
     });
   }
 
+  // Botón de lupa: afordancia explícita de zoom (teclado y táctil), sin depender del hover
+  host.querySelector('[data-zoom]').addEventListener('click', event => {
+    event.stopPropagation();
+    openZoom(frames[idx], name);
+  });
+
   // Toque en la foto (no arrastre) → lightbox con la imagen grande
   stage.addEventListener('click', event => {
-    if (event.target.closest('[data-nav], [data-thumb]')) return;
+    if (event.target.closest('[data-nav], [data-thumb], [data-zoom]')) return;
     if (moved) { moved = false; return; }
     openZoom(frames[idx], name);
   });
+}
+
+// Mueve el foco al diálogo, lo atrapa mientras está abierto y lo restaura al cerrar.
+function trapFocus(container, initial) {
+  const previous = document.activeElement;
+  (initial || container).focus?.();
+  const onKey = event => {
+    if (event.key !== 'Tab') return;
+    const f = [...container.querySelectorAll('button, [href], input, [tabindex]:not([tabindex="-1"])')]
+      .filter(el => !el.disabled && el.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (event.shiftKey && document.activeElement === first) { last.focus(); event.preventDefault(); }
+    else if (!event.shiftKey && document.activeElement === last) { first.focus(); event.preventDefault(); }
+  };
+  container.addEventListener('keydown', onKey);
+  return () => { container.removeEventListener('keydown', onKey); previous?.focus?.(); };
 }
 
 // Quick-view: abre el visor completo (giro + miniaturas) en un modal, sin salir de
@@ -122,17 +141,19 @@ export function createViewer(host, images, opts = {}) {
 export function openViewerModal(images, name) {
   const box = document.createElement('div');
   box.className = 'viewer-modal';
-  box.innerHTML = `<div class="viewer-modal-box" role="dialog" aria-label="${esc(name)}">
+  box.innerHTML = `<div class="viewer-modal-box" role="dialog" aria-modal="true" aria-label="${esc(name)}">
       <button type="button" class="viewer-modal-close" aria-label="${esc(t('viewer.close'))}">✕</button>
       <div class="viewer-modal-name">${esc(name)}</div>
       <div class="viewer-modal-mount"></div>
     </div>`;
-  const close = () => { box.remove(); document.removeEventListener('keydown', onKey); };
+  let release;
+  const close = () => { release?.(); box.remove(); document.removeEventListener('keydown', onKey); };
   const onKey = e => { if (e.key === 'Escape') close(); };
   box.addEventListener('click', e => { if (e.target === box || e.target.closest('.viewer-modal-close')) close(); });
   document.addEventListener('keydown', onKey);
   document.body.appendChild(box);
   createViewer(box.querySelector('.viewer-modal-mount'), images, { name });
+  release = trapFocus(box.querySelector('.viewer-modal-box'), box.querySelector('.viewer-modal-close'));
   requestAnimationFrame(() => box.classList.add('on'));
 }
 
@@ -140,12 +161,17 @@ export function openViewerModal(images, name) {
 function openZoom(src, name) {
   const box = document.createElement('div');
   box.className = 'viewer-lightbox';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-label', name);
   box.innerHTML = `<button type="button" class="viewer-lightbox-close" aria-label="${esc(t('viewer.close'))}">✕</button>
     <img src="${esc(src)}" alt="${esc(name)}">`;
-  const close = () => { box.remove(); document.removeEventListener('keydown', onKey); };
+  let release;
+  const close = () => { release?.(); box.remove(); document.removeEventListener('keydown', onKey); };
   const onKey = e => { if (e.key === 'Escape') close(); };
   box.addEventListener('click', close);
   document.addEventListener('keydown', onKey);
   document.body.appendChild(box);
+  release = trapFocus(box, box.querySelector('.viewer-lightbox-close'));
   requestAnimationFrame(() => box.classList.add('on'));
 }

@@ -112,7 +112,7 @@ export default async function lookbook(host) {
             : `<span class="item-art" aria-hidden="true">${icons.shoe(52)}</span>`}
           ${(item.images && item.images.length > 1)
             ? `<button type="button" class="pcard-360" data-spin="${esc(item.modelId)}"
-                 title="${esc(t('viewer.spinRole'))}" aria-label="${esc(t('viewer.spinRole'))}">↻ 360°</button>` : ''}
+                 title="${esc(t('viewer.spinRole'))}" aria-label="${esc(t('viewer.spinRole'))}">${icons.spin(13)} ${esc(t('viewer.badge'))}</button>` : ''}
           <button type="button" class="item-fav pcard-fav" data-fav="${esc(item.modelId)}"
             aria-pressed="${item.favorite ? 'true' : 'false'}"
             aria-label="${esc(favLabel(item.favorite))}" title="${esc(favLabel(item.favorite))}">

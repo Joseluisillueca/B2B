@@ -331,7 +331,9 @@
   "catalog.errorBody": "Riprova tra qualche secondo.",
 
   "product.add": "Aggiungi",
-  "viewer.spinRole": "Vista 360°",
+  "viewer.spinRole": "Galleria multi-angolo",
+  "viewer.badge": "Multi-angolo",
+  "viewer.zoom": "Ingrandisci",
   "viewer.dragHint": "Trascina per ruotare",
   "viewer.zoomHint": "Tocca per ingrandire",
   "viewer.prev": "Angolo precedente",

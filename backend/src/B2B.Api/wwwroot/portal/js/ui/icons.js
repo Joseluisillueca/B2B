@@ -32,6 +32,7 @@ export const icons = {
   truck: size => svg('<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/>', size),
   left: size => svg('<path d="m14 6-6 6 6 6"/>', size),
   right: size => svg('<path d="m10 6 6 6-6 6"/>', size),
+  spin: size => svg('<path d="M4 12a8 8 0 0 1 13.7-5.6M20 12a8 8 0 0 1-13.7 5.6"/><path d="M17 3v3.6h-3.6M7 21v-3.6h3.6"/>', size),
   shoe: size => svg('<path d="M3 16c3-1 4-4 6-6s4-3 7-3c2.5 0 5 1.5 5 4 0 2-1.5 3-4 3H3Z"/><path d="M3 16v2.5h18V16"/>', size),
 
   // Cuenta, empresa, contacto y devoluciones (Fase 4)
