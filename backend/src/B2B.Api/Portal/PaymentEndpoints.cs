@@ -313,11 +313,12 @@ public static class PaymentEndpoints
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>Pago de prueba — lejan B2B</title>
             <style>
+              *{box-sizing:border-box}
               :root{--g:#1f5c46;--p:#faf6ef}
               body{font-family:Inter,system-ui,Arial,sans-serif;background:var(--p);margin:0;
-                min-height:100vh;display:grid;place-items:center;color:#1a1a1a}
+                min-height:100vh;display:grid;place-items:center;color:#1a1a1a;padding:1rem}
               .card{background:#fff;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.12);
-                padding:2.4rem 2.2rem;max-width:26rem;width:92%}
+                padding:2.4rem 2.2rem;max-width:26rem;width:100%}
               .brand{font-weight:800;font-style:italic;color:var(--g);font-size:1.4rem;margin:0 0 1.4rem}
               .tag{background:#fdf0d5;color:#8a5a00;font-size:.72rem;font-weight:700;letter-spacing:.04em;
                 text-transform:uppercase;padding:.2rem .6rem;border-radius:999px}
