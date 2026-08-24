@@ -327,6 +327,7 @@
   "catalog.units": "{n} u.",
   "catalog.sizeField": "Talla {size} de {name} · stock {stock}",
   "catalog.stockExport": "Desc. Stock",
+  "catalog.pdfExport": "Catálogo PDF",
   "catalog.view": "Vista",
   "catalog.viewList": "Listado",
   "catalog.viewGrid": "Cuadrícula",

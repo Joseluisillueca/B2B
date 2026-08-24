@@ -423,6 +423,14 @@ export default async function catalog(host) {
       try { await api.download(`/api/shop/stock-export.csv?${apiQuery(query)}`, 'stock.csv'); }
       finally { button.disabled = false; }
     };
+
+    // Catálogo (filtrado) en PDF con marca y la tarifa del cliente
+    tools.querySelector('#exportPdf').onclick = async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try { await api.download(`/api/portal/catalog.pdf?${apiQuery(query)}`, 'catalogo-lejan.pdf'); }
+      finally { button.disabled = false; }
+    };
   }
 
   // ── Listado ────────────────────────────────────────────────────────────────

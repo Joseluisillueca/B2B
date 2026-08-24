@@ -17,6 +17,9 @@ export function toolbar({ sort, view = 'list' } = {}) {
       <button type="button" class="tb-export" id="exportStock">
         ${icons.download(17)} ${esc(t('catalog.stockExport'))}
       </button>
+      <button type="button" class="tb-export" id="exportPdf">
+        ${icons.fileDown(17)} ${esc(t('catalog.pdfExport'))}
+      </button>
 
       <!-- m8: la referencia no rotula este selector; el aria-label sigue nombrándolo -->
       <label class="tb-field">

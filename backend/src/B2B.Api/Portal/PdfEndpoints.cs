@@ -77,8 +77,32 @@ public static class PdfEndpoints
             foreach (var r in rows)
                 images[r.Model.ExternalReference ?? ""] = await LoadImageAsync(r.ImageUri, env, httpFactory);
 
-            var pdf = new LineSheetDocument(rows, images, clientName).GeneratePdf();
+            var heading = clientName.Length > 0 ? $"Selección para {clientName}" : "Selección de productos";
+            var pdf = new LineSheetDocument(rows, images, clientName, heading, "LINE-SHEET").GeneratePdf();
             return Results.File(pdf, "application/pdf", "line-sheet-lejan.pdf");
+        }).RequireAuthorization();
+
+        // Catálogo completo (o filtrado) en PDF con marca y tarifa del cliente. Respeta
+        // los mismos filtros que la barra del catálogo (línea, silueta, disponibilidad…).
+        app.MapGet("/api/portal/catalog.pdf", async (
+            HttpRequest request, ClaimsPrincipal principal,
+            AppDbContext db, IWebHostEnvironment env, IHttpClientFactory httpFactory) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            var locale = DocumentProjections.Locale(request.Query["locale"]);
+            var query = CatalogQuery.From(request.Query) with { Skip = 0, Take = 300, Locale = locale };
+            var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow);
+            var rows = page.Rows;
+            if (rows.Count == 0) return Results.NotFound();
+
+            var clientName = await ClientNameAsync(db, actor);
+            var images = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var r in rows)
+                images[r.Model.ExternalReference ?? ""] = await LoadImageAsync(r.ImageUri, env, httpFactory);
+
+            var heading = clientName.Length > 0 ? $"Catálogo · tarifa de {clientName}" : "Catálogo";
+            var pdf = new LineSheetDocument(rows, images, clientName, heading, "CATÁLOGO").GeneratePdf();
+            return Results.File(pdf, "application/pdf", "catalogo-lejan.pdf");
         }).RequireAuthorization();
     }
 
@@ -100,6 +124,9 @@ public static class PdfEndpoints
     private static async Task<byte[]?> LoadImageAsync(string? uri, IWebHostEnvironment env, IHttpClientFactory httpFactory)
     {
         if (string.IsNullOrWhiteSpace(uri)) return null;
+        // QuestPDF no decodifica SVG (ni otros vectoriales): se ignora y el PDF sale
+        // con el marco vacío en vez de reventar.
+        if (uri.Split('?')[0].EndsWith(".svg", StringComparison.OrdinalIgnoreCase)) return null;
         try
         {
             if (uri.StartsWith('/'))
@@ -236,7 +263,8 @@ public static class PdfEndpoints
 
     // ── Documento: line-sheet (varios productos) ────────────────────────────────
     private sealed class LineSheetDocument(
-        IReadOnlyList<CatalogRow> rows, Dictionary<string, byte[]?> images, string clientName) : IDocument
+        IReadOnlyList<CatalogRow> rows, Dictionary<string, byte[]?> images,
+        string clientName, string heading, string label) : IDocument
     {
         public void Compose(IDocumentContainer container) => container.Page(page =>
         {
@@ -254,10 +282,9 @@ public static class PdfEndpoints
             row.RelativeItem().Column(col =>
             {
                 col.Item().Text("lejan™").FontSize(20).Bold().FontColor(Green);
-                col.Item().Text(clientName.Length > 0 ? $"Selección para {clientName}" : "Selección de productos")
-                    .FontSize(9).FontColor(Muted);
+                col.Item().Text(heading).FontSize(9).FontColor(Muted);
             });
-            row.RelativeItem().AlignRight().AlignBottom().Text($"LINE-SHEET · {rows.Count} modelos")
+            row.RelativeItem().AlignRight().AlignBottom().Text($"{label} · {rows.Count} modelos")
                 .FontSize(10).FontColor(Muted);
         });
 
