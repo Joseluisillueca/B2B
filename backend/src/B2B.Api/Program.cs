@@ -41,6 +41,9 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddLoginRateLimiter(builder.Configuration);
 builder.Services.AddHttpClient();   // asistente del portal → API de Anthropic (opcional)
 
+// PDFs comerciales (ficha técnica, line-sheet). Licencia Community de QuestPDF.
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 // Correo transaccional (activación de cuenta, recuperación de contraseña). Por
 // defecto modo "log": no envía nada real, el correo queda en sent_emails y su enlace
 // se puede leer en dev. Con Email:Mode=smtp usa un servidor real (p.ej. Office 365).
@@ -149,6 +152,7 @@ app.MapAgentEndpoints();
 app.MapCartEndpoints();
 app.MapDocumentEndpoints();
 app.MapAccountEndpoints();
+app.MapPdfEndpoints();
 app.MapSatEndpoints();
 app.MapAssistantEndpoints();
 app.MapActivationEndpoints();

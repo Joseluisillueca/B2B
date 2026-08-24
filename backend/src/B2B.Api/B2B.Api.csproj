@@ -16,6 +16,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
     <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="QuestPDF" Version="2026.7.3" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.16.17" />
     <PackageReference Include="Stripe.net" Version="52.3.0" />
   </ItemGroup>

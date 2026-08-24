@@ -156,7 +156,7 @@ export default async function product(host, route) {
           </div>
 
           <div class="product-docs">
-            <button type="button" class="product-doc" disabled title="${esc(t('product.downloadSoon'))}">
+            <button type="button" class="product-doc" id="dl-tech" title="${esc(t('product.downloadTech'))}">
               ${icons.fileDown(17)} ${esc(t('product.downloadTech'))}
             </button>
             <button type="button" class="product-doc" disabled title="${esc(t('product.downloadSoon'))}">
@@ -171,6 +171,18 @@ export default async function product(host, route) {
   createViewer(host.querySelector('#media'),
     item.images?.length ? item.images : (item.imageUri ? [item.imageUri] : []),
     { name: item.name || reference });
+
+  // Descargar ficha técnica: PDF con marca y la TARIFA del cliente (baja con el token)
+  host.querySelector('#dl-tech').onclick = async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      await api.download(
+        `/api/portal/product/${encodeURIComponent(item.reference || reference)}/tech-sheet.pdf?locale=${lang()}`,
+        `ficha-${item.reference || reference}.pdf`);
+    } catch { /* api.download ya gestiona el 401/errores */ }
+    button.disabled = false;
+  };
 
   // ── Matriz de tallas: el mismo componente del catálogo mete en el carrito ──
   const buy = host.querySelector('#buy');
