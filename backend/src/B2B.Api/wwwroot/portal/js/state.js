@@ -6,6 +6,9 @@ const TOKEN = 'b2b.portal.token';
 const ME = 'b2b.portal.me';
 const CREDENTIAL = 'b2b.portal.credential';
 const CART = 'b2b.portal.cart';
+// Preselección del Lookbook: modelos que el comprador aparta SIN cantidades; las
+// tallas se ponen después. Vive junto al carrito (localStorage) por ventana.
+const PRESEL = 'b2b.portal.preselection';
 const PREFS = 'b2b.portal.prefs';
 // Suplantación de agente: token + ficha del cliente sobre el que se "actúa como".
 // Vive en sessionStorage para sobrevivir a recargas igual que la sesión.
@@ -120,6 +123,35 @@ export const state = {
 
   clearCart(windowKey = state.prefs.window) {
     state.cart = { ...state.cart, [windowKey]: {} };
+  },
+
+  // ── Preselección del Lookbook (modelos apartados sin tallas) ────────────────
+  /** { [windowKey]: { [modelId]: item de catálogo } } */
+  get preselection() { return read(localStorage, PRESEL, {}); },
+  set preselection(value) { write(localStorage, PRESEL, value); emit(); },
+
+  preselections(windowKey = state.prefs.window) {
+    return Object.values(state.preselection[windowKey] || {});
+  },
+  preselectionCount(windowKey = state.prefs.window) {
+    return state.preselections(windowKey).length;
+  },
+  isPreselected(modelId, windowKey = state.prefs.window) {
+    return !!(state.preselection[windowKey] || {})[modelId];
+  },
+  /** Aparta un modelo (guarda el item entero para poder tallar después sin recargar) */
+  preselect(item, windowKey = state.prefs.window) {
+    if (!item?.modelId) return;
+    const all = state.preselection;
+    const bucket = { ...(all[windowKey] || {}) };
+    bucket[item.modelId] = item;
+    state.preselection = { ...all, [windowKey]: bucket };
+  },
+  unpreselect(modelId, windowKey = state.prefs.window) {
+    const all = state.preselection;
+    const bucket = { ...(all[windowKey] || {}) };
+    delete bucket[modelId];
+    state.preselection = { ...all, [windowKey]: bucket };
   },
 
   /** Vuelca un carrito guardado sobre la ventana activa (sustituye, no acumula) */

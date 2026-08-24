@@ -19,7 +19,7 @@ const veil = () => document.getElementById('veil');
 
 // Secciones del menú de usuario, en el orden del portal actual
 const MENU = [
-  'orders', 'delivery-notes', 'invoices', 'shopping-carts',
+  'lookbook', 'orders', 'delivery-notes', 'invoices', 'shopping-carts',
   'sat', 'statistics', 'business', 'profile', 'contact'
 ];
 
@@ -29,6 +29,7 @@ const MENU = [
 const AGENT_GROUPS = [
   { title: 'agent.group.agent', items: [
     ['clients', 'nav.clients'],
+    ['lookbook', 'nav.lookbook'],
     ['shopping-carts', 'nav.shopping-carts'],
     ['agent/model-selection', 'nav.model-selection'],
     ['agent/calendar', 'nav.calendar']

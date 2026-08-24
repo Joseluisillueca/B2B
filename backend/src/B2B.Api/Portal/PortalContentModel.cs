@@ -14,7 +14,9 @@ public static class PortalContentModel
 {
     /// Claves editables. Cualquier otra se rechaza: el CMS no inventa secciones.
     public static readonly string[] Keys =
-        ["dashboard.hero", "dashboard.tiles", "login.background", "footer.social"];
+        ["dashboard.hero", "dashboard.tiles", "login.background", "footer.social",
+         // Lookbook editorial ("Colecciones lejan"): portada + historias comprables
+         "lookbook.hero", "lookbook.stories"];
 
     /// Idiomas del portal más "*" (contenido común a los cuatro)
     public static readonly string[] Locales = ["es", "en", "fr", "it", "*"];
@@ -22,7 +24,7 @@ public static class PortalContentModel
     public const string CommonLocale = "*";
     public const string DefaultLocale = "es";
 
-    private static readonly string[] ImageBlocks = ["dashboard.hero", "dashboard.tiles", "login.background"];
+    private static readonly string[] ImageBlocks = ["dashboard.hero", "dashboard.tiles", "login.background", "lookbook.hero"];
     private static readonly string[] ServiceWindows = ["replenishment", "scheduled"];
     private static readonly string[] TextFields = ["alt", "title", "subtitle", "ctaText"];
     private const int MaxItems = 24;
@@ -148,6 +150,24 @@ public static class PortalContentModel
         {
             error = "\"publishTo\" es anterior a \"publishFrom\".";
             return false;
+        }
+
+        // Campos propios del Lookbook: un rótulo corto (kicker), el cuerpo editorial
+        // (body), un pop de color de acento (accent), la disposición (layout) y las
+        // referencias/ids de los modelos comprables de la historia (refs).
+        if (key.StartsWith("lookbook.", StringComparison.Ordinal))
+        {
+            foreach (var field in new[] { "kicker", "body", "accent", "layout" })
+            {
+                if (!TryText(source[field], out var text)) { error = $"\"{field}\" debe ser texto."; return false; }
+                item[field] = text;
+            }
+            var refs = new JsonArray();
+            if (source["refs"] is JsonArray refArray)
+                foreach (var reference in refArray)
+                    if (TryText(reference, out var refId) && refId.Length > 0)
+                        refs.Add(refId);
+            item["refs"] = refs;
         }
 
         // Las dos tarjetas de la portada fijan la ventana de servicio del carrito

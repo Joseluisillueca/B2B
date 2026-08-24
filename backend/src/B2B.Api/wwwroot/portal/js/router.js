@@ -14,6 +14,7 @@ const VIEWS = {
   'activate': () => import('./views/activate.js'),
   'credentials': () => import('./views/credentials.js'),
   'dashboard': () => import('./views/dashboard.js'),
+  'lookbook': () => import('./views/lookbook.js'),
   'clients': () => import('./views/clients.js'),
   // Vistas de agente aún sin contenido propio: "Próximamente" con el chrome de
   // agente, nunca un 404 ni una pantalla rota.
