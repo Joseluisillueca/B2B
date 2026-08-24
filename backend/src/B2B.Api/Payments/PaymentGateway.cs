@@ -90,8 +90,10 @@ public sealed class StripePaymentGateway : IPaymentGateway, IReconcilable, IWebh
                     Quantity = 1,
                     PriceData = new SessionLineItemPriceDataOptions
                     {
-                        // Stripe cobra en la unidad mínima (céntimos), entero
-                        Currency = _options.Currency,
+                        // Moneda del propio pago (minúsculas ISO); Stripe cobra en la
+                        // unidad mínima (céntimos), entero.
+                        Currency = string.IsNullOrWhiteSpace(payment.Currency)
+                            ? _options.Currency : payment.Currency.ToLowerInvariant(),
                         UnitAmount = (long)decimal.Round(payment.Amount * 100m, 0),
                         ProductData = new SessionLineItemPriceDataProductDataOptions { Name = payment.Description }
                     }
@@ -127,22 +129,26 @@ public sealed class StripePaymentGateway : IPaymentGateway, IReconcilable, IWebh
         catch (StripeException) { return false; }
     }
 
-    public bool TryReadPaidPaymentId(string json, string signature, out Guid paymentId)
+    public bool TryHandle(string json, string signature, out Guid? paidPaymentId)
     {
-        paymentId = Guid.Empty;
+        paidPaymentId = null;
+        Event stripeEvent;
         try
         {
-            var stripeEvent = EventUtility.ConstructEvent(json, signature, _options.Stripe.WebhookSecret);
-            if (stripeEvent.Type == "checkout.session.completed"
-                && stripeEvent.Data.Object is Session session
-                && session.PaymentStatus == "paid"
-                && Guid.TryParse(session.ClientReferenceId, out var id))
-            {
-                paymentId = id;
-                return true;
-            }
+            // throwOnApiVersionMismatch:false → no falla si la versión de API del panel
+            // difiere de la del SDK (solo nos importa el tipo de evento y su firma).
+            stripeEvent = EventUtility.ConstructEvent(json, signature,
+                _options.Stripe.WebhookSecret, throwOnApiVersionMismatch: false);
         }
-        catch (StripeException) { }
-        return false;
+        catch (StripeException) { return false; }   // firma inválida
+
+        if (stripeEvent.Type == "checkout.session.completed"
+            && stripeEvent.Data.Object is Session session
+            && session.PaymentStatus == "paid"
+            && Guid.TryParse(session.ClientReferenceId, out var id))
+        {
+            paidPaymentId = id;
+        }
+        return true;   // firma válida: accionable o no, se hace ack (200)
     }
 }

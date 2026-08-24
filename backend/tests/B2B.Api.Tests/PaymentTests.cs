@@ -27,6 +27,7 @@ public class PaymentTests : IClassFixture<PaymentTests.Factory>
     private const string InvAgain = "INV-PAY-AGAIN";   // A_paid_cannot_again
     private const string InvSecret = "INV-PAY-SECRET";  // Mock_confirmation
     private const string InvIso = "INV-PAY-ISO";       // Payments_isolated
+    private const string InvDup = "INV-PAY-DUP";       // Duplicate_start_reuses
     private static Guid _orderA;
 
     private readonly Factory _factory;
@@ -61,7 +62,7 @@ public class PaymentTests : IClassFixture<PaymentTests.Factory>
 
             // Facturas con deuda (Unpaid) del cliente A → deuda = total. Una por test
             // que paga, para que el bloqueo "ya pagada" no cruce resultados.
-            foreach (var invId in new[] { InvPay, InvAgain, InvSecret, InvIso })
+            foreach (var invId in new[] { InvPay, InvAgain, InvSecret, InvIso, InvDup })
                 db.SyncDocuments.Add(new SyncDocument { EntityType = "invoice", ExternalId = invId, ParentId = ClientA,
                     Payload = $$"""
                     { "number": "F-{{invId}}", "clientId": "{{ClientA}}", "status": "Unpaid",
@@ -220,6 +221,25 @@ public class PaymentTests : IClassFixture<PaymentTests.Factory>
         var listB = await httpB.GetFromJsonAsync<JsonElement>("/api/portal/payments");
         Assert.DoesNotContain(listB.GetProperty("items").EnumerateArray(),
             i => i.GetProperty("id").GetGuid() == paymentId);
+    }
+
+    // P1: iniciar el pago dos veces de la misma factura reutiliza el pago pendiente
+    // (no crea otro), para no cobrar dos veces por doble clic / reintento.
+    [Fact]
+    public async Task Duplicate_start_reuses_the_pending_payment()
+    {
+        var http = await AsClientAsync(UserA);
+        var a = (await (await http.PostAsync($"/api/portal/payments/invoice/{InvDup}", null))
+            .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("paymentId").GetGuid();
+        var b = (await (await http.PostAsync($"/api/portal/payments/invoice/{InvDup}", null))
+            .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("paymentId").GetGuid();
+        Assert.Equal(a, b);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var pending = await db.Payments.CountAsync(p =>
+            p.Kind == "invoice" && p.TargetId == InvDup && p.Status == "pending");
+        Assert.Equal(1, pending);
     }
 
     [Fact]

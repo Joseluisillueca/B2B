@@ -44,7 +44,7 @@ public static class PaymentEndpoints
                 && p.Kind == PaymentKind.Invoice && p.TargetId == invoiceId && p.Status == PaymentStatus.Paid))
                 return Results.BadRequest(new { error = "Esta factura ya consta como pagada." });
 
-            var payment = NewPayment(actor, PaymentKind.Invoice, invoiceId,
+            var payment = await GetOrCreateAsync(db, actor, PaymentKind.Invoice, invoiceId,
                 $"Factura {invoice.Number}", invoice.Debt, invoice.Currency, gateway.Provider);
             return await StartAsync(payment, db, gateway, config, request);
         }).RequireAuthorization();
@@ -69,7 +69,7 @@ public static class PaymentEndpoints
                 && p.Kind == PaymentKind.Order && p.TargetId == order.Id.ToString() && p.Status == PaymentStatus.Paid))
                 return Results.BadRequest(new { error = "Este pedido ya consta como pagado." });
 
-            var payment = NewPayment(actor, PaymentKind.Order, order.Id.ToString(),
+            var payment = await GetOrCreateAsync(db, actor, PaymentKind.Order, order.Id.ToString(),
                 order.Name, amount, "EUR", gateway.Provider);
             return await StartAsync(payment, db, gateway, config, request);
         }).RequireAuthorization();
@@ -82,7 +82,9 @@ public static class PaymentEndpoints
             if (actor is null) return Unknown();
 
             var payment = await db.Payments.SingleOrDefaultAsync(p => p.Id == id);
-            if (payment is null || payment.ClientId != actor.ClientId)
+            // El cuenta sin cliente (admin/agente) se acota por UserId: dos actores sin
+            // ClientId no deben verse los pagos entre sí (P3).
+            if (payment is null || !PaymentBelongs(payment, actor))
                 return Results.NotFound(new { error = "El pago no existe." });
 
             // Stripe: si sigue pendiente, se concilia contra la sesión (respaldo del webhook)
@@ -105,8 +107,10 @@ public static class PaymentEndpoints
             var actor = await PortalScope.ActorAsync(principal, db);
             if (actor is null) return Unknown();
 
-            var payments = await db.Payments
-                .Where(p => p.ClientId == actor.ClientId)
+            var scoped = string.IsNullOrEmpty(actor.ClientId)
+                ? db.Payments.Where(p => p.ClientId == null && p.UserId == actor.UserId)
+                : db.Payments.Where(p => p.ClientId == actor.ClientId);
+            var payments = await scoped
                 .OrderByDescending(p => p.CreatedAt)
                 .Take(500)
                 .ToListAsync();
@@ -160,15 +164,20 @@ public static class PaymentEndpoints
             var json = await reader.ReadToEndAsync();
             var signature = request.Headers["Stripe-Signature"].ToString();
 
-            if (!receiver.TryReadPaidPaymentId(json, signature, out var paymentId))
+            // Firma inválida → 400. Evento válido pero no accionable → 200 (ack): así
+            // Stripe NO reintenta en bucle los eventos que no nos interesan (P2).
+            if (!receiver.TryHandle(json, signature, out var paidPaymentId))
                 return Results.BadRequest();
 
-            var payment = await db.Payments.SingleOrDefaultAsync(p => p.Id == paymentId);
-            if (payment is not null && payment.Status == PaymentStatus.Pending)
+            if (paidPaymentId is { } paymentId)
             {
-                payment.Status = PaymentStatus.Paid;
-                payment.PaidAt = DateTime.UtcNow;
-                await db.SaveChangesAsync();
+                var payment = await db.Payments.SingleOrDefaultAsync(p => p.Id == paymentId);
+                if (payment is not null && payment.Status == PaymentStatus.Pending)
+                {
+                    payment.Status = PaymentStatus.Paid;
+                    payment.PaidAt = DateTime.UtcNow;
+                    await db.SaveChangesAsync();
+                }
             }
             return Results.Ok();
         }).AllowAnonymous();
@@ -176,11 +185,30 @@ public static class PaymentEndpoints
 
     // ══════════════ Flujo compartido ══════════════
 
+    // Reutiliza un pago PENDIENTE en curso del mismo destino en vez de crear otro
+    // (P1: evita dos sesiones/cobros por doble clic, dos pestañas o reintento). Con
+    // Stripe, recrear la sesión con el mismo IdempotencyKey (el id del pago) devuelve
+    // la MISMA sesión, así que no hay cargo doble.
+    private static async Task<Payment> GetOrCreateAsync(AppDbContext db, PortalActor actor,
+        string kind, string targetId, string description, decimal amount, string currency, string provider)
+    {
+        var existing = await db.Payments.FirstOrDefaultAsync(p => p.ClientId == actor.ClientId
+            && p.Kind == kind && p.TargetId == targetId && p.Status == PaymentStatus.Pending);
+        if (existing is not null)
+        {
+            existing.Amount = decimal.Round(amount, 2);
+            existing.Description = description;
+            return existing;
+        }
+        var payment = NewPayment(actor, kind, targetId, description, amount, currency, provider);
+        db.Payments.Add(payment);
+        return payment;
+    }
+
     private static async Task<IResult> StartAsync(
         Payment payment, AppDbContext db, IPaymentGateway gateway, IConfiguration config, HttpRequest request)
     {
-        db.Payments.Add(payment);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync();   // persiste el pago (nuevo o reutilizado) y fija su Id
 
         var baseUrl = (config["Portal:BaseUrl"] ?? "http://localhost:5199").TrimEnd('/');
         var market = config["Portal:Market"] ?? "es";
@@ -188,11 +216,21 @@ public static class PaymentEndpoints
         var success = $"{baseUrl}/{market}/{lang}/pay?id={payment.Id}&r=ok";
         var cancel = $"{baseUrl}/{market}/{lang}/pay?id={payment.Id}&r=cancel";
 
-        var session = await gateway.CreateSessionAsync(payment, success, cancel);
-        payment.SessionId = session.SessionId;
-        await db.SaveChangesAsync();
-
-        return Results.Ok(new { paymentId = payment.Id, url = session.Url });
+        try
+        {
+            var session = await gateway.CreateSessionAsync(payment, success, cancel);
+            payment.SessionId = session.SessionId;
+            await db.SaveChangesAsync();
+            return Results.Ok(new { paymentId = payment.Id, url = session.Url });
+        }
+        catch (Exception ex) when (ex is Stripe.StripeException or InvalidOperationException or HttpRequestException)
+        {
+            // La pasarela falló (p. ej. claves mal): no dejamos el pago colgado en pending
+            payment.Status = PaymentStatus.Failed;
+            await db.SaveChangesAsync();
+            return Results.Json(new { error = "No se pudo iniciar el pago con la pasarela." },
+                statusCode: StatusCodes.Status502BadGateway);
+        }
     }
 
     private static Payment NewPayment(PortalActor actor, string kind, string targetId,
@@ -211,6 +249,11 @@ public static class PaymentEndpoints
         Status = PaymentStatus.Pending,
         CreatedAt = DateTime.UtcNow
     };
+
+    private static bool PaymentBelongs(Payment p, PortalActor actor) =>
+        string.IsNullOrEmpty(actor.ClientId)
+            ? p.ClientId == null && p.UserId == actor.UserId
+            : string.Equals(p.ClientId, actor.ClientId, StringComparison.OrdinalIgnoreCase);
 
     private static bool SameClient(Cart order, PortalActor actor) =>
         string.IsNullOrEmpty(actor.ClientId)
@@ -321,8 +364,10 @@ public interface IReconcilable
     Task<bool> IsPaidAsync(Payment payment);
 }
 
-// La pasarela puede atender un webhook y devolver el id del pago cobrado
+// La pasarela puede atender un webhook. Devuelve false SOLO si la firma es inválida;
+// true en cualquier otro caso (evento válido, accionable o no). paidPaymentId se
+// rellena únicamente cuando el evento confirma un pago cobrado.
 public interface IWebhookReceiver
 {
-    bool TryReadPaidPaymentId(string json, string signature, out Guid paymentId);
+    bool TryHandle(string json, string signature, out Guid? paidPaymentId);
 }
