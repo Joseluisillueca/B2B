@@ -1615,6 +1615,7 @@ table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6
   color:var(--muted); cursor:pointer; border-radius:50%; }
 .lb-selremove:hover { background:var(--accent-soft); color:var(--accent-deep); }
 .lb-selhint { font-size:.8rem; color:var(--muted); margin:.8rem 0 0; }
+.lb-selpdf { width:100%; margin-top:.7rem; display:inline-flex; align-items:center; justify-content:center; gap:.4rem; }
 
 @media (max-width:52rem) {
   .lb-story, .lb-story.lb-right { grid-template-columns:1fr; gap:1.2rem;

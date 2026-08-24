@@ -48,6 +48,38 @@ public static class PdfEndpoints
                 .Where(c => char.IsLetterOrDigit(c) || c is '-' or '_'));
             return Results.File(pdf, "application/pdf", $"ficha-{safeRef}.pdf");
         }).RequireAuthorization();
+
+        // Line-sheet: catálogo comercial de VARIOS productos (preselección/carrito),
+        // con la tarifa del cliente. Refs por query para que api.download (GET) baje
+        // el PDF con el token.
+        app.MapGet("/api/portal/line-sheet.pdf", async (
+            HttpRequest request, ClaimsPrincipal principal,
+            AppDbContext db, IWebHostEnvironment env, IHttpClientFactory httpFactory) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            var locale = DocumentProjections.Locale(request.Query["locale"]);
+            var refs = request.Query["refs"].ToString()
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase).Take(60).ToList();
+            if (refs.Count == 0) return Results.BadRequest(new { error = "Indica al menos un producto (refs)." });
+
+            var query = CatalogQuery.From(request.Query) with { Search = "", Skip = 0, Take = 300, Locale = locale };
+            var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow);
+            var byRef = page.Rows
+                .GroupBy(r => r.Model.ExternalReference ?? "", StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            var rows = refs.Select(r => byRef.GetValueOrDefault(r)).OfType<CatalogRow>().ToList();
+            if (rows.Count == 0) return Results.NotFound();
+
+            var clientName = await ClientNameAsync(db, actor);
+            var images = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var r in rows)
+                images[r.Model.ExternalReference ?? ""] = await LoadImageAsync(r.ImageUri, env, httpFactory);
+
+            var pdf = new LineSheetDocument(rows, images, clientName).GeneratePdf();
+            return Results.File(pdf, "application/pdf", "line-sheet-lejan.pdf");
+        }).RequireAuthorization();
     }
 
     private static PortalActorPrices Prices(PortalActor? actor) =>
@@ -200,5 +232,86 @@ public static class PdfEndpoints
 
         private string Eur(decimal? value) =>
             value is null ? "—" : $"{value.Value:#,##0.00} {(string.IsNullOrEmpty(row.Currency) ? "EUR" : row.Currency)}";
+    }
+
+    // ── Documento: line-sheet (varios productos) ────────────────────────────────
+    private sealed class LineSheetDocument(
+        IReadOnlyList<CatalogRow> rows, Dictionary<string, byte[]?> images, string clientName) : IDocument
+    {
+        public void Compose(IDocumentContainer container) => container.Page(page =>
+        {
+            page.Size(PageSizes.A4);
+            page.Margin(1.4f, Unit.Centimetre);
+            page.DefaultTextStyle(x => x.FontSize(9).FontColor(Ink).FontFamily(Font));
+
+            page.Header().Element(Header);
+            page.Content().PaddingVertical(12).Element(Grid);
+            page.Footer().Element(Footer);
+        });
+
+        private void Header(IContainer c) => c.BorderBottom(1.5f).BorderColor(Green).PaddingBottom(8).Row(row =>
+        {
+            row.RelativeItem().Column(col =>
+            {
+                col.Item().Text("lejan™").FontSize(20).Bold().FontColor(Green);
+                col.Item().Text(clientName.Length > 0 ? $"Selección para {clientName}" : "Selección de productos")
+                    .FontSize(9).FontColor(Muted);
+            });
+            row.RelativeItem().AlignRight().AlignBottom().Text($"LINE-SHEET · {rows.Count} modelos")
+                .FontSize(10).FontColor(Muted);
+        });
+
+        private void Grid(IContainer c) => c.Table(t =>
+        {
+            t.ColumnsDefinition(cd => { cd.RelativeColumn(); cd.RelativeColumn(); });
+            foreach (var row in rows)
+                t.Cell().Padding(4).Element(cell => Card(cell, row));
+        });
+
+        private void Card(IContainer c, CatalogRow row) => c.Border(1).BorderColor(Line).Padding(8).Row(r =>
+        {
+            r.Spacing(8);
+            r.ConstantItem(74).Height(88).Background(Cream).AlignCenter().AlignMiddle().Element(box =>
+            {
+                var img = images.GetValueOrDefault(row.Model.ExternalReference ?? "");
+                if (img is not null) box.Image(img).FitArea();
+                else box.Text("—").FontColor(Muted);
+            });
+            r.RelativeItem().Column(col =>
+            {
+                col.Spacing(3);
+                col.Item().Text(row.Name ?? "").Bold().FontSize(10);
+                col.Item().Text($"Ref. {row.Model.ExternalReference}").FontColor(Muted).FontSize(8);
+                var sizes = SizeRange(row);
+                if (sizes.Length > 0) col.Item().Text(sizes).FontColor(Muted).FontSize(8);
+                if ((row.Pvd ?? row.Pvp) is { } price)
+                    col.Item().PaddingTop(2).Text($"{price:#,##0.00} {Currency(row)}").FontColor(Green).Bold().FontSize(12);
+            });
+        });
+
+        private void Footer(IContainer c) => c.BorderTop(1).BorderColor(Line).PaddingTop(6).Row(row =>
+        {
+            row.RelativeItem().Text(clientName.Length > 0 ? $"Precios para: {clientName}" : "Precios de tarifa")
+                .FontSize(8).FontColor(Muted);
+            row.RelativeItem().AlignRight().Text(txt =>
+            {
+                txt.DefaultTextStyle(x => x.FontSize(8).FontColor(Muted));
+                txt.Span($"lejan · {DateTime.Now:dd/MM/yyyy} · ");
+                txt.CurrentPageNumber();
+                txt.Span(" / ");
+                txt.TotalPages();
+            });
+        });
+
+        private static string Currency(CatalogRow row) => string.IsNullOrEmpty(row.Currency) ? "EUR" : row.Currency;
+
+        // "Tallas 36–46" a partir de las variantes numéricas
+        private static string SizeRange(CatalogRow row)
+        {
+            var sizes = row.Variants
+                .Select(v => int.TryParse(v.Product.Size, out var n) ? n : (int?)null)
+                .OfType<int>().ToList();
+            return sizes.Count == 0 ? "" : $"Tallas {sizes.Min()}–{sizes.Max()}";
+        }
     }
 }

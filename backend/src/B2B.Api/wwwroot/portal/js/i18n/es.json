@@ -202,6 +202,7 @@
   "lookbook.inSelection": "En tu selección",
   "lookbook.yourSelection": "Tu selección ({n})",
   "lookbook.putSizes": "Poner tallas",
+  "lookbook.downloadPdf": "Descargar line-sheet (PDF)",
   "lookbook.remove": "Quitar",
   "lookbook.clear": "Vaciar",
   "lookbook.selectionHint": "Pon las tallas de cada modelo para pasarlo al pedido.",

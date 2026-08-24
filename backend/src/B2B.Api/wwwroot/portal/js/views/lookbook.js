@@ -212,6 +212,8 @@ export default async function lookbook(host) {
               </li>`).join('')}
           </ul>
           <p class="lb-selhint">${esc(t('lookbook.selectionHint'))}</p>
+          <button type="button" class="btn-primary lb-selpdf" id="lbSelPdf">
+            ${icons.fileDown(15)} ${esc(t('lookbook.downloadPdf'))}</button>
         </div>
       </div>`;
 
@@ -230,6 +232,17 @@ export default async function lookbook(host) {
     selBar.querySelectorAll('[data-remove]').forEach(b => {
       b.onclick = () => { state.unpreselect(b.dataset.remove); refreshAddButtons(); renderSelBar(); };
     });
+    // Line-sheet PDF: catálogo comercial de la selección, con la tarifa del cliente
+    selBar.querySelector('#lbSelPdf').onclick = async event => {
+      const button = event.currentTarget;
+      const refs = state.preselections().map(p => p.reference).filter(Boolean).join(',');
+      if (!refs) return;
+      button.disabled = true;
+      try {
+        await api.download(`/api/portal/line-sheet.pdf?refs=${encodeURIComponent(refs)}&locale=${lang()}`, 'line-sheet-lejan.pdf');
+      } catch { /* api.download gestiona errores */ }
+      button.disabled = false;
+    };
     // "Poner tallas" lleva a la ficha del producto, donde vive la matriz de tallas
     selBar.querySelectorAll('[data-sizes]').forEach(b => {
       b.onclick = () => {

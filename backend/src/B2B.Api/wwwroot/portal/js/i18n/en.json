@@ -202,6 +202,7 @@
   "lookbook.inSelection": "In your selection",
   "lookbook.yourSelection": "Your selection ({n})",
   "lookbook.putSizes": "Add sizes",
+  "lookbook.downloadPdf": "Download line-sheet (PDF)",
   "lookbook.remove": "Remove",
   "lookbook.clear": "Clear",
   "lookbook.selectionHint": "Set the sizes of each model to move it to your order.",
