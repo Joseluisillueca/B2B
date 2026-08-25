@@ -409,13 +409,15 @@ export default async function catalog(host) {
     // Cambiar de vista no vuelve a pedir el catálogo: los datos ya están, solo se
     // repinta. La elección se guarda en la URL (writeQuery) y en las preferencias
     // de sesión para que sobreviva a ir a una ficha y volver.
-    tools.querySelector('#viewMode').onchange = event => {
-      query = { ...query, view: event.target.value === 'grid' ? 'grid' : 'list' };
-      state.prefs = { ...state.prefs, catalogView: query.view };
-      writeQuery(query, { keepScroll: true });
-      paintTools();
-      paintList();
-    };
+    tools.querySelectorAll('[data-view]').forEach(button => {
+      button.onclick = () => {
+        query = { ...query, view: button.dataset.view === 'grid' ? 'grid' : 'list' };
+        state.prefs = { ...state.prefs, catalogView: query.view };
+        writeQuery(query, { keepScroll: true });
+        paintTools();
+        paintList();
+      };
+    });
 
     tools.querySelector('#exportStock').onclick = async event => {
       const button = event.currentTarget;

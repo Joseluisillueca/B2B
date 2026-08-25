@@ -21,16 +21,13 @@ export function toolbar({ sort, view = 'list' } = {}) {
         ${icons.fileDown(17)} ${esc(t('catalog.pdfExport'))}
       </button>
 
-      <!-- m8: la referencia no rotula este selector; el aria-label sigue nombrándolo -->
-      <label class="tb-field">
-        <span class="tb-select">
-          ${viewIcon}
-          <select id="viewMode" aria-label="${esc(t('catalog.view'))}">
-            <option value="list"${view === 'list' ? ' selected' : ''}>${esc(t('catalog.viewList'))}</option>
-            <option value="grid"${view === 'grid' ? ' selected' : ''}>${esc(t('catalog.viewGrid'))}</option>
-          </select>
-        </span>
-      </label>
+      <!-- Conmutador de vista segmentado (Modernist): activo en rojo -->
+      <div class="tb-seg" role="group" aria-label="${esc(t('catalog.view'))}">
+        <button type="button" class="tb-seg-opt${view === 'grid' ? '' : ' on'}" data-view="list"
+          aria-pressed="${view === 'grid' ? 'false' : 'true'}">${icons.list(15)} ${esc(t('catalog.viewList'))}</button>
+        <button type="button" class="tb-seg-opt${view === 'grid' ? ' on' : ''}" data-view="grid"
+          aria-pressed="${view === 'grid' ? 'true' : 'false'}">${icons.grid(15)} ${esc(t('catalog.viewGrid'))}</button>
+      </div>
 
       <label class="tb-field">
         <span class="tb-legend">${esc(t('catalog.sortBy'))}</span>

@@ -1699,8 +1699,8 @@ input[type=checkbox], input[type=radio] { accent-color:var(--blue); }
 .sz-head { background:var(--ink); color:#fff; }
 .sz-price { color:rgba(255,255,255,.72); }
 
-/* Fotos de catálogo/campaña/lookbook en B/N; la ficha de producto queda en color */
-.pcard-media img, .c-slide img, .lb-story-media img,
+/* Solo el HERO de campaña va en B/N (foto de ambiente); los PRODUCTOS en color
+   para que el comprador vea la tonalidad real (decisión del cliente sobre el handoff). */
 .hero-media .c-slide img, .hero-media .c-video { filter:grayscale(1) contrast(1.05); }
 
 /* Hero de portada: título pesado, saludo sin itálica, CTA recto */
@@ -1735,8 +1735,6 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 #assistant-fab:hover { background:var(--blue-deep) !important; }
 #assistant-fab { border-radius:0 !important; }
 
-/* Placeholder de catálogo (ilustración) en B/N como las fotos */
-.pcard-media .item-art, .pcard-media svg, .item-img .item-art { filter:grayscale(1) contrast(1.05); }
 
 /* Cuadros de mando: KPI como cifra sobre regla superior de 2px (igual que portada) */
 .bd-kpi { background:none; border:0; border-top:2px solid var(--ink); border-radius:0; padding:.9rem 0 0; box-shadow:none; }
@@ -1750,7 +1748,13 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 .agent-band { background:var(--blue); color:#fff; font-weight:700; text-transform:uppercase;
   letter-spacing:.05em; font-size:.8rem; padding:.7rem var(--gutter); }
 
-/* Catálogo: foto/ilustración del artículo en B/N (la ficha queda en color) */
-.item-photo img, .item-photo .item-art, .item-photo svg { filter:grayscale(1) contrast(1.05); }
 /* Reglas 2px entre grupos de facetas (referencia 03) */
 .rail section + section { border-top:2px solid var(--line-control); padding-top:1.4rem; }
+
+/* Conmutador de vista segmentado del catálogo (Listado / Cuadrícula), activo rojo */
+.tb-seg { display:inline-flex; border:1px solid var(--ink); }
+.tb-seg-opt { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem .9rem; font:inherit;
+  font-size:.85rem; font-weight:600; background:var(--card); color:var(--ink); border:0; cursor:pointer; }
+.tb-seg-opt + .tb-seg-opt { border-left:1px solid var(--ink); }
+.tb-seg-opt.on { background:var(--blue); color:#fff; }
+.tb-seg-opt svg { display:block; }
