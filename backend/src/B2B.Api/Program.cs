@@ -96,6 +96,17 @@ using (var scope = app.Services.CreateScope())
         && !db.Users.Any(u => u.Email == adminEmail.ToLowerInvariant()))
         SeedUser(db, adminEmail, adminPassword, AdminPolicy.Role);
 
+    // Usuarios de prueba para la demo (solo desarrollo): credenciales cortas.
+    // cliente → TEST 5 (con datos), comercial → cartera del agente, admin → CMS.
+    if (app.Environment.IsDevelopment())
+    {
+        SeedTestUser(db, "admin", "123", AdminPolicy.Role, null, null, null, "Admin");
+        SeedTestUser(db, "cliente", "123", ClientIdentity.ClientAdminRole,
+            "7A31C5D2-9E44-4C18-B0F3-0011AA22BB33", "C100057", null, "TEST 5");
+        SeedTestUser(db, "comercial", "123", ClientIdentity.AgentRole,
+            null, null, "C3333333-0000-4000-9000-0000000000AA", "Comercial Demo");
+    }
+
     // Portada de demostración: solo mientras el CMS no haya publicado nada
     if (app.Configuration.GetValue("Seed:PortalContent", true))
         PortalContentSeed.EnsureDemoContent(db);
@@ -184,6 +195,23 @@ static void SeedUser(AppDbContext db, string email, string password, string role
         Email = email.ToLowerInvariant(),
         PasswordHash = "",
         Role = role
+    };
+    user.PasswordHash = new PasswordHasher<AppUser>().HashPassword(user, password);
+    db.Users.Add(user);
+    db.SaveChanges();
+}
+
+// Usuario de prueba con vínculo (cliente/agente) — idempotente por email.
+static void SeedTestUser(AppDbContext db, string email, string password, string role,
+    string? clientExternalId, string? clientNumber, string? agentExternalId, string? name)
+{
+    var lower = email.ToLowerInvariant();
+    if (db.Users.Any(u => u.Email == lower)) return;
+    var user = new AppUser
+    {
+        Id = Guid.NewGuid(), Email = lower, PasswordHash = "", Role = role,
+        ClientExternalId = clientExternalId, ClientNumber = clientNumber,
+        AgentExternalId = agentExternalId, Name = name
     };
     user.PasswordHash = new PasswordHasher<AppUser>().HashPassword(user, password);
     db.Users.Add(user);

@@ -4,38 +4,36 @@
    Rediseño 2026-08 (ver tag v1-paridad-lejan para el estado de paridad con lejan). */
 
 :root {
-  /* Tinta cálida casi negra en vez del negro puro del portal original */
-  --ink:#221d17; --ink-2:#3a332a; --ink-3:#4e463a;
-  /* Papel crema (nunca blanco puro), superficie cálida para hovers/cabeceras,
-     tarjeta casi blanca cálida y filete cálido. */
-  --paper:#faf6ef; --surface:#efe8da; --card:#fffdf8; --line:#e7ded0;
-  /* Layout editorial: columna contenida y centrada, con canal lateral cómodo
-     (antes iba casi a sangre para replicar a lejan; ahora respira). */
+  /* ── Rediseño "Modernist" (handoff 2026-08): Archivo, acento ROJO único,
+        radio 0 en todo, reglas divisorias fuertes, fondo gris claro, tinta casi
+        negra. Se conservan los nombres de token (--blue*, --accent*, --r…) para
+        que las 100+ reglas existentes tomen los valores nuevos sin reescribirse. */
+  --ink:#201e1d; --ink-2:#605d5d; --ink-3:#7d7979;
+  --paper:#f3f2f2; --surface:#eae9e9; --card:#f8f4f4; --line:#d3cfcf;
   --gutter:clamp(1.25rem, 5vw, 4rem); --maxw:1240px;
-  --muted:#6f665a; --muted-2:#9c9484; --line-control:#c7bda8;
-  /* Se conservan los nombres --blue* (los usan 100+ reglas): ahora son el VERDE
-     de marca. --accent es la terracota, para acentos puntuales (carrito, foco de
-     marca), nunca como color de cuerpo. */
-  --blue:#1f5c46; --blue-deep:#123f30; --blue-soft:#e6efe9;
-  --accent:#c4633a; --accent-deep:#a4502c; --accent-soft:#f6e6da;
-  --ok:#1f7a45; --low:#b07d18; --out:#bb3b2a;
-  --r:18px; --r-sm:11px;
-  --shadow:0 1px 2px rgba(34,29,23,.04), 0 14px 34px -22px rgba(34,29,23,.20);
-  --shadow-card:0 2px 6px rgba(34,29,23,.05), 0 34px 74px -38px rgba(34,29,23,.30);
+  --muted:#7d7979; --muted-2:#9b9797; --line-control:#bab6b6;
+  /* --blue* = ahora el ROJO de marca (acento único). Rojo a tamaño de párrafo
+     usa --accent-deep (#c94b39 ≈ accent-700), no el base, por contraste. */
+  --blue:#ec3013; --blue-deep:#dd2b0f; --blue-soft:#ffe0d9;
+  --accent:#e15b47; --accent-deep:#ae1800; --accent-soft:#fff2ef;
+  --ok:#1f7a45; --low:#b07d18; --out:#ec3013;
+  --r:0px; --r-sm:0px;
+  --shadow:0 1px 2px color-mix(in srgb,#2d2b2b 14%,transparent);
+  --shadow-card:0 3px 10px color-mix(in srgb,#2d2b2b 16%,transparent);
   --ease:cubic-bezier(.16,1,.3,1);
-  --header-h:4.75rem;
-  /* Cabecera verde de marca con tinta crema */
-  --header-bg:#1c5340; --header-ink:#f3eee2; --header-ink-2:#b7c8bc;
-  --display:"Fraunces", Georgia, "Times New Roman", serif;
+  --header-h:66px;
+  /* Cabecera NEGRA modernist con tinta clara */
+  --header-bg:#201e1d; --header-ink:#f3f2f2; --header-ink-2:rgba(243,242,242,.62);
+  --display:"Archivo", system-ui, -apple-system, sans-serif;
 }
 
 * { box-sizing:border-box; }
 html { scrollbar-color:#c9bfab var(--surface); }
 body { margin:0; min-height:100vh; background:var(--paper); color:var(--ink);
-  font:15px/1.6 "Inter",system-ui,sans-serif; font-variant-numeric:tabular-nums;
+  font:15px/1.55 "Archivo",system-ui,sans-serif; font-variant-numeric:tabular-nums;
   -webkit-font-smoothing:antialiased; display:flex; flex-direction:column; }
 ::selection { background:var(--blue); color:#fff; }
-:focus-visible { outline:2px solid var(--blue); outline-offset:2px; border-radius:4px; }
+:focus-visible { outline:2px solid var(--blue); outline-offset:2px; border-radius:0; }
 button { font:inherit; cursor:pointer; border:none; background:none; padding:0; color:inherit; }
 input, select, textarea { font:inherit; color:inherit; }
 a { color:inherit; }
@@ -46,7 +44,7 @@ main { flex:1; outline:none; }
   padding:.6rem 1rem; z-index:100; }
 .skip:focus { left:0; }
 
-.brand { font-family:var(--display); font-weight:600; letter-spacing:-.01em; text-transform:lowercase; }
+.brand { font-family:var(--display); font-weight:800; letter-spacing:-.03em; text-transform:lowercase; }
 .brand sup { font-size:.42em; letter-spacing:0; vertical-align:.95em; }
 
 /* ══════════════ Header verde de marca ══════════════ */
@@ -54,7 +52,7 @@ main { flex:1; outline:none; }
   display:flex; align-items:center; gap:1.1rem; padding:0 clamp(1rem,4vw,2.4rem); height:var(--header-h);
   border-bottom:1px solid rgba(0,0,0,.14); }
 /* Wordmark serif en crema; el italic de Fraunces le da carácter editorial */
-#chrome-header .brand { font-size:2.2rem; font-style:italic; color:var(--header-ink); text-decoration:none; line-height:1; }
+#chrome-header .brand { font-size:1.7rem; font-style:normal; color:var(--header-ink); text-decoration:none; line-height:1; }
 
 /* Caja BLANCA sobre el header negro: es el elemento de mayor contraste de la
    franja superior en la referencia (01-dashboard.png), con la lupa a la derecha. */
@@ -1660,3 +1658,33 @@ table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6
   .sel-actions { grid-template-columns:1fr; }
   .cl-tools .cl-new { margin-left:0; width:100%; }
 }
+
+/* ═══════════════════ Rediseño MODERNIST — capa de ajustes ═══════════════════
+   Se aplica al final (gana por cascada): radio 0, nav MAYÚSCULAS + rojo, titulares
+   800, checkbox/celda de talla en su color, fotos de catálogo en B/N. */
+
+h1,h2,h3,h4,h5,h6,.title,.card-title { font-weight:800; letter-spacing:-.02em; }
+
+/* Radio 0 en lo que quedaba redondeado (avatar y cart = rectos) */
+.avatar,.h-lang,.h-cart,.cta,.btn-primary,.submit,.item-units,.chip,.viewer-badge,
+.viewer-hint,.pcard-360,.ch-hbar-track,.ch-hbar-track span,.login-card .field,
+.login-card .submit,.activate-card .activate-form .field,.item-fav,.product-fav,
+.grid-drop,.ck-drop,.h-menu a,.h-menu button,#chrome-footer .social a,.c-arrow,
+.viewer-zoom,.viewer-thumb { border-radius:0 !important; }
+
+/* Nav de cabecera: MAYÚSCULAS, activo/hover en rojo, regla inferior de 2px */
+#chrome-nav { border-bottom-width:2px; border-bottom-color:var(--ink); }
+#chrome-nav a { text-transform:uppercase; font-weight:700; font-size:.82rem; letter-spacing:.05em; }
+#chrome-nav a[aria-current="page"], #chrome-nav a.active { color:var(--blue); border-bottom-color:var(--blue); }
+
+/* Controles nativos en rojo */
+input[type=checkbox], input[type=radio] { accent-color:var(--blue); }
+/* Facetas y términos: marca en ROJO (era tinta negra) */
+.rail-check input:checked, .ck-terms input:checked { background:var(--blue); border-color:var(--blue); }
+
+/* Matriz de tallas: cabecera de celda en NEGRO con número claro (referencia 03) */
+.sz-head { background:var(--ink); color:#fff; }
+.sz-price { color:rgba(255,255,255,.72); }
+
+/* Fotos de catálogo/campaña/lookbook en B/N; la ficha de producto queda en color */
+.pcard-media img, .c-slide img, .lb-story-media img { filter:grayscale(1) contrast(1.05); }
