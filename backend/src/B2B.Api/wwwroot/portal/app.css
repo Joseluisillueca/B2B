@@ -575,6 +575,12 @@ body[data-focus="on"] .cat-count::before { content:none; }
 .sz-cell .sz-stock { display:flex; justify-content:center; align-items:center; gap:.25rem;
   width:100%; text-align:center; font-size:.74rem; font-variant-numeric:tabular-nums;
   color:var(--ink-2); white-space:nowrap; overflow:visible; }
+/* Precio por talla (kids): el importe va ENCIMA de la caja; la cabecera negra sólo
+   lleva la talla, así no se recorta ni se pisan talla y precio. */
+.sz-price-top { display:block; width:100%; text-align:center; font-size:.62rem; font-weight:700;
+  color:var(--ink-2); font-variant-numeric:tabular-nums; white-space:nowrap; line-height:1.15;
+  overflow:hidden; text-overflow:ellipsis; }
+.sz-head .sz-size { margin:0; }
 .sz { border:1px solid var(--line); background:#fff; overflow:hidden;
   transition:border-color .12s var(--ease), box-shadow .12s var(--ease); }
 .sz:focus-within { border-color:var(--blue); box-shadow:0 0 0 3px rgba(43,43,255,.14); }

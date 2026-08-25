@@ -126,7 +126,22 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    // En desarrollo el portal son módulos ES (boot.js → router → vistas) y CSS que el
+    // navegador cachea con fuerza; tras cada cambio se seguía viendo la versión vieja
+    // incluso en incógnito. Forzamos revalidación para que dev/demo vean siempre lo último.
+    OnPrepareResponse = ctx =>
+    {
+        if (app.Environment.IsDevelopment())
+        {
+            var headers = ctx.Context.Response.Headers;
+            headers["Cache-Control"] = "no-store, no-cache, must-revalidate";
+            headers["Pragma"] = "no-cache";
+            headers["Expires"] = "0";
+        }
+    }
+});
 
 app.UseRateLimiter();
 app.UseAuthentication();

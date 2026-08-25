@@ -62,10 +62,10 @@ export function sizeMatrix(item, { windowKey, lines = {} } = {}) {
 
     return `
       <div class="sz-cell">
+        ${perSize && price != null ? `<span class="sz-price-top" title="${esc(eur(price))}">${esc(eur(price).replace(/\s*€/, ''))}</span>` : ''}
         <div class="sz ${status}${qty > 0 ? ' has' : ''}">
           <div class="sz-head">
             <span class="sz-size">${esc(product.size ?? '—')}</span>
-            ${perSize && price != null ? `<span class="sz-price">${esc(eur(price))}</span>` : ''}
           </div>
           <div class="sz-body">
             <input type="number" min="0" max="9999" step="1" inputmode="numeric"
