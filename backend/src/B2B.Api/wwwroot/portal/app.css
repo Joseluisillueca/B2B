@@ -581,6 +581,9 @@ body[data-focus="on"] .cat-count::before { content:none; }
   color:var(--ink-2); font-variant-numeric:tabular-nums; white-space:nowrap; line-height:1.15;
   overflow:hidden; text-overflow:ellipsis; }
 .sz-head .sz-size { margin:0; }
+/* La cantidad va centrada y ocupando la celda (antes salía a la izquierda/recortada) */
+.sz-body { padding:.28rem .15rem; }
+.sz-qty { width:100%; text-align:center; }
 .sz { border:1px solid var(--line); background:#fff; overflow:hidden;
   transition:border-color .12s var(--ease), box-shadow .12s var(--ease); }
 .sz:focus-within { border-color:var(--blue); box-shadow:0 0 0 3px rgba(43,43,255,.14); }
