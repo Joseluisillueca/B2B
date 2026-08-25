@@ -76,7 +76,7 @@ export default function checkout(host) {
 
     host.innerHTML = `
       <div class="page checkout">
-        ${pageHead(t('nav.checkout'), [t('nav.catalog'), t('nav.checkout')])}
+        ${pageHead(t('checkout.heading'), [t('nav.catalog'), t('nav.checkout')])}
 
         <div class="ck-grid">
           <div class="ck-main">

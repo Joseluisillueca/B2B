@@ -220,6 +220,7 @@
   "nav.catalog": "Catalogue",
   "nav.dashboard": "Accueil",
   "nav.checkout": "Commande",
+  "checkout.heading": "Passer la commande",
   "nav.shopping-carts": "Paniers favoris",
   "nav.orders": "Commandes",
   "nav.delivery-notes": "Bons de livraison",

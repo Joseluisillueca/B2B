@@ -220,6 +220,7 @@
   "nav.catalog": "Catálogo",
   "nav.dashboard": "Inicio",
   "nav.checkout": "Checkout",
+  "checkout.heading": "Tramitar pedido",
   "nav.shopping-carts": "Carritos favoritos",
   "nav.orders": "Pedidos",
   "nav.delivery-notes": "Albaranes",

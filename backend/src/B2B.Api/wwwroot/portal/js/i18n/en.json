@@ -220,6 +220,7 @@
   "nav.catalog": "Catalogue",
   "nav.dashboard": "Home",
   "nav.checkout": "Checkout",
+  "checkout.heading": "Place order",
   "nav.shopping-carts": "Saved carts",
   "nav.orders": "Orders",
   "nav.delivery-notes": "Delivery notes",

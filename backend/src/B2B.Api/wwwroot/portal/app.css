@@ -1786,7 +1786,10 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 /* Checkout: resumen con borde 2px sin sombra; h1 visible */
 .ck-side { border:2px solid var(--ink) !important; box-shadow:none !important; }
 .page.checkout > .cat-headline > h1.title { position:static !important; width:auto !important; height:auto !important;
-  clip:auto !important; overflow:visible !important; margin:0; }
+  clip:auto !important; clip-path:none !important; overflow:visible !important; white-space:normal !important;
+  margin:0 !important; padding:0 !important; }
+/* El nombre de cliente pasa a subtítulo del H1 */
+.page.checkout .ck-client { font-size:1rem; color:var(--ink-2); font-weight:400; }
 /* Hero del lookbook en B/N editorial */
 .lb-hero .c-slide img, .lb-hero .c-video { filter:grayscale(1) contrast(1.05); }
 /* Píldora de panel y lift de tarjetas del lookbook: coherencia radio 0 / sin sombra flotante */
