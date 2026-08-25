@@ -11,6 +11,8 @@
   "login.password": "Password",
   "login.forgot": "¿Olvidaste tu contraseña?",
   "login.submit": "INICIAR SESIÓN",
+  "login.display": "Compra por talla. Sin rodeos.",
+  "login.access": "Acceder",
   "login.noAccountTitle": "¿NO TIENES CUENTA?",
   "login.help": "Si tienes dificultades para entrar en la B2B, envíanos un email a: tiendas@lejanbrand.com",
   "login.create": "Crear una cuenta",

@@ -11,6 +11,8 @@
   "login.password": "Mot de passe",
   "login.forgot": "Mot de passe oublié ?",
   "login.submit": "SE CONNECTER",
+  "login.display": "Commandez par taille. Sans détour.",
+  "login.access": "Se connecter",
   "login.noAccountTitle": "VOUS N'AVEZ PAS DE COMPTE ?",
   "login.help": "Si vous avez des difficultés à accéder au B2B, écrivez-nous à : tiendas@lejanbrand.com",
   "login.create": "Créer un compte",

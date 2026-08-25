@@ -11,6 +11,8 @@
   "login.password": "Password",
   "login.forgot": "Hai dimenticato la password?",
   "login.submit": "ACCEDI",
+  "login.display": "Ordina per taglia. Senza giri.",
+  "login.access": "Accedi",
   "login.noAccountTitle": "NON HAI UN ACCOUNT?",
   "login.help": "Se hai difficoltà ad accedere al B2B, scrivici a: tiendas@lejanbrand.com",
   "login.create": "Crea un account",

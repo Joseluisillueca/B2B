@@ -11,6 +11,8 @@
   "login.password": "Password",
   "login.forgot": "Forgot your password?",
   "login.submit": "SIGN IN",
+  "login.display": "Order by size. No fuss.",
+  "login.access": "Sign in",
   "login.noAccountTitle": "DON'T HAVE AN ACCOUNT?",
   "login.help": "If you have trouble accessing the B2B, email us at: tiendas@lejanbrand.com",
   "login.create": "Create an account",

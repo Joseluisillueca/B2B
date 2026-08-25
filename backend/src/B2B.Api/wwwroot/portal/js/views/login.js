@@ -8,24 +8,30 @@ import { go, href } from '../router.js';
 
 export default function login(host) {
   host.innerHTML = `
-    <div class="sheet">
-      <form class="card login-card" novalidate>
+    <div class="login-split">
+      <aside class="login-hero">
         <span class="brand">lejan<sup>™</sup></span>
+        <h1 class="login-display">${esc(t('login.display'))}</h1>
+      </aside>
+      <div class="login-panel">
+        <form class="card login-card" novalidate>
+          <h2 class="login-h">${esc(t('login.access'))}</h2>
 
-        <input class="field" type="email" name="email" autocomplete="username" required
-          placeholder="${esc(t('login.email'))}" aria-label="${esc(t('login.email'))}">
-        <input class="field" type="password" name="password" autocomplete="current-password" required
-          placeholder="${esc(t('login.password'))}" aria-label="${esc(t('login.password'))}">
-        <a class="forgot" href="${href('activate')}">${esc(t('login.forgot'))}</a>
+          <input class="field" type="email" name="email" autocomplete="username" required
+            placeholder="${esc(t('login.email'))}" aria-label="${esc(t('login.email'))}">
+          <input class="field" type="password" name="password" autocomplete="current-password" required
+            placeholder="${esc(t('login.password'))}" aria-label="${esc(t('login.password'))}">
+          <a class="forgot" href="${href('activate')}">${esc(t('login.forgot'))}</a>
 
-        <button class="submit" type="submit">${esc(t('login.submit'))}</button>
-        <p class="err" role="alert"></p>
+          <button class="submit" type="submit">${esc(t('login.submit'))}</button>
+          <p class="err" role="alert"></p>
 
-        <h2>${esc(t('login.noAccountTitle'))}</h2>
-        <p>${esc(t('login.help'))}</p>
-        <a class="create" href="#">${esc(t('login.create'))}</a>
-        <p class="legal">${esc(t('login.legal'))}</p>
-      </form>
+          <h2>${esc(t('login.noAccountTitle'))}</h2>
+          <p>${esc(t('login.help'))}</p>
+          <a class="create" href="#">${esc(t('login.create'))}</a>
+          <p class="legal">${esc(t('login.legal'))}</p>
+        </form>
+      </div>
     </div>`;
 
   const form = host.querySelector('form');
