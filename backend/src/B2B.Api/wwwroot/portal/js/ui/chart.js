@@ -14,22 +14,27 @@ function niceMax(value) {
   return step * magnitude;
 }
 
-// Barras verticales — data: [{ label, value }]
+// Barras verticales — data: [{ label, value }].
+// Modernist (por defecto): sin eje Y ni rejilla, la cifra encima de cada barra y
+// esquinas rectas. `opts.axis:true` recupera las guías y las etiquetas del eje.
 export function bars(data, opts = {}) {
   const fmt = opts.format || money;
-  const W = 1000, H = 300, PAD = { top: 18, right: 16, bottom: 40, left: 70 };
+  const minimal = opts.axis !== true;   // por defecto minimalista
+  const W = 1000, H = 300;
+  const PAD = minimal ? { top: 34, right: 12, bottom: 40, left: 12 }
+                      : { top: 18, right: 16, bottom: 40, left: 70 };
   const values = data.map(d => Number(d.value) || 0);
   const top = niceMax(Math.max(0, ...values));
   const plotW = W - PAD.left - PAD.right, plotH = H - PAD.top - PAD.bottom;
   const y = v => PAD.top + plotH * (1 - v / (top || 1));
   const slot = plotW / Math.max(1, data.length);
-  const barW = Math.min(46, Math.max(6, slot * 0.6));
+  const barW = Math.min(52, Math.max(6, slot * 0.62));
   const ticks = Array.from({ length: 5 }, (_, i) => (top / 4) * i);
   const empty = !data.length || values.every(v => v === 0);
 
-  return `<svg viewBox="0 0 ${W} ${H}" class="ch" role="img" preserveAspectRatio="xMidYMid meet"
-      aria-label="${esc(opts.label || '')}">
-    ${ticks.map(tk => `<g class="ch-tick">
+  return `<svg viewBox="0 0 ${W} ${H}" class="ch${minimal ? ' ch-min' : ''}" role="img"
+      preserveAspectRatio="xMidYMid meet" aria-label="${esc(opts.label || '')}">
+    ${minimal ? '' : ticks.map(tk => `<g class="ch-tick">
       <line x1="${PAD.left}" x2="${W - PAD.right}" y1="${y(tk).toFixed(1)}" y2="${y(tk).toFixed(1)}"></line>
       <text x="${PAD.left - 10}" y="${(y(tk) + 4).toFixed(1)}" text-anchor="end">${esc(fmt(tk))}</text></g>`).join('')}
     ${empty ? `<text class="ch-empty" x="${W / 2}" y="${H / 2}" text-anchor="middle">${esc(opts.empty || 'Sin datos')}</text>`
@@ -37,9 +42,11 @@ export function bars(data, opts = {}) {
         const v = Number(d.value) || 0;
         const x = PAD.left + slot * i + (slot - barW) / 2;
         const h = Math.max(v === 0 ? 0 : 1, PAD.top + plotH - y(v));
+        const cx = (x + barW / 2).toFixed(1);
         return `<g class="ch-bar"><title>${esc(`${d.label} · ${fmt(v)}`)}</title>
-          <rect x="${x.toFixed(1)}" y="${y(v).toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="3"></rect>
-          <text class="ch-xlab" x="${(x + barW / 2).toFixed(1)}" y="${H - PAD.bottom + 22}" text-anchor="middle">${esc(d.label)}</text></g>`;
+          ${minimal && v > 0 ? `<text class="ch-val" x="${cx}" y="${(y(v) - 10).toFixed(1)}" text-anchor="middle">${esc(fmt(v))}</text>` : ''}
+          <rect x="${x.toFixed(1)}" y="${y(v).toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="${minimal ? 0 : 3}"></rect>
+          <text class="ch-xlab" x="${cx}" y="${H - PAD.bottom + 22}" text-anchor="middle">${esc(d.label)}</text></g>`;
       }).join('')}
   </svg>`;
 }

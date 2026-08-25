@@ -544,11 +544,10 @@ body[data-focus="on"] .cat-count::before { content:none; }
 .item-ref b { font-weight:600; color:var(--ink); }
 /* En rejilla los pares dt/dd quedan alineados entre artículos, en vez de bailar
    según la longitud del valor anterior (flex + wrap) */
-.item-attrs { display:grid; grid-template-columns:repeat(auto-fit,minmax(6.5rem,1fr));
-  gap:.6rem 1.2rem; margin:.9rem 0 0; }
-.item-attrs dt { font-size:.7rem; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); }
-.item-attrs dd { margin:.15rem 0 0; font-size:.82rem; font-weight:700; letter-spacing:.03em;
-  text-transform:uppercase; }
+.item-attrs { display:flex; flex-wrap:wrap; gap:.4rem; margin:.9rem 0 0; }
+.item-attrs .tag { display:inline-flex; align-items:center; font-size:.68rem; font-weight:700;
+  letter-spacing:.05em; text-transform:uppercase; color:var(--ink); background:none;
+  border:1px solid var(--line-control); border-radius:0; padding:.24rem .55rem; }
 /* En la ficha el rótulo PVD va encima del precio; junto a la matriz, en línea */
 .item-price { display:flex; align-items:baseline; gap:.7rem; margin:1.1rem 0 0; }
 .item-info .item-price { flex-direction:column; align-items:flex-start; gap:.1rem; }
@@ -1838,3 +1837,12 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
   border:1px solid var(--line-control); padding:.12rem .45rem; }
 .cal-kind-cita { background:var(--surface); color:var(--accent-deep); border-color:var(--blue); }
 .cal-kind-parte { background:var(--surface); color:var(--ink-2); }
+
+/* ── Cuadros de mando (cap. 09): paneles sin tarjeta, título sobre regla 2px ── */
+.bd-panel { background:none; border:0; border-radius:0; padding:0; }
+.bd-panel h2 { text-transform:uppercase; font-weight:800; font-size:.85rem; letter-spacing:.05em;
+  padding-bottom:.6rem; border-bottom:2px solid var(--ink); margin:0 0 1.1rem; }
+.bd-grid { gap:2.2rem 2rem; }
+/* Cifra encima de cada barra (modo minimalista) */
+.ch-val { fill:var(--ink); font-family:var(--display); font-weight:800; font-size:15px; }
+.ch-min .ch-xlab { fill:var(--ink-2); font-weight:600; }

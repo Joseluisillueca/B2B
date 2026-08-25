@@ -520,8 +520,8 @@ export default async function catalog(host) {
 
           <p class="item-ref">${esc(t('catalog.reference'))} <b>${esc(item.reference || '')}</b></p>
 
-          ${attributes.length ? `<dl class="item-attrs">${attributes.map(attribute => `
-            <div><dt>${esc(attribute.label)}</dt><dd>${esc(attribute.value)}</dd></div>`).join('')}</dl>` : ''}
+          ${attributes.length ? `<div class="item-attrs">${attributes.map(attribute => `
+            <span class="tag" title="${esc(attribute.label)}">${esc(attribute.value)}</span>`).join('')}</div>` : ''}
 
           ${main(item) ? `
             <p class="item-price"><span>${main(item).label}</span>
