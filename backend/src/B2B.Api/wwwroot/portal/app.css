@@ -1758,3 +1758,14 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 .tb-seg-opt + .tb-seg-opt { border-left:1px solid var(--ink); }
 .tb-seg-opt.on { background:var(--blue); color:#fff; }
 .tb-seg-opt svg { display:block; }
+
+/* Listados de documentos: rail de estados vertical → TABS horizontales (ref. 04/09) */
+.page.docs { display:block; }
+.docs-rail { border-right:0; padding:0; margin:.2rem 0 1.6rem; }
+.srail { flex-direction:row; flex-wrap:wrap; gap:0; border-bottom:2px solid var(--line-control); }
+.srail-item { border:0; border-bottom:2px solid transparent; border-radius:0; padding:.6rem 1rem;
+  font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); width:auto; }
+.srail-item:hover { background:none; color:var(--ink); }
+.srail-item.on { border-bottom-color:var(--blue); color:var(--blue); }
+.srail-item.on .srail-count { color:var(--blue); }
+.srail-item .srail-dot { display:none; }
