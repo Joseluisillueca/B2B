@@ -562,9 +562,12 @@ body[data-focus="on"] .cat-count::before { content:none; }
 
 /* Matriz de tallas: 8 celdas por fila con cabecera negra */
 /* El ancho mínimo lo marca la celda más ancha posible: "0" + "(+99)" */
-.matrix { display:grid; grid-template-columns:repeat(auto-fill,minmax(5.1rem,1fr)); gap:.4rem;
-  max-width:45rem; }
-.matrix.wide { grid-template-columns:repeat(auto-fill,minmax(6.6rem,1fr)); }
+/* Matriz en UNA fila (36→46), con scroll horizontal si no cabe (referencia catálogo) */
+.matrix { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(2.7rem,1fr); gap:.35rem;
+  max-width:none; overflow-x:auto; padding-bottom:.15rem; }
+.matrix.wide { grid-auto-columns:minmax(2.7rem,1fr); }
+.sz-cell { display:flex; flex-direction:column; gap:.15rem; min-width:0; }
+.sz-cell .sz-stock { justify-content:center; text-align:center; font-size:.7rem; color:var(--muted); }
 .sz { border:1px solid var(--line); background:#fff; overflow:hidden;
   transition:border-color .12s var(--ease), box-shadow .12s var(--ease); }
 .sz:focus-within { border-color:var(--blue); box-shadow:0 0 0 3px rgba(43,43,255,.14); }
@@ -572,8 +575,8 @@ body[data-focus="on"] .cat-count::before { content:none; }
    referencia; el precio por talla (kids) se va al extremo contrario. */
 /* Cabecera de talla "silenciosa": tinte arena con tinta oscura; sólida (verde) solo
    cuando la talla está seleccionada (.sz.has). Antes era un muro casi-negro. */
-.sz-head { background:var(--surface); color:var(--ink); display:flex; align-items:center; justify-content:space-between;
-  gap:.35rem; padding:.28rem .5rem; font-size:.76rem; font-weight:600; border-bottom:1px solid var(--line); }
+.sz-head { background:var(--surface); color:var(--ink); display:flex; align-items:center; justify-content:center;
+  gap:.35rem; padding:.28rem .4rem; font-size:.76rem; font-weight:700; border-bottom:1px solid var(--line); }
 .sz-size { margin-right:auto; }
 .sz-price { font-weight:600; font-size:.72rem; white-space:nowrap; }
 
@@ -581,7 +584,7 @@ body[data-focus="on"] .cat-count::before { content:none; }
 .matrix-consult { margin:.6rem 0 0; max-width:45rem; }
 .matrix-consult a { color:var(--blue); font-weight:700; font-size:.9rem; text-underline-offset:3px; }
 .matrix-consult a:hover { color:var(--blue-deep); }
-.sz-body { display:flex; align-items:center; justify-content:space-between; gap:.2rem; padding:.28rem .35rem; }
+.sz-body { display:flex; align-items:center; justify-content:center; gap:.2rem; padding:.28rem .25rem; }
 .sz-qty { width:2.1rem; border:none; background:transparent; padding:.1rem 0; font-weight:600;
   -moz-appearance:textfield; }
 .sz-qty::-webkit-outer-spin-button, .sz-qty::-webkit-inner-spin-button { appearance:none; margin:0; }

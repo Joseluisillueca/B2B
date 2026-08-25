@@ -61,22 +61,24 @@ export function sizeMatrix(item, { windowKey, lines = {} } = {}) {
     if (roving) stop = true;
 
     return `
-      <div class="sz ${status}${qty > 0 ? ' has' : ''}">
-        <div class="sz-head">
-          <span class="sz-size">${esc(product.size ?? '—')}</span>
-          ${perSize && price != null ? `<span class="sz-price">${esc(eur(price))}</span>` : ''}
+      <div class="sz-cell">
+        <div class="sz ${status}${qty > 0 ? ' has' : ''}">
+          <div class="sz-head">
+            <span class="sz-size">${esc(product.size ?? '—')}</span>
+            ${perSize && price != null ? `<span class="sz-price">${esc(eur(price))}</span>` : ''}
+          </div>
+          <div class="sz-body">
+            <input type="number" min="0" max="9999" step="1" inputmode="numeric"
+              class="sz-qty" value="${qty}" ${status === 'out' ? 'disabled' : ''}
+              tabindex="${roving ? '0' : '-1'}"
+              data-model="${esc(item.modelId)}" data-product="${esc(product.productId)}"
+              data-size="${esc(product.size ?? '')}" data-price="${price ?? 0}"
+              aria-label="${esc(t('catalog.sizeField', {
+                size: product.size ?? '', name: item.name || '', stock: stockText(stock)
+              }))}">
+          </div>
         </div>
-        <div class="sz-body">
-          <input type="number" min="0" max="9999" step="1" inputmode="numeric"
-            class="sz-qty" value="${qty}" ${status === 'out' ? 'disabled' : ''}
-            tabindex="${roving ? '0' : '-1'}"
-            data-model="${esc(item.modelId)}" data-product="${esc(product.productId)}"
-            data-size="${esc(product.size ?? '')}" data-price="${price ?? 0}"
-            aria-label="${esc(t('catalog.sizeField', {
-              size: product.size ?? '', name: item.name || '', stock: stockText(stock)
-            }))}">
-          <span class="sz-stock">${status === 'low' || status === 'out' ? '<i></i>' : ''}(${esc(stockText(stock))})</span>
-        </div>
+        <span class="sz-stock">${status === 'low' || status === 'out' ? '<i></i>' : ''}(${esc(stockText(stock))})</span>
       </div>`;
   }).join('');
 
