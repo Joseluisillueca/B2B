@@ -1749,3 +1749,8 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 /* Banda "MODO AGENTE" (referencia 14): franja roja a todo el ancho bajo la cabecera */
 .agent-band { background:var(--blue); color:#fff; font-weight:700; text-transform:uppercase;
   letter-spacing:.05em; font-size:.8rem; padding:.7rem var(--gutter); }
+
+/* Catálogo: foto/ilustración del artículo en B/N (la ficha queda en color) */
+.item-photo img, .item-photo .item-art, .item-photo svg { filter:grayscale(1) contrast(1.05); }
+/* Reglas 2px entre grupos de facetas (referencia 03) */
+.rail section + section { border-top:2px solid var(--line-control); padding-top:1.4rem; }
