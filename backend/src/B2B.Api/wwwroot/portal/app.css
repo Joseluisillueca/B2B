@@ -521,8 +521,12 @@ body[data-focus="on"] .cat-count::before { content:none; }
 .cat-list.is-loading { opacity:.45; pointer-events:none; transition:opacity .15s var(--ease); }
 
 /* Fila de artículo */
-.item { display:grid; grid-template-columns:17rem minmax(12rem,16rem) minmax(0,1fr); gap:2.4rem;
+.item { display:grid; grid-template-columns:17rem minmax(0,1fr);
+  grid-template-areas:"photo info" "photo matrix"; column-gap:2.4rem; row-gap:1.6rem;
   align-items:start; padding:2.4rem 0; border-bottom:1px solid var(--line); }
+.item-photo { grid-area:photo; }
+.item-info { grid-area:info; min-width:0; }
+.item-matrix { grid-area:matrix; min-width:0; align-self:end; }
 .item:first-child { padding-top:.6rem; }
 .item-photo { aspect-ratio:4/5; background:var(--surface); border-radius:var(--r); display:grid;
   place-items:center; overflow:hidden; }
@@ -561,10 +565,11 @@ body[data-focus="on"] .cat-count::before { content:none; }
 
 /* Matriz de tallas: 8 celdas por fila con cabecera negra */
 /* El ancho mínimo lo marca la celda más ancha posible: "0" + "(+99)" */
-/* Matriz en UNA fila (36→46), con scroll horizontal si no cabe (referencia catálogo) */
-.matrix { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(2.7rem,1fr); gap:.35rem;
-  max-width:none; overflow-x:auto; padding-bottom:.15rem; }
-.matrix.wide { grid-auto-columns:minmax(2.7rem,1fr); }
+/* Matriz en UNA fila (36→46): las celdas reparten el ancho de la fila hasta un tope
+   (no se estiran con 1 sola talla), a la izquierda; sólo hay scroll si no cupieran. */
+.matrix { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,4.4rem); gap:.4rem;
+  justify-content:start; max-width:none; overflow-x:auto; padding-bottom:.15rem; }
+.matrix.wide { grid-auto-columns:minmax(0,5rem); }
 .sz-cell { display:flex; flex-direction:column; gap:.15rem; min-width:0; }
 .sz-cell .sz-stock { justify-content:center; text-align:center; font-size:.7rem; color:var(--muted); }
 .sz { border:1px solid var(--line); background:#fff; overflow:hidden;
