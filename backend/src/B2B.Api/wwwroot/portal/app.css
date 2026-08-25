@@ -570,8 +570,11 @@ body[data-focus="on"] .cat-count::before { content:none; }
 .matrix { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,4.4rem); gap:.4rem;
   justify-content:start; max-width:none; overflow-x:auto; padding-bottom:.15rem; }
 .matrix.wide { grid-auto-columns:minmax(0,5rem); }
-.sz-cell { display:flex; flex-direction:column; gap:.15rem; min-width:0; }
-.sz-cell .sz-stock { justify-content:center; text-align:center; font-size:.7rem; color:var(--muted); }
+.sz-cell { display:flex; flex-direction:column; gap:.28rem; min-width:0; }
+/* Disponibilidad SIEMPRE debajo del cuadro, centrada y legible (no dentro) */
+.sz-cell .sz-stock { display:flex; justify-content:center; align-items:center; gap:.25rem;
+  width:100%; text-align:center; font-size:.74rem; font-variant-numeric:tabular-nums;
+  color:var(--ink-2); white-space:nowrap; overflow:visible; }
 .sz { border:1px solid var(--line); background:#fff; overflow:hidden;
   transition:border-color .12s var(--ease), box-shadow .12s var(--ease); }
 .sz:focus-within { border-color:var(--blue); box-shadow:0 0 0 3px rgba(43,43,255,.14); }

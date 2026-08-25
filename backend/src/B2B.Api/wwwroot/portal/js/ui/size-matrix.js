@@ -78,7 +78,7 @@ export function sizeMatrix(item, { windowKey, lines = {} } = {}) {
               }))}">
           </div>
         </div>
-        <span class="sz-stock">${status === 'low' || status === 'out' ? '<i></i>' : ''}(${esc(stockText(stock))})</span>
+        <span class="sz-stock">${status === 'low' || status === 'out' ? '<i></i>' : ''}${esc(stockText(stock))}</span>
       </div>`;
   }).join('');
 
