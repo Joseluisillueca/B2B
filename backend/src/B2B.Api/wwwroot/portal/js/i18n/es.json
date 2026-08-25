@@ -1,12 +1,10 @@
 {
   "common.confirm": "Confirmar",
   "common.cancel": "Cancelar",
-
   "lang.es": "Español",
   "lang.en": "English",
   "lang.fr": "Français",
   "lang.it": "Italiano",
-
   "login.email": "Email",
   "login.password": "Password",
   "login.forgot": "¿Olvidaste tu contraseña?",
@@ -17,7 +15,6 @@
   "login.help": "Si tienes dificultades para entrar en la B2B, envíanos un email a: tiendas@lejanbrand.com",
   "login.create": "Crear una cuenta",
   "login.legal": "Lejan, en base a los acuerdos con los Fabricantes representados, vendemos exclusivamente a distribuidores/profesionales del sector. Para comenzar a trabajar con nosotros, deberás rellenar los siguientes datos y en 24 horas nos comprometemos a darte de alta (sólo laborables).",
-
   "activate.title": "Fija tu contraseña",
   "activate.leadFor": "Estás activando la cuenta de",
   "activate.password": "Nueva contraseña",
@@ -37,7 +34,6 @@
   "activate.doneTitle": "¡Contraseña guardada!",
   "activate.doneBody": "Ya puedes iniciar sesión con tu nueva contraseña.",
   "activate.goLogin": "Ir a iniciar sesión",
-
   "newClient.title": "Registro",
   "newClient.crumb": "Nuevo cliente",
   "newClient.basic": "Información básica",
@@ -81,7 +77,6 @@
   "newClient.nameRequired": "El nombre de la empresa es obligatorio.",
   "newClient.emailRequired": "El email principal no es válido.",
   "newClient.error": "No se ha podido crear el cliente. Inténtalo de nuevo.",
-
   "requests.title": "Solicitudes de registro",
   "requests.crumb": "Solicitudes",
   "requests.back": "Volver a clientes",
@@ -98,7 +93,6 @@
   "requests.status.pending": "Pendiente",
   "requests.status.approved": "Aprobada",
   "requests.status.rejected": "Rechazada",
-
   "agentDocs.search": "Buscar por documento o cliente…",
   "agentDocs.client": "Cliente",
   "agentDocs.allClients": "Todos los clientes",
@@ -131,7 +125,6 @@
   "calendar.status.pending": "Pendiente",
   "calendar.status.done": "Hecha",
   "calendar.status.canceled": "Cancelada",
-
   "selection.new": "Nueva selección",
   "selection.errorTitle": "No se pudieron cargar las selecciones",
   "selection.errorBody": "Vuelve a intentarlo en unos instantes.",
@@ -174,7 +167,6 @@
   "selection.pick": "Seleccionar",
   "selection.picked": "Seleccionado",
   "selection.noModelsFound": "No se han encontrado modelos.",
-
   "invoices.pay": "Pagar con tarjeta",
   "invoices.paidCard": "Pagada (tarjeta)",
   "checkout.payCard": "Tarjeta (Stripe)",
@@ -194,7 +186,6 @@
   "pay.pending.body": "Estamos confirmando tu pago. Puede tardar unos segundos.",
   "pay.error.title": "No encontramos el pago",
   "pay.error.body": "No hemos podido recuperar el estado del pago. Vuelve a intentarlo.",
-
   "nav.lookbook": "Lookbook",
   "lookbook.title": "Colecciones lejan",
   "lookbook.heroLabel": "Portada del lookbook",
@@ -213,22 +204,18 @@
   "login.required": "Introduce tu email y tu contraseña.",
   "login.badCredentials": "Email o contraseña incorrectos.",
   "login.serverError": "No hemos podido conectar. Inténtalo de nuevo en unos segundos.",
-
   "credentials.title": "SELECCIONA AHORA TUS CREDENCIALES:",
   "credentials.select": "SELECCIONAR",
   "credentials.none": "Tu usuario todavía no está asociado a ningún cliente. Escríbenos a tiendas@lejanbrand.com y lo activamos.",
-
   "chrome.search": "Búsqueda",
   "chrome.focus": "Vista sin distracciones",
   "chrome.language": "Idioma",
   "chrome.logout": "Cerrar sesión",
   "chrome.skip": "Saltar al contenido",
-
   "roles.admin": "Administrador",
   "roles.integration": "Integración",
   "roles.user": "Usuario",
   "credentialType.client": "Cliente",
-
   "nav.home": "Inicio",
   "nav.catalog": "Catálogo",
   "nav.dashboard": "Inicio",
@@ -257,10 +244,8 @@
   "nav.business": "Empresa",
   "nav.profile": "Perfil",
   "nav.contact": "Contacto",
-
   "window.replenishment": "Reposición",
   "window.scheduled": "Programación",
-
   "cart.title": "Carrito",
   "cart.close": "Cerrar carrito",
   "cart.empty": "El carrito está vacío — indica cantidades por talla en el catálogo.",
@@ -268,7 +253,6 @@
   "cart.total": "Total",
   "cart.checkout": "Ir al checkout",
   "cart.units": "{n} unidades en esta ventana",
-
   "dashboard.title": "Haz tu pedido",
   "dashboard.explore": "Explorar el catálogo",
   "dashboard.heroLabel": "Novedades",
@@ -299,7 +283,6 @@
   "carousel.goTo": "Ir a la imagen {n}",
   "carousel.pause": "Pausar el pase automático",
   "carousel.play": "Reanudar el pase automático",
-
   "catalog.count": "{n} artículos",
   "catalog.loading": "Cargando…",
   "catalog.countOne": "{n} artículo",
@@ -310,7 +293,6 @@
   "catalog.availability.available": "Disponible",
   "catalog.availability.consult": "Consultar",
   "catalog.availability.low": "< 10u",
-
   "catalog.family.calzado": "Calzado",
   "catalog.family.accesorios": "Accesorios",
   "catalog.family.limpieza": "Limpieza",
@@ -348,7 +330,6 @@
   "catalog.clear": "Limpiar filtros",
   "catalog.errorTitle": "No hemos podido cargar el catálogo",
   "catalog.errorBody": "Vuelve a intentarlo en unos segundos.",
-
   "product.add": "Añadir",
   "viewer.spinRole": "Galería multi-ángulo",
   "viewer.badge": "Multi-ángulo",
@@ -368,13 +349,11 @@
   "product.backToCatalog": "Volver al catálogo",
   "product.errorTitle": "No hemos podido cargar el producto",
   "product.errorBody": "Vuelve a intentarlo en unos segundos.",
-
   "pager.label": "Paginación",
   "pager.prev": "Página anterior",
   "pager.next": "Página siguiente",
   "pager.show": "Elementos por página",
   "pager.showN": "Mostrar {n}",
-
   "checkout.client": "Cliente:",
   "checkout.dropCart": "Eliminar carrito",
   "checkout.dropConfirm": "¿Seguro que quieres vaciar el carrito?",
@@ -413,7 +392,6 @@
   "checkout.freeShipping": "Portes gratis",
   "checkout.totalGross": "Total (con impuestos)",
   "checkout.terms": "Acepto las condiciones generales de compra",
-
   "carts.name": "Nombre",
   "carts.date": "Fecha",
   "carts.owner": "Propietario/a",
@@ -426,7 +404,6 @@
   "carts.loadError": "No hemos podido recuperar el carrito.",
   "carts.errorTitle": "No hemos podido cargar tus carritos",
   "carts.errorBody": "Vuelve a intentarlo en unos segundos.",
-
   "docs.search": "Buscar...",
   "docs.searchLabel": "Buscar",
   "docs.filters": "Filtrar por estado",
@@ -464,7 +441,6 @@
   "docs.line.price": "Precio",
   "docs.line.discount": "Dto.",
   "docs.line.amount": "Importe",
-
   "orders.crumb": "Mis pedidos",
   "orders.export": "Exportar pedidos",
   "orders.detail": "Pedido {n}",
@@ -481,7 +457,6 @@
   "orders.status.shipped": "Enviado",
   "orders.status.canceled": "Cancelado",
   "orders.status.open": "Abierto",
-
   "delivery-notes.export": "Exportar listado",
   "delivery-notes.detail": "Albarán {n}",
   "delivery-notes.carrier": "Transportista",
@@ -494,7 +469,6 @@
   "delivery-notes.status.all": "Todos",
   "delivery-notes.status.invoiced": "Facturados",
   "delivery-notes.status.not-invoiced": "No Facturados",
-
   "invoices.export": "Exportar listado",
   "invoices.detail": "Factura {n}",
   "invoices.dueDate": "Vencimiento",
@@ -511,7 +485,6 @@
   "invoices.status.partial": "Parcial",
   "invoices.status.credit": "A Crédito",
   "invoices.status.pending": "Pendiente De…",
-
   "profile.crumb": "Mi cuenta",
   "profile.welcome": "Bienvenido, {email}",
   "profile.myData": "Mis datos",
@@ -544,7 +517,6 @@
   "profile.passwordError": "No hemos podido cambiar la contraseña.",
   "profile.errorTitle": "No hemos podido cargar tu perfil",
   "profile.errorBody": "Vuelve a intentarlo en unos segundos.",
-
   "business.crumb": "Mi empresa",
   "business.general": "Datos generales",
   "business.fiscal": "Datos fiscales de la empresa",
@@ -579,7 +551,6 @@
   "business.requestError": "No hemos podido registrar tu solicitud.",
   "business.errorTitle": "No hemos podido cargar los datos de tu empresa",
   "business.errorBody": "Vuelve a intentarlo en unos segundos.",
-
   "statistics.season": "Temporada",
   "statistics.catalog": "Catálogo",
   "statistics.allSeasons": "Todas",
@@ -596,7 +567,6 @@
   "statistics.amount": "Importe",
   "statistics.errorTitle": "No hemos podido cargar tus estadísticas",
   "statistics.errorBody": "Vuelve a intentarlo en unos segundos.",
-
   "contact.lead": "Puedes enviarnos este formulario o escribirnos vía {email}",
   "contact.subject": "Asunto:",
   "contact.stockSubject": "Consulta de disponibilidad · Ref. {ref}",
@@ -611,7 +581,6 @@
   "contact.sent": "Hemos recibido tu solicitud. Te responderemos por email lo antes posible.",
   "contact.required": "El asunto y el mensaje son obligatorios.",
   "contact.error": "No hemos podido enviar tu solicitud. Inténtalo de nuevo en unos segundos.",
-
   "sat.new": "Nueva devolución",
   "sat.col.img": "Img",
   "sat.col.code": "Código",
@@ -652,28 +621,24 @@
   "sat.createdTitle": "Devolución registrada",
   "sat.created": "Hemos registrado la solicitud {code}. Te avisaremos con la resolución.",
   "sat.createError": "No hemos podido registrar la devolución.",
-
   "stub.title": "Sección en construcción",
   "stub.body": "La navegación, el idioma y la sesión ya son los definitivos; el contenido llega en la fase indicada.",
   "stub.phase": "FASE {n}",
-
   "roles.agent": "Agente",
   "credentialType.agent": "Agente",
-
   "nav.clients": "Clientes",
   "nav.model-selection": "Pedidos de selección",
   "nav.calendar": "Calendario de citas",
   "nav.contact-support": "Atención al cliente",
   "nav.my-account": "Mi cuenta",
   "nav.business-data": "Datos empresa",
-
   "agent.group.agent": "Agente",
   "agent.group.orders": "Pedidos",
   "agent.group.support": "Soporte",
   "agent.group.account": "Cuenta",
   "agent.deselect": "Deseleccionar cliente",
-
   "clients.crumb": "Clientes",
+  "clients.agentBand": "MODO AGENTE — selecciona un cliente para operar en su nombre",
   "clients.title": "Clientes",
   "clients.requests": "Ver solicitudes de registro de clientes",
   "clients.search": "Buscar cliente...",
@@ -715,10 +680,8 @@
   "clients.modal.editDesc": "Editar los datos de {name}",
   "clients.modal.close": "Cerrar",
   "clients.modal.error": "No hemos podido seleccionar este cliente. Inténtalo de nuevo.",
-
   "soon.title": "Próximamente",
   "soon.body": "Esta sección del modo agente llega en una próxima fase. La navegación, el idioma y la sesión ya son los definitivos.",
   "soon.tag": "MODO AGENTE",
-
   "footer.copyright": "© 2026 | LEJAN BRAND"
 }

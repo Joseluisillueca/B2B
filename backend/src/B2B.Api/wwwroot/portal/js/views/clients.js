@@ -49,6 +49,7 @@ export default async function clients(host) {
   let data = null;
 
   host.innerHTML = `
+    <div class="agent-band">${esc(t('clients.agentBand'))}</div>
     <div class="page cl">
       ${pageHead(t('clients.title'), [t('clients.crumb')])}
       <p class="cl-requests"><a href="${href('clients/requests')}">${esc(t('clients.requests'))}</a></p>

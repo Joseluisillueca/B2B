@@ -1,12 +1,10 @@
 {
   "common.confirm": "Confirm",
   "common.cancel": "Cancel",
-
   "lang.es": "Español",
   "lang.en": "English",
   "lang.fr": "Français",
   "lang.it": "Italiano",
-
   "login.email": "Email",
   "login.password": "Password",
   "login.forgot": "Forgot your password?",
@@ -17,7 +15,6 @@
   "login.help": "If you have trouble accessing the B2B, email us at: tiendas@lejanbrand.com",
   "login.create": "Create an account",
   "login.legal": "Under the agreements with the manufacturers we represent, Lejan sells exclusively to distributors and professionals in the sector. To start working with us, fill in the following details and we will activate your account within 24 working hours.",
-
   "activate.title": "Set your password",
   "activate.leadFor": "You are activating the account for",
   "activate.password": "New password",
@@ -37,7 +34,6 @@
   "activate.doneTitle": "Password saved!",
   "activate.doneBody": "You can now sign in with your new password.",
   "activate.goLogin": "Go to sign in",
-
   "newClient.title": "Registration",
   "newClient.crumb": "New client",
   "newClient.basic": "Basic information",
@@ -81,7 +77,6 @@
   "newClient.nameRequired": "The company name is required.",
   "newClient.emailRequired": "The main email is not valid.",
   "newClient.error": "The client could not be created. Please try again.",
-
   "requests.title": "Registration requests",
   "requests.crumb": "Requests",
   "requests.back": "Back to clients",
@@ -98,7 +93,6 @@
   "requests.status.pending": "Pending",
   "requests.status.approved": "Approved",
   "requests.status.rejected": "Rejected",
-
   "agentDocs.search": "Search by document or client…",
   "agentDocs.client": "Client",
   "agentDocs.allClients": "All clients",
@@ -131,7 +125,6 @@
   "calendar.status.pending": "Pending",
   "calendar.status.done": "Done",
   "calendar.status.canceled": "Canceled",
-
   "selection.new": "New selection",
   "selection.errorTitle": "Couldn't load the selections",
   "selection.errorBody": "Please try again in a moment.",
@@ -174,7 +167,6 @@
   "selection.pick": "Select",
   "selection.picked": "Selected",
   "selection.noModelsFound": "No models found.",
-
   "invoices.pay": "Pay by card",
   "invoices.paidCard": "Paid (card)",
   "checkout.payCard": "Card (Stripe)",
@@ -194,7 +186,6 @@
   "pay.pending.body": "We're confirming your payment. It may take a few seconds.",
   "pay.error.title": "Payment not found",
   "pay.error.body": "We couldn't retrieve the payment status. Please try again.",
-
   "nav.lookbook": "Lookbook",
   "lookbook.title": "lejan Collections",
   "lookbook.heroLabel": "Lookbook cover",
@@ -213,22 +204,18 @@
   "login.required": "Enter your email and password.",
   "login.badCredentials": "Wrong email or password.",
   "login.serverError": "We could not connect. Please try again in a few seconds.",
-
   "credentials.title": "SELECT YOUR CREDENTIALS NOW:",
   "credentials.select": "SELECT",
   "credentials.none": "Your user is not linked to any customer yet. Write to tiendas@lejanbrand.com and we will activate it.",
-
   "chrome.search": "Search",
   "chrome.focus": "Distraction-free view",
   "chrome.language": "Language",
   "chrome.logout": "Sign out",
   "chrome.skip": "Skip to content",
-
   "roles.admin": "Administrator",
   "roles.integration": "Integration",
   "roles.user": "User",
   "credentialType.client": "Customer",
-
   "nav.home": "Home",
   "nav.catalog": "Catalogue",
   "nav.dashboard": "Home",
@@ -257,10 +244,8 @@
   "nav.business": "Company",
   "nav.profile": "Profile",
   "nav.contact": "Contact",
-
   "window.replenishment": "Reorder",
   "window.scheduled": "Seasonal Order",
-
   "cart.title": "Cart",
   "cart.close": "Close cart",
   "cart.empty": "Your cart is empty — enter quantities per size in the catalogue.",
@@ -268,7 +253,6 @@
   "cart.total": "Total",
   "cart.checkout": "Go to checkout",
   "cart.units": "{n} units in this window",
-
   "dashboard.title": "Place your order",
   "dashboard.explore": "Explore the catalogue",
   "dashboard.heroLabel": "What’s new",
@@ -299,7 +283,6 @@
   "carousel.goTo": "Go to image {n}",
   "carousel.pause": "Pause the slideshow",
   "carousel.play": "Resume the slideshow",
-
   "catalog.count": "{n} items",
   "catalog.loading": "Loading…",
   "catalog.countOne": "{n} item",
@@ -310,7 +293,6 @@
   "catalog.availability.available": "In stock",
   "catalog.availability.consult": "On request",
   "catalog.availability.low": "< 10u",
-
   "catalog.family.calzado": "Footwear",
   "catalog.family.accesorios": "Accessories",
   "catalog.family.limpieza": "Cleaning",
@@ -348,7 +330,6 @@
   "catalog.clear": "Clear filters",
   "catalog.errorTitle": "We could not load the catalogue",
   "catalog.errorBody": "Please try again in a few seconds.",
-
   "product.add": "Add",
   "viewer.spinRole": "Multi-angle gallery",
   "viewer.badge": "Multi-angle",
@@ -368,13 +349,11 @@
   "product.backToCatalog": "Back to catalogue",
   "product.errorTitle": "We couldn't load the product",
   "product.errorBody": "Please try again in a few seconds.",
-
   "pager.label": "Pagination",
   "pager.prev": "Previous page",
   "pager.next": "Next page",
   "pager.show": "Items per page",
   "pager.showN": "Show {n}",
-
   "checkout.client": "Customer:",
   "checkout.dropCart": "Delete cart",
   "checkout.dropConfirm": "Empty the cart?",
@@ -413,7 +392,6 @@
   "checkout.freeShipping": "Free shipping",
   "checkout.totalGross": "Total (incl. tax)",
   "checkout.terms": "I accept the general terms of purchase",
-
   "carts.name": "Name",
   "carts.date": "Date",
   "carts.owner": "Owner",
@@ -426,7 +404,6 @@
   "carts.loadError": "We could not load the cart.",
   "carts.errorTitle": "We could not load your carts",
   "carts.errorBody": "Please try again in a few seconds.",
-
   "docs.search": "Search...",
   "docs.searchLabel": "Search",
   "docs.filters": "Filter by status",
@@ -464,7 +441,6 @@
   "docs.line.price": "Price",
   "docs.line.discount": "Disc.",
   "docs.line.amount": "Amount",
-
   "orders.crumb": "My orders",
   "orders.export": "Export orders",
   "orders.detail": "Order {n}",
@@ -481,7 +457,6 @@
   "orders.status.shipped": "Shipped",
   "orders.status.canceled": "Cancelled",
   "orders.status.open": "Open",
-
   "delivery-notes.export": "Export list",
   "delivery-notes.detail": "Delivery note {n}",
   "delivery-notes.carrier": "Carrier",
@@ -494,7 +469,6 @@
   "delivery-notes.status.all": "All",
   "delivery-notes.status.invoiced": "Invoiced",
   "delivery-notes.status.not-invoiced": "Not invoiced",
-
   "invoices.export": "Export list",
   "invoices.detail": "Invoice {n}",
   "invoices.dueDate": "Due date",
@@ -511,7 +485,6 @@
   "invoices.status.partial": "Partial",
   "invoices.status.credit": "On credit",
   "invoices.status.pending": "Awaiting…",
-
   "profile.crumb": "My account",
   "profile.welcome": "Welcome, {email}",
   "profile.myData": "My details",
@@ -544,7 +517,6 @@
   "profile.passwordError": "We could not change the password.",
   "profile.errorTitle": "We could not load your profile",
   "profile.errorBody": "Please try again in a few seconds.",
-
   "business.crumb": "My company",
   "business.general": "General details",
   "business.fiscal": "Company tax details",
@@ -579,7 +551,6 @@
   "business.requestError": "We could not register your request.",
   "business.errorTitle": "We could not load your company details",
   "business.errorBody": "Please try again in a few seconds.",
-
   "statistics.season": "Season",
   "statistics.catalog": "Catalogue",
   "statistics.allSeasons": "All",
@@ -596,7 +567,6 @@
   "statistics.amount": "Amount",
   "statistics.errorTitle": "We could not load your statistics",
   "statistics.errorBody": "Please try again in a few seconds.",
-
   "contact.lead": "You can send us this form or write to us at {email}",
   "contact.subject": "Subject:",
   "contact.stockSubject": "Availability enquiry · Ref. {ref}",
@@ -611,7 +581,6 @@
   "contact.sent": "We have received your request. We will reply by email as soon as possible.",
   "contact.required": "Subject and message are required.",
   "contact.error": "We could not send your request. Please try again in a few seconds.",
-
   "sat.new": "New return",
   "sat.col.img": "Img",
   "sat.col.code": "Code",
@@ -652,28 +621,24 @@
   "sat.createdTitle": "Return registered",
   "sat.created": "We have registered request {code}. We will let you know the resolution.",
   "sat.createError": "We could not register the return.",
-
   "stub.title": "Section under construction",
   "stub.body": "Navigation, language and session are already final; the content arrives in the phase shown.",
   "stub.phase": "PHASE {n}",
-
   "roles.agent": "Agent",
   "credentialType.agent": "Agent",
-
   "nav.clients": "Clients",
   "nav.model-selection": "Selection orders",
   "nav.calendar": "Appointments",
   "nav.contact-support": "Customer support",
   "nav.my-account": "My account",
   "nav.business-data": "Company details",
-
   "agent.group.agent": "Agent",
   "agent.group.orders": "Orders",
   "agent.group.support": "Support",
   "agent.group.account": "Account",
   "agent.deselect": "Deselect client",
-
   "clients.crumb": "Clients",
+  "clients.agentBand": "AGENT MODE — select a client to operate on their behalf",
   "clients.title": "Clients",
   "clients.requests": "View client registration requests",
   "clients.search": "Search client...",
@@ -715,10 +680,8 @@
   "clients.modal.editDesc": "Edit the details of {name}",
   "clients.modal.close": "Close",
   "clients.modal.error": "We could not select this client. Please try again.",
-
   "soon.title": "Coming soon",
   "soon.body": "This section of agent mode arrives in an upcoming phase. Navigation, language and session are already final.",
   "soon.tag": "AGENT MODE",
-
   "footer.copyright": "© 2026 | LEJAN BRAND"
 }

@@ -1,12 +1,10 @@
 {
   "common.confirm": "Confirmer",
   "common.cancel": "Annuler",
-
   "lang.es": "Español",
   "lang.en": "English",
   "lang.fr": "Français",
   "lang.it": "Italiano",
-
   "login.email": "Email",
   "login.password": "Mot de passe",
   "login.forgot": "Mot de passe oublié ?",
@@ -17,7 +15,6 @@
   "login.help": "Si vous avez des difficultés à accéder au B2B, écrivez-nous à : tiendas@lejanbrand.com",
   "login.create": "Créer un compte",
   "login.legal": "Conformément aux accords conclus avec les fabricants que nous représentons, Lejan vend exclusivement aux distributeurs et professionnels du secteur. Pour commencer à travailler avec nous, remplissez les données suivantes et nous activerons votre compte sous 24 heures ouvrées.",
-
   "activate.title": "Définissez votre mot de passe",
   "activate.leadFor": "Vous activez le compte de",
   "activate.password": "Nouveau mot de passe",
@@ -37,7 +34,6 @@
   "activate.doneTitle": "Mot de passe enregistré !",
   "activate.doneBody": "Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
   "activate.goLogin": "Aller à la connexion",
-
   "newClient.title": "Enregistrement",
   "newClient.crumb": "Nouveau client",
   "newClient.basic": "Informations de base",
@@ -81,7 +77,6 @@
   "newClient.nameRequired": "Le nom de l'entreprise est obligatoire.",
   "newClient.emailRequired": "L'e-mail principal n'est pas valide.",
   "newClient.error": "Le client n'a pas pu être créé. Réessayez.",
-
   "requests.title": "Demandes d'enregistrement",
   "requests.crumb": "Demandes",
   "requests.back": "Retour aux clients",
@@ -98,7 +93,6 @@
   "requests.status.pending": "En attente",
   "requests.status.approved": "Approuvée",
   "requests.status.rejected": "Rejetée",
-
   "agentDocs.search": "Rechercher par document ou client…",
   "agentDocs.client": "Client",
   "agentDocs.allClients": "Tous les clients",
@@ -131,7 +125,6 @@
   "calendar.status.pending": "En attente",
   "calendar.status.done": "Fait",
   "calendar.status.canceled": "Annulé",
-
   "selection.new": "Nouvelle sélection",
   "selection.errorTitle": "Impossible de charger les sélections",
   "selection.errorBody": "Réessayez dans un instant.",
@@ -174,7 +167,6 @@
   "selection.pick": "Sélectionner",
   "selection.picked": "Sélectionné",
   "selection.noModelsFound": "Aucun modèle trouvé.",
-
   "invoices.pay": "Payer par carte",
   "invoices.paidCard": "Payée (carte)",
   "checkout.payCard": "Carte (Stripe)",
@@ -194,7 +186,6 @@
   "pay.pending.body": "Nous confirmons votre paiement. Cela peut prendre quelques secondes.",
   "pay.error.title": "Paiement introuvable",
   "pay.error.body": "Impossible de récupérer l'état du paiement. Réessayez.",
-
   "nav.lookbook": "Lookbook",
   "lookbook.title": "Collections lejan",
   "lookbook.heroLabel": "Couverture du lookbook",
@@ -213,22 +204,18 @@
   "login.required": "Saisissez votre email et votre mot de passe.",
   "login.badCredentials": "Email ou mot de passe incorrect.",
   "login.serverError": "Connexion impossible. Réessayez dans quelques secondes.",
-
   "credentials.title": "SÉLECTIONNEZ MAINTENANT VOS IDENTIFIANTS :",
   "credentials.select": "SÉLECTIONNER",
   "credentials.none": "Votre utilisateur n'est encore associé à aucun client. Écrivez-nous à tiendas@lejanbrand.com et nous l'activerons.",
-
   "chrome.search": "Recherche",
   "chrome.focus": "Vue sans distractions",
   "chrome.language": "Langue",
   "chrome.logout": "Se déconnecter",
   "chrome.skip": "Aller au contenu",
-
   "roles.admin": "Administrateur",
   "roles.integration": "Intégration",
   "roles.user": "Utilisateur",
   "credentialType.client": "Client",
-
   "nav.home": "Accueil",
   "nav.catalog": "Catalogue",
   "nav.dashboard": "Accueil",
@@ -257,10 +244,8 @@
   "nav.business": "Entreprise",
   "nav.profile": "Profil",
   "nav.contact": "Contact",
-
   "window.replenishment": "Réassort",
   "window.scheduled": "Commande Initiale",
-
   "cart.title": "Panier",
   "cart.close": "Fermer le panier",
   "cart.empty": "Votre panier est vide — saisissez les quantités par taille dans le catalogue.",
@@ -268,7 +253,6 @@
   "cart.total": "Total",
   "cart.checkout": "Aller au checkout",
   "cart.units": "{n} unités dans cette fenêtre",
-
   "dashboard.title": "Passez votre commande",
   "dashboard.explore": "Explorer le catalogue",
   "dashboard.heroLabel": "Nouveautés",
@@ -299,7 +283,6 @@
   "carousel.goTo": "Aller à l'image {n}",
   "carousel.pause": "Mettre le défilement en pause",
   "carousel.play": "Reprendre le défilement",
-
   "catalog.count": "{n} articles",
   "catalog.loading": "Chargement…",
   "catalog.countOne": "{n} article",
@@ -310,7 +293,6 @@
   "catalog.availability.available": "Disponible",
   "catalog.availability.consult": "Sur demande",
   "catalog.availability.low": "< 10u",
-
   "catalog.family.calzado": "Chaussures",
   "catalog.family.accesorios": "Accessoires",
   "catalog.family.limpieza": "Entretien",
@@ -348,7 +330,6 @@
   "catalog.clear": "Effacer les filtres",
   "catalog.errorTitle": "Impossible de charger le catalogue",
   "catalog.errorBody": "Réessayez dans quelques secondes.",
-
   "product.add": "Ajouter",
   "viewer.spinRole": "Galerie multi-angles",
   "viewer.badge": "Multi-angles",
@@ -368,13 +349,11 @@
   "product.backToCatalog": "Retour au catalogue",
   "product.errorTitle": "Impossible de charger le produit",
   "product.errorBody": "Réessayez dans quelques secondes.",
-
   "pager.label": "Pagination",
   "pager.prev": "Page précédente",
   "pager.next": "Page suivante",
   "pager.show": "Éléments par page",
   "pager.showN": "Afficher {n}",
-
   "checkout.client": "Client :",
   "checkout.dropCart": "Supprimer le panier",
   "checkout.dropConfirm": "Vider le panier ?",
@@ -413,7 +392,6 @@
   "checkout.freeShipping": "Livraison offerte",
   "checkout.totalGross": "Total (taxes comprises)",
   "checkout.terms": "J'accepte les conditions générales d'achat",
-
   "carts.name": "Nom",
   "carts.date": "Date",
   "carts.owner": "Propriétaire",
@@ -426,7 +404,6 @@
   "carts.loadError": "Impossible de récupérer le panier.",
   "carts.errorTitle": "Impossible de charger vos paniers",
   "carts.errorBody": "Réessayez dans quelques secondes.",
-
   "docs.search": "Rechercher...",
   "docs.searchLabel": "Rechercher",
   "docs.filters": "Filtrer par statut",
@@ -464,7 +441,6 @@
   "docs.line.price": "Prix",
   "docs.line.discount": "Rem.",
   "docs.line.amount": "Montant",
-
   "orders.crumb": "Mes commandes",
   "orders.export": "Exporter les commandes",
   "orders.detail": "Commande {n}",
@@ -481,7 +457,6 @@
   "orders.status.shipped": "Expédiée",
   "orders.status.canceled": "Annulée",
   "orders.status.open": "Ouverte",
-
   "delivery-notes.export": "Exporter la liste",
   "delivery-notes.detail": "Bon de livraison {n}",
   "delivery-notes.carrier": "Transporteur",
@@ -494,7 +469,6 @@
   "delivery-notes.status.all": "Tous",
   "delivery-notes.status.invoiced": "Facturés",
   "delivery-notes.status.not-invoiced": "Non facturés",
-
   "invoices.export": "Exporter la liste",
   "invoices.detail": "Facture {n}",
   "invoices.dueDate": "Échéance",
@@ -511,7 +485,6 @@
   "invoices.status.partial": "Partielle",
   "invoices.status.credit": "À crédit",
   "invoices.status.pending": "En attente de…",
-
   "profile.crumb": "Mon compte",
   "profile.welcome": "Bienvenue, {email}",
   "profile.myData": "Mes données",
@@ -544,7 +517,6 @@
   "profile.passwordError": "Nous n'avons pas pu changer le mot de passe.",
   "profile.errorTitle": "Nous n'avons pas pu charger votre profil",
   "profile.errorBody": "Réessayez dans quelques secondes.",
-
   "business.crumb": "Mon entreprise",
   "business.general": "Données générales",
   "business.fiscal": "Données fiscales de l'entreprise",
@@ -579,7 +551,6 @@
   "business.requestError": "Nous n'avons pas pu enregistrer votre demande.",
   "business.errorTitle": "Nous n'avons pas pu charger les données de votre entreprise",
   "business.errorBody": "Réessayez dans quelques secondes.",
-
   "statistics.season": "Saison",
   "statistics.catalog": "Catalogue",
   "statistics.allSeasons": "Toutes",
@@ -596,7 +567,6 @@
   "statistics.amount": "Montant",
   "statistics.errorTitle": "Nous n'avons pas pu charger vos statistiques",
   "statistics.errorBody": "Réessayez dans quelques secondes.",
-
   "contact.lead": "Vous pouvez nous envoyer ce formulaire ou nous écrire à {email}",
   "contact.subject": "Objet :",
   "contact.stockSubject": "Demande de disponibilité · Réf. {ref}",
@@ -611,7 +581,6 @@
   "contact.sent": "Nous avons reçu votre demande. Nous vous répondrons par e-mail dès que possible.",
   "contact.required": "L'objet et le message sont obligatoires.",
   "contact.error": "Nous n'avons pas pu envoyer votre demande. Réessayez dans quelques secondes.",
-
   "sat.new": "Nouveau retour",
   "sat.col.img": "Img",
   "sat.col.code": "Code",
@@ -652,28 +621,24 @@
   "sat.createdTitle": "Retour enregistré",
   "sat.created": "Nous avons enregistré la demande {code}. Nous vous communiquerons la résolution.",
   "sat.createError": "Nous n'avons pas pu enregistrer le retour.",
-
   "stub.title": "Section en construction",
   "stub.body": "La navigation, la langue et la session sont déjà définitives ; le contenu arrive à la phase indiquée.",
   "stub.phase": "PHASE {n}",
-
   "roles.agent": "Agent",
   "credentialType.agent": "Agent",
-
   "nav.clients": "Clients",
   "nav.model-selection": "Commandes de sélection",
   "nav.calendar": "Calendrier de rendez-vous",
   "nav.contact-support": "Service client",
   "nav.my-account": "Mon compte",
   "nav.business-data": "Données entreprise",
-
   "agent.group.agent": "Agent",
   "agent.group.orders": "Commandes",
   "agent.group.support": "Assistance",
   "agent.group.account": "Compte",
   "agent.deselect": "Désélectionner le client",
-
   "clients.crumb": "Clients",
+  "clients.agentBand": "MODE AGENT — sélectionnez un client pour agir en son nom",
   "clients.title": "Clients",
   "clients.requests": "Voir les demandes d'inscription de clients",
   "clients.search": "Rechercher un client...",
@@ -715,10 +680,8 @@
   "clients.modal.editDesc": "Modifier les données de {name}",
   "clients.modal.close": "Fermer",
   "clients.modal.error": "Nous n'avons pas pu sélectionner ce client. Réessayez.",
-
   "soon.title": "Bientôt disponible",
   "soon.body": "Cette section du mode agent arrive dans une prochaine phase. La navigation, la langue et la session sont déjà définitives.",
   "soon.tag": "MODE AGENT",
-
   "footer.copyright": "© 2026 | LEJAN BRAND"
 }
