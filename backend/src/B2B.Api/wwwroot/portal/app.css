@@ -271,8 +271,8 @@ body:has(#hero) { background:var(--paper); }
   transition:scale .5s var(--ease); }
 .tile:hover img, .tile:hover .t-art { scale:1.04; }
 /* Sin imagen en el CMS, la tarjeta se sostiene con el color de marca */
-.tile[data-window="replenishment"] .t-art { background:linear-gradient(135deg,#cf6f42,#c4633a 60%,#a4502c); }
-.tile[data-window="scheduled"] .t-art { background:linear-gradient(135deg,#22624c,#1c5340 60%,#123f30); }
+.tile[data-window="replenishment"] .t-art { background:linear-gradient(135deg,#ff563c,#ec3013 60%,#ae1800); }
+.tile[data-window="scheduled"] .t-art { background:linear-gradient(135deg,#605d5d,#2d2b2b 70%,#201e1d); }
 /* Orden de capas: imagen/degradado (auto) · velo (1) · rótulos (2).
    Ojo con .t-art: es el fondo de la tarjeta sin imagen y debe quedar BAJO el velo,
    y .t-cart/.t-label/.t-sub ya son absolutos, así que solo se les sube el z-index. */
@@ -294,13 +294,12 @@ body:has(#hero) { background:var(--paper); }
 }
 
 /* ══════════════ Pantallas sin chrome (login / credenciales) ══════════════ */
-/* Degradado editorial verde→salvia sobre crema, en vez del azul del portal original */
-body[data-chrome="off"] { background:linear-gradient(155deg,#123f30 0%,#265b47 42%,#6f9070 78%,#c9d0a6 100%); }
-body[data-chrome="credentials"] {
-  background:linear-gradient(150deg,#1c5340 0%,#3d6d55 38%,#8aa17e 72%,#d8d3ab 100%); }
+/* Modernist: cartel rojo pleno detrás de la tarjeta (era degradado verde) */
+body[data-chrome="off"] { background:var(--blue); }
+body[data-chrome="credentials"] { background:var(--ink); }
 .sheet { min-height:100vh; display:grid; place-items:center; padding:2rem 1rem; }
 .sheet .card { background:var(--card); border-radius:var(--r); box-shadow:var(--shadow-card); padding:2.8rem 2.4rem; }
-.sheet .card .brand { display:block; text-align:center; font-style:italic; font-size:3.2rem; color:var(--ink); margin:0 0 1.9rem; }
+.sheet .card .brand { display:block; text-align:center; font-style:normal; font-weight:800; font-size:2.6rem; color:var(--ink); margin:0 0 1.9rem; }
 
 /* Login (00-inicio.png) */
 .login-card { width:min(29rem,100%); }
@@ -679,7 +678,7 @@ body[data-focus="on"] .cat-count::before { content:none; }
 
 /* Badge 360° en las tarjetas del lookbook + quick-view modal */
 .pcard-360 { position:absolute; top:.6rem; left:.6rem; z-index:3; display:inline-flex; align-items:center; gap:.25rem;
-  background:rgba(31,92,70,.92); color:#fff; border:none; border-radius:999px; padding:.2rem .55rem;
+  background:var(--ink); color:#fff; border:none; border-radius:0; padding:.2rem .55rem;
   font:inherit; font-size:.7rem; font-weight:700; letter-spacing:.02em; cursor:pointer; transition:background .15s; }
 .pcard-360:hover { background:var(--blue-deep); }
 .viewer-modal { position:fixed; inset:0; z-index:100; background:rgba(23,20,16,.6); display:grid; place-items:center;
@@ -1687,4 +1686,17 @@ input[type=checkbox], input[type=radio] { accent-color:var(--blue); }
 .sz-price { color:rgba(255,255,255,.72); }
 
 /* Fotos de catálogo/campaña/lookbook en B/N; la ficha de producto queda en color */
-.pcard-media img, .c-slide img, .lb-story-media img { filter:grayscale(1) contrast(1.05); }
+.pcard-media img, .c-slide img, .lb-story-media img,
+.hero-media .c-slide img, .hero-media .c-video { filter:grayscale(1) contrast(1.05); }
+
+/* Hero de portada: título pesado, saludo sin itálica, CTA recto */
+.hero-title { font-weight:800; letter-spacing:-.02em; }
+.dash-greet { font-style:normal; font-weight:700; }
+.hero-cta { border-radius:0 !important; }
+
+/* KPIs de portada: cifra sobre REGLA superior de 2px (sin tarjeta ni sombra) */
+.kpi { background:none; border:0; border-top:2px solid var(--ink); border-radius:0; padding:.9rem 0 0; }
+.kpi:hover { transform:none; box-shadow:none; }
+.kpi-accent { background:none; border-top-color:var(--blue); }
+.kpi-value { font-weight:800; }
+.kpi-accent .kpi-value { color:var(--accent-deep); }
