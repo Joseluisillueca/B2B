@@ -459,7 +459,14 @@ table.grid .grid-empty:hover td { background:transparent; }
 .cat-main { min-width:0; }
 
 .rail { position:sticky; top:calc(var(--header-h) + 1rem); align-self:start; max-height:calc(100vh - 6rem);
-  overflow-y:auto; overscroll-behavior:contain; padding-bottom:1rem; }
+  overflow-y:auto; overscroll-behavior:contain; padding-bottom:1rem;
+  /* Barra de scroll fina y discreta (no la gorda del sistema); sólo se ve al pasar */
+  scrollbar-width:thin; scrollbar-color:transparent transparent; scrollbar-gutter:stable; }
+.rail:hover { scrollbar-color:var(--line) transparent; }
+.rail::-webkit-scrollbar { width:6px; }
+.rail::-webkit-scrollbar-track { background:transparent; }
+.rail::-webkit-scrollbar-thumb { background:transparent; border-radius:0; }
+.rail:hover::-webkit-scrollbar-thumb { background:var(--line); }
 .rail section { margin-bottom:1.7rem; }
 .rail h2 { font-size:.78rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
   margin:0 0 .7rem; color:var(--ink); }
