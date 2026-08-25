@@ -26,7 +26,7 @@ export default async function calendar(host) {
     <div class="page account calendar">
       ${pageHead(t('nav.calendar'), [t('clients.crumb'), t('calendar.crumb')])}
       <div class="cal-grid">
-        <section class="cal-form-wrap panel" id="formWrap"></section>
+        <section class="cal-form-wrap" id="formWrap"></section>
         <section class="cal-list-wrap" id="listWrap"><div class="skeleton short"></div></section>
       </div>
     </div>`;
@@ -65,10 +65,12 @@ export default async function calendar(host) {
             <option value="">${esc(t('calendar.noClient'))}</option>
             ${clients.map(c => `<option value="${esc(c.id)}">${esc(c.name || c.number || c.id)}</option>`).join('')}
           </select></label></p>
-        <p class="acc-field"><label><span>${esc(t('calendar.field.kind'))}</span>
-          <select name="kind">
-            ${KINDS.map(k => `<option value="${k}">${esc(t(`calendar.kind.${k}`))}</option>`).join('')}
-          </select></label></p>
+        <p class="acc-field"><span class="acc-label">${esc(t('calendar.field.kind'))}</span>
+          <span class="tb-seg" role="group" aria-label="${esc(t('calendar.field.kind'))}">
+            ${KINDS.map((k, i) => `<button type="button" class="tb-seg-opt${i === 0 ? ' on' : ''}"
+              data-kind="${k}" aria-pressed="${i === 0 ? 'true' : 'false'}">${esc(t(`calendar.kind.${k}`))}</button>`).join('')}
+          </span>
+          <input type="hidden" name="kind" value="${KINDS[0]}"></p>
         <div class="cal-row2">
           <p class="acc-field"><label><span>${esc(t('calendar.field.when'))}</span>
             <input type="datetime-local" name="start" required></label></p>
@@ -83,6 +85,19 @@ export default async function calendar(host) {
       </form>`;
 
     const form = formWrap.querySelector('form');
+
+    // TIPO: control segmentado (Cita | Parte de visita); el valor va en el input oculto
+    form.querySelectorAll('.tb-seg-opt[data-kind]').forEach(button => {
+      button.onclick = () => {
+        form.querySelectorAll('.tb-seg-opt[data-kind]').forEach(other => {
+          const on = other === button;
+          other.classList.toggle('on', on);
+          other.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        form.elements.kind.value = button.dataset.kind;
+      };
+    });
+
     form.onsubmit = async event => {
       event.preventDefault();
       notice = null;

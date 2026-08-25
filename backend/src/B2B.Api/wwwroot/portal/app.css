@@ -1772,3 +1772,69 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 .srail-item.on { border-bottom-color:var(--blue); color:var(--blue); }
 .srail-item.on .srail-count { color:var(--blue); }
 .srail-item .srail-dot { display:none; }
+
+/* ── Auditoría final Modernist: pulido pixel ── */
+/* Buscador de cabecera: relleno gris sin borde (foco rojo) */
+.h-search input { background:var(--surface); border-color:transparent; }
+.h-search input:focus, .h-search input:focus-visible { border-color:var(--blue); }
+/* Migas en Título, no MAYÚSCULAS */
+.crumbs { text-transform:none; }
+/* Faceta de línea activa en rojo */
+.rail a.on, .rail-link.on, .rail li.on > a, .rail .on { color:var(--blue); }
+/* Botones anchos con la etiqueta a la IZQUIERDA (regla Modernist) */
+.login-card .submit, .ck-side .btn-primary, .ck-side .btn-primary.block,
+.docs-main .btn-primary, .cta.block, .btn-primary.block { justify-content:flex-start; text-align:left; padding-left:1.1rem; }
+/* Checkout: resumen con borde 2px sin sombra; h1 visible */
+.ck-side { border:2px solid var(--ink) !important; box-shadow:none !important; }
+.page.checkout > .cat-headline > h1.title { position:static !important; width:auto !important; height:auto !important;
+  clip:auto !important; overflow:visible !important; margin:0; }
+/* Hero del lookbook en B/N editorial */
+.lb-hero .c-slide img, .lb-hero .c-video { filter:grayscale(1) contrast(1.05); }
+/* Píldora de panel y lift de tarjetas del lookbook: coherencia radio 0 / sin sombra flotante */
+.panel .tag { border-radius:0; }
+.lb-rail .pcard:hover { transform:none; box-shadow:none; }
+/* Banda MODO AGENTE: solo "MODO AGENTE" fuerte, resto normal */
+.agent-band { text-transform:none; font-weight:400; }
+.agent-band strong { text-transform:uppercase; font-weight:800; letter-spacing:.05em; }
+
+/* ── Ficha de producto (cap. 05): chips de atributo, PVD+PVP, botón ancho ── */
+.product-attrs { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center;
+  margin:1.6rem 0 0; padding:1.5rem 0 0; border-top:2px solid var(--line); }
+.product-attrs .tag { display:inline-flex; align-items:center; font-size:.72rem; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--ink); background:none;
+  border:1px solid var(--line-control); border-radius:0; padding:.3rem .7rem; }
+.product-attrs .tag-avail { border:2px solid var(--blue); color:var(--accent-deep); }
+/* PVD y PVP recomendado, uno al lado del otro, cifra sobre etiqueta */
+.product-price { display:flex; align-items:flex-end; gap:2.6rem; margin:1.6rem 0 0; padding:1.5rem 0 0;
+  border-top:2px solid var(--line); }
+.pp-col { display:flex; flex-direction:column; gap:.2rem; }
+.pp-col span { font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2); }
+.pp-col b { font-family:var(--display); font-size:2rem; line-height:1; letter-spacing:-.02em; }
+.pp-col:nth-child(2) b { font-size:1.4rem; color:var(--ink-2); font-weight:700; }
+/* Encabezado "CANTIDAD POR TALLA" sobre la matriz */
+.product-sizes-h { font-family:var(--display); font-size:.8rem; font-weight:800; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--ink); margin:0 0 .9rem; padding-bottom:.55rem;
+  border-bottom:2px solid var(--ink); }
+/* Botón "Añadir a REPOSICIÓN" a ancho completo: etiqueta izquierda + total derecha */
+.product-order { display:block; margin-top:1.6rem; }
+.product-order .btn-primary { display:flex; width:100%; align-items:center; justify-content:space-between;
+  gap:1rem; text-align:left; padding:.95rem 1.4rem; }
+.product-order .btn-primary .product-total { color:#fff; font-size:.95rem; }
+.product-order .btn-primary .product-total b { color:#fff; font-family:var(--display); }
+.product-order .btn-primary .product-hint { color:rgba(255,255,255,.75); }
+
+/* ── Calendario (cap. 10): tarjeta a la izquierda + tipo segmentado + agenda plana ── */
+.cal-form-wrap { text-align:left; color:var(--ink); }
+.cal-form-wrap h2 { text-transform:uppercase; font-weight:800; font-size:.95rem; letter-spacing:.05em; color:var(--ink); }
+.cal-form .acc-label { display:block; font-size:.7rem; font-weight:700; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--ink-2); margin:0 0 .35rem; }
+.cal-form .tb-seg { display:inline-flex; width:100%; }
+.cal-form .tb-seg-opt { flex:1; }
+/* Agenda: lista plana con reglas 1px, sin recuadro por fila; el tipo, chip cuadrado neutro */
+.cal-list { gap:0; }
+.cal-item { background:none; border:0; border-bottom:1px solid var(--line); border-radius:0;
+  padding:1.1rem 0; }
+.cal-kind { border-radius:0; background:var(--surface); color:var(--ink-2);
+  border:1px solid var(--line-control); padding:.12rem .45rem; }
+.cal-kind-cita { background:var(--surface); color:var(--accent-deep); border-color:var(--blue); }
+.cal-kind-parte { background:var(--surface); color:var(--ink-2); }

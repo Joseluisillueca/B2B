@@ -274,8 +274,10 @@ function paintNav(route) {
   const hideCatalog = state.isAgent && !state.acting;
   nav().hidden = hideCatalog;
   if (hideCatalog) { nav().innerHTML = ''; return; }
-  const active = route.view === 'catalog/catalog' ? ' aria-current="page"' : '';
-  nav().innerHTML = `<a href="${href('catalog/catalog')}"${active}>${esc(t('nav.catalog'))}</a>`;
+  const cur = view => route.view === view ? ' aria-current="page"' : '';
+  nav().innerHTML =
+    `<a href="${href('catalog/catalog')}"${cur('catalog/catalog')}>${esc(t('nav.catalog'))}</a>` +
+    `<a href="${href('lookbook')}"${cur('lookbook')}>${esc(t('nav.lookbook'))}</a>`;
 }
 
 function paintFooter() {

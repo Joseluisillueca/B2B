@@ -1,17 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" width="800" height="520" role="img" aria-label="Reposición: stock disponible para servir">
   <defs>
-    <linearGradient id="terra" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#cf6f42"/>
-      <stop offset=".55" stop-color="#c4633a"/>
-      <stop offset="1" stop-color="#a4502c"/>
+    <linearGradient id="rojo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff563c"/>
+      <stop offset=".6" stop-color="#ec3013"/>
+      <stop offset="1" stop-color="#ae1800"/>
     </linearGradient>
   </defs>
-  <rect width="800" height="520" fill="url(#terra)"/>
-  <g fill="none" stroke="#f7ecdf" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" opacity=".9">
-    <rect x="250" y="250" width="120" height="120" rx="8"/>
-    <rect x="386" y="250" width="120" height="120" rx="8"/>
-    <rect x="318" y="126" width="120" height="120" rx="8"/>
+  <rect width="800" height="520" fill="url(#rojo)"/>
+  <g fill="none" stroke="#f3f2f2" stroke-width="7" stroke-linejoin="miter" stroke-linecap="square" opacity=".92">
+    <rect x="250" y="250" width="120" height="120"/>
+    <rect x="386" y="250" width="120" height="120"/>
+    <rect x="318" y="126" width="120" height="120"/>
     <path d="M310 190 h56 M446 314 h56"/>
   </g>
-  <circle cx="560" cy="150" r="16" fill="#f7ecdf" opacity=".55"/>
+  <rect x="546" y="136" width="28" height="28" fill="#f3f2f2" opacity=".5"/>
 </svg>

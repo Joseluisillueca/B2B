@@ -9,7 +9,7 @@ import { esc, eur } from '../format.js';
 import { state } from '../state.js';
 import { href } from '../router.js';
 import { icons } from '../ui/icons.js';
-import { sizeMatrix, bindMatrix } from '../ui/size-matrix.js';
+import { sizeMatrix, bindMatrix, rowState } from '../ui/size-matrix.js';
 import { createViewer } from '../ui/viewer.js';
 
 // Precio de la ficha: una sola línea, la de la preferencia MOSTRAR PRECIOS del perfil
@@ -115,6 +115,10 @@ export default async function product(host, route) {
 
   const attributes = attrsOf(item);
   const price = mainPrice(item);
+  const available = rowState(item, data.window) !== 'out';
+  // Etiqueta de la ventana de servicio activa para el botón "Añadir a REPOSICIÓN/PROGRAMACIÓN"
+  const windowLabel = (state.prefs.window === 'scheduled'
+    ? t('window.scheduled') : t('window.replenishment')).toUpperCase();
   const lines = Object.fromEntries(
     state.cartLines().map(line => [`${line.modelId}|${line.size}`, line]));
 
@@ -141,17 +145,25 @@ export default async function product(host, route) {
 
           <p class="product-ref">${esc(t('catalog.reference'))} <b>${esc(item.reference || '')}</b></p>
 
-          ${attributes.length ? `<dl class="product-attrs">${attributes.map(attribute => `
-            <div><dt>${esc(attribute.label)}</dt><dd>${esc(attribute.value)}</dd></div>`).join('')}</dl>` : ''}
+          ${attributes.length || available ? `<div class="product-attrs">${attributes.map(attribute => `
+            <span class="tag" title="${esc(attribute.label)}">${esc(attribute.value)}</span>`).join('')}
+            ${available ? `<span class="tag tag-avail">${esc(t('product.available'))}</span>` : ''}</div>` : ''}
 
-          ${price ? `<p class="product-price"><span>${price.label}</span>
-            <b>${esc(eur(price.value))}</b></p>` : ''}
+          <div class="product-price">
+            ${item.pvd != null ? `<div class="pp-col"><span>${esc(t('catalog.price.pvd'))}</span>
+              <b>${esc(eur(item.pvd))}</b></div>` : ''}
+            ${item.pvp != null ? `<div class="pp-col"><span>${esc(t('product.pvpRec'))}</span>
+              <b>${esc(eur(item.pvp))}</b></div>` : ''}
+          </div>
 
           <div class="product-buy">
+            <h2 class="product-sizes-h">${esc(t('product.sizesTitle'))}</h2>
             <div id="buy">${sizeMatrix(item, { windowKey: data.window, lines })}</div>
             <div class="product-order">
-              <span class="product-total" id="total"></span>
-              <button type="button" class="btn-primary" id="add">${esc(t('product.add'))}</button>
+              <button type="button" class="btn-primary" id="add">
+                <span>${esc(t('product.addTo', { window: windowLabel }))}</span>
+                <span class="product-total" id="total"></span>
+              </button>
             </div>
           </div>
 
@@ -197,7 +209,7 @@ export default async function product(host, route) {
       amount += qty * (Number(input.dataset.price) || 0);
     }
     total.innerHTML = units
-      ? `${esc(t('catalog.units', { n: units }))} · <b>${esc(eur(amount))}</b>`
+      ? `${esc(t('catalog.pairs', { n: units }))} · <b>${esc(eur(amount))}</b>`
       : `<span class="product-hint">${esc(t('product.pickSizes'))}</span>`;
   };
 
