@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using B2B.Api.Auth;
 using B2B.Api.Data;
+using B2B.Api.Notifications;
 using B2B.Api.Portal;
 using Microsoft.EntityFrameworkCore;
 
@@ -149,8 +150,39 @@ public static class SyncEndpoints
 
         // Rutas que el conector deriva de la URL de clientes con sufijos hardcodeados (contrato 04)
         // El usuario admin, además de guardarse crudo, provisiona el AppUser del portal.
-        app.MapPut("/api/clients/{clientId}/users/admin", (HttpRequest request, string clientId, AppDbContext db) =>
-            UpsertAsync(db, request, "client-user", clientId, parentId: clientId)).RequireConnector();
+        // Onboarding automático: al provisionar un usuario nuevo (sin contraseña) se le
+        // manda el email de activación UNA vez, para que el cliente reciba su enlace sin
+        // que nadie lo dispare a mano. El marcador ActivationEmailSentAt evita reenviarlo
+        // en cada sync, y deja de aplicar en cuanto el cliente pone contraseña.
+        app.MapPut("/api/clients/{clientId}/users/admin",
+            async (HttpRequest request, string clientId, AppDbContext db, ActivationService activation) =>
+        {
+            string body;
+            using (var reader = new StreamReader(request.Body))
+                body = await reader.ReadToEndAsync();
+
+            JsonNode? payload;
+            try { payload = JsonNode.Parse(body); }
+            catch (JsonException)
+            { return Results.Json(new { error = "Body must be valid JSON" }, statusCode: StatusCodes.Status400BadRequest); }
+
+            await UpsertDocumentAsync(db, "client-user", clientId, parentId: clientId, body, payload, DateTime.UtcNow);
+            await db.SaveChangesAsync();
+
+            var email = CatalogNormalizer.Text((payload as JsonObject)?["email"]).Trim().ToLowerInvariant();
+            if (email.Length > 0)
+            {
+                var user = await db.Users.SingleOrDefaultAsync(u => u.Email == email);
+                if (user is not null && string.IsNullOrEmpty(user.PasswordHash) && user.ActivationEmailSentAt is null)
+                {
+                    await activation.SendAsync(user, ActivationPurpose.Activation);
+                    user.ActivationEmailSentAt = DateTime.UtcNow;
+                    await db.SaveChangesAsync();
+                }
+            }
+
+            return Results.Ok(new { id = clientId });
+        }).RequireConnector();
 
         app.MapPut("/api/clients/{clientId}/shipping-addresses/{id}", (HttpRequest request, string clientId, string id, AppDbContext db) =>
             UpsertAsync(db, request, "shipping-address", id, parentId: clientId)).RequireConnector();

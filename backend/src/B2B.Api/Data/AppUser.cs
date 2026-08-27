@@ -30,4 +30,9 @@ public class AppUser
     // NOMBRE de la tarjeta "Mis datos" de /profile. Llega con el usuario admin del
     // cliente (payload {email, name, culture}) y el propio usuario puede cambiarlo.
     public string? Name { get; set; }
+
+    // Onboarding automático: cuándo se envió el email de activación al provisionar el
+    // usuario desde el sync. Sirve para mandarlo UNA sola vez (no en cada sincronización)
+    // cuando el cliente aún no tiene contraseña. Null = todavía no se le ha enviado.
+    public DateTime? ActivationEmailSentAt { get; set; }
 }
