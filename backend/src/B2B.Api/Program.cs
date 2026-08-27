@@ -51,6 +51,8 @@ var emailOptions = builder.Configuration.GetSection(EmailOptions.Section).Get<Em
 builder.Services.AddSingleton(emailOptions);
 if (string.Equals(emailOptions.Mode, "smtp", StringComparison.OrdinalIgnoreCase))
     builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+else if (string.Equals(emailOptions.Mode, "brevo", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddSingleton<IEmailSender, BrevoApiEmailSender>();
 else
     builder.Services.AddSingleton<IEmailSender, LogEmailSender>();
 builder.Services.AddScoped<ActivationService>();

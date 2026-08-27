@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Net.Mail;
 
 namespace B2B.Api.Notifications;
@@ -24,12 +25,21 @@ public sealed class EmailOptions
 {
     public const string Section = "Email";
 
-    /// "log" (por defecto) | "smtp"
+    /// "log" (por defecto) | "smtp" | "brevo" (API HTTP, para cloud que bloquea SMTP)
     public string Mode { get; set; } = "log";
     public string From { get; set; } = "no-reply@lejanbrand.com";
     public string FromName { get; set; } = "lejan B2B";
 
     public SmtpOptions Smtp { get; set; } = new();
+    public BrevoOptions Brevo { get; set; } = new();
+
+    public sealed class BrevoOptions
+    {
+        // API key de Brevo (empieza por "xkeysib-"), NO la clave SMTP. En Brevo:
+        // SMTP & API → API Keys. Se usa contra https://api.brevo.com por HTTPS (443),
+        // que los PaaS no bloquean (a diferencia de los puertos SMTP 25/587/2525).
+        public string ApiKey { get; set; } = "";
+    }
 
     public sealed class SmtpOptions
     {
@@ -99,6 +109,46 @@ public sealed class SmtpEmailSender(EmailOptions options, ILogger<SmtpEmailSende
         catch (Exception ex) when (ex is SmtpException or InvalidOperationException or IOException or FormatException)
         {
             logger.LogError(ex, "Fallo al enviar correo SMTP a {To}", message.To);
+            return new EmailResult(false, Transport, ex.Message);
+        }
+    }
+}
+
+// Envío por la API HTTP de Brevo (https://api.brevo.com/v3/smtp/email). Va por HTTPS
+// (443), así que funciona en PaaS que bloquean los puertos SMTP salientes (Railway,
+// etc.). Un fallo NO lanza: devuelve Ok=false y queda registrado, igual que el SMTP.
+public sealed class BrevoApiEmailSender(
+    EmailOptions options, IHttpClientFactory httpFactory, ILogger<BrevoApiEmailSender> logger) : IEmailSender
+{
+    public string Transport => "brevo";
+
+    public async Task<EmailResult> SendAsync(EmailMessage message, CancellationToken ct = default)
+    {
+        try
+        {
+            var http = httpFactory.CreateClient();
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email");
+            request.Headers.Add("api-key", options.Brevo.ApiKey);
+            request.Content = JsonContent.Create(new
+            {
+                sender = new { email = options.From, name = options.FromName },
+                to = new[] { new { email = message.To } },
+                subject = message.Subject,
+                htmlContent = message.HtmlBody,
+                textContent = message.TextBody
+            });
+
+            using var response = await http.SendAsync(request, ct);
+            if (response.IsSuccessStatusCode)
+                return new EmailResult(true, Transport, null);
+
+            var errorBody = await response.Content.ReadAsStringAsync(ct);
+            logger.LogError("La API de Brevo devolvió {Status}: {Body}", (int)response.StatusCode, errorBody);
+            return new EmailResult(false, Transport, $"HTTP {(int)response.StatusCode}: {errorBody}");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Fallo al enviar correo por la API de Brevo a {To}", message.To);
             return new EmailResult(false, Transport, ex.Message);
         }
     }
