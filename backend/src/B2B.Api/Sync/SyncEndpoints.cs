@@ -150,42 +150,52 @@ public static class SyncEndpoints
 
         // Rutas que el conector deriva de la URL de clientes con sufijos hardcodeados (contrato 04)
         // El usuario admin, además de guardarse crudo, provisiona el AppUser del portal.
-        // Onboarding automático: al provisionar un usuario nuevo (sin contraseña) se le
-        // manda el email de activación UNA vez, para que el cliente reciba su enlace sin
-        // que nadie lo dispare a mano. El marcador ActivationEmailSentAt evita reenviarlo
-        // en cada sync, y deja de aplicar en cuanto el cliente pone contraseña.
+        // El conector (Cod80136/Cod80131) compone estas sub-rutas con DOBLE "clients"
+        // (`/api/clients/clients/{id}/...`, esquema histórico de la plataforma). Se mapean
+        // las dos formas (simple y doble) para aceptar ambos esquemas de configuración.
         app.MapPut("/api/clients/{clientId}/users/admin",
-            async (HttpRequest request, string clientId, AppDbContext db, ActivationService activation) =>
-        {
-            string body;
-            using (var reader = new StreamReader(request.Body))
-                body = await reader.ReadToEndAsync();
-
-            JsonNode? payload;
-            try { payload = JsonNode.Parse(body); }
-            catch (JsonException)
-            { return Results.Json(new { error = "Body must be valid JSON" }, statusCode: StatusCodes.Status400BadRequest); }
-
-            await UpsertDocumentAsync(db, "client-user", clientId, parentId: clientId, body, payload, DateTime.UtcNow);
-            await db.SaveChangesAsync();
-
-            var email = CatalogNormalizer.Text((payload as JsonObject)?["email"]).Trim().ToLowerInvariant();
-            if (email.Length > 0)
-            {
-                var user = await db.Users.SingleOrDefaultAsync(u => u.Email == email);
-                if (user is not null && string.IsNullOrEmpty(user.PasswordHash) && user.ActivationEmailSentAt is null)
-                {
-                    await activation.SendAsync(user, ActivationPurpose.Activation);
-                    user.ActivationEmailSentAt = DateTime.UtcNow;
-                    await db.SaveChangesAsync();
-                }
-            }
-
-            return Results.Ok(new { id = clientId });
-        }).RequireConnector();
+            (HttpRequest request, string clientId, AppDbContext db, ActivationService activation) =>
+                ProvisionClientUserAsync(request, clientId, db, activation)).RequireConnector();
+        app.MapPut("/api/clients/clients/{clientId}/users/admin",
+            (HttpRequest request, string clientId, AppDbContext db, ActivationService activation) =>
+                ProvisionClientUserAsync(request, clientId, db, activation)).RequireConnector();
 
         app.MapPut("/api/clients/{clientId}/shipping-addresses/{id}", (HttpRequest request, string clientId, string id, AppDbContext db) =>
             UpsertAsync(db, request, "shipping-address", id, parentId: clientId)).RequireConnector();
+        app.MapPut("/api/clients/clients/{clientId}/shipping-addresses/{id}", (HttpRequest request, string clientId, string id, AppDbContext db) =>
+            UpsertAsync(db, request, "shipping-address", id, parentId: clientId)).RequireConnector();
+    }
+
+    // Provisiona (o actualiza) el usuario de acceso del cliente y, si es nuevo y sin
+    // contraseña, le manda el email de activación una sola vez (onboarding automático).
+    private static async Task<IResult> ProvisionClientUserAsync(
+        HttpRequest request, string clientId, AppDbContext db, ActivationService activation)
+    {
+        string body;
+        using (var reader = new StreamReader(request.Body))
+            body = await reader.ReadToEndAsync();
+
+        JsonNode? payload;
+        try { payload = JsonNode.Parse(body); }
+        catch (JsonException)
+        { return Results.Json(new { error = "Body must be valid JSON" }, statusCode: StatusCodes.Status400BadRequest); }
+
+        await UpsertDocumentAsync(db, "client-user", clientId, parentId: clientId, body, payload, DateTime.UtcNow);
+        await db.SaveChangesAsync();
+
+        var email = CatalogNormalizer.Text((payload as JsonObject)?["email"]).Trim().ToLowerInvariant();
+        if (email.Length > 0)
+        {
+            var user = await db.Users.SingleOrDefaultAsync(u => u.Email == email);
+            if (user is not null && string.IsNullOrEmpty(user.PasswordHash) && user.ActivationEmailSentAt is null)
+            {
+                await activation.SendAsync(user, ActivationPurpose.Activation);
+                user.ActivationEmailSentAt = DateTime.UtcNow;
+                await db.SaveChangesAsync();
+            }
+        }
+
+        return Results.Ok(new { id = clientId });
     }
 
     private static async Task<IResult> UpsertAsync(
