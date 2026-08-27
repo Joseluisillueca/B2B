@@ -1,0 +1,17 @@
+# Contexto de build mínimo: solo se necesita backend/ para publicar la API.
+**/bin
+**/obj
+**/.vs
+**/.vscode
+**/.git
+**/.github
+**/node_modules
+**/*.user
+backend/tests
+front
+admin
+agent
+mcp
+docs
+skills-lock.json
+*.md
