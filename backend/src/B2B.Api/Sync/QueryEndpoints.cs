@@ -51,7 +51,9 @@ public static class QueryEndpoints
                 db.Offers.Remove(offer);
 
             await db.SaveChangesAsync();
-            return Results.Ok(new { id, deleted = doc is not null || offer is not null });
+            // 204 No Content: el conector BC espera un DELETE REST estándar sin cuerpo.
+            // Devolver 200 con JSON hacía que su HttpClient fallara al procesar la respuesta.
+            return Results.NoContent();
         }).RequireConnector();
 
         app.MapMethods("/api/orders/search", ["GET", "POST"], async (HttpRequest request, AppDbContext db) =>
