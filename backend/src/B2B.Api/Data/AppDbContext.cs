@@ -24,6 +24,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AgentAppointment> AgentAppointments => Set<AgentAppointment>();
     public DbSet<ModelSelection> ModelSelections => Set<ModelSelection>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

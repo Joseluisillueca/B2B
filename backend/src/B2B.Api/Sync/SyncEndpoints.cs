@@ -17,7 +17,6 @@ public static class SyncEndpoints
         ("/api/catalog/models/{id}", "model"),
         ("/api/catalog/products/{id}", "product"),
         ("/api/catalog/attributes/{id}", "attribute"),
-        ("/api/catalog/model-images/{id}", "model-image"),
         ("/api/catalog/categories/{id}", "category"),
         ("/api/catalog/families/{id}", "family"),
         ("/api/catalog/case-packs/{id}", "case-pack"),
@@ -87,6 +86,66 @@ public static class SyncEndpoints
 
             return Results.Ok(new { received });
         }).RequireConnector();
+
+        // Imágenes de modelo. Además de guardar el documento (con la `uri` que usa el
+        // catálogo), si el conector manda la foto en base64 (modo imagen activo en su
+        // Setup) se almacena el binario en MediaAsset y se sirve en /media/models/{id}.jpg.
+        // El base64 se quita del documento para no engordar la tabla de sync.
+        app.MapPut("/api/catalog/model-images/{id}", async (HttpRequest request, string id, AppDbContext db) =>
+        {
+            string body;
+            using (var reader = new StreamReader(request.Body))
+                body = await reader.ReadToEndAsync();
+
+            JsonNode? payload;
+            try { payload = JsonNode.Parse(body); }
+            catch (JsonException)
+            { return Results.Json(new { error = "Body must be valid JSON" }, statusCode: StatusCodes.Status400BadRequest); }
+
+            var now = DateTime.UtcNow;
+
+            if (payload is JsonObject root && root["images"] is JsonArray images)
+            {
+                foreach (var entry in images.OfType<JsonObject>())
+                {
+                    if (entry["image"] is not JsonObject img) continue;
+                    var b64 = CatalogNormalizer.Text(img["base64"]);
+                    if (b64.Length == 0) b64 = CatalogNormalizer.Text(img["data"]);
+                    if (b64.Length == 0) continue;
+
+                    byte[] bytes;
+                    try { bytes = Convert.FromBase64String(b64); }
+                    catch (FormatException) { continue; }
+
+                    var asset = await db.MediaAssets.SingleOrDefaultAsync(a => a.ExternalId == id);
+                    if (asset is null) { asset = new MediaAsset { ExternalId = id }; db.MediaAssets.Add(asset); }
+                    asset.Bytes = bytes;
+                    asset.ContentType = CatalogNormalizer.Text(img["contentType"]) is { Length: > 0 } ct ? ct : "image/jpeg";
+                    asset.UpdatedAt = now;
+
+                    img.Remove("base64");
+                    img.Remove("data");
+                    break;   // una imagen por modelo
+                }
+            }
+
+            await UpsertDocumentAsync(db, "model-image", id, parentId: null,
+                payload?.ToJsonString() ?? body, payload, now);
+            await db.SaveChangesAsync();
+            return Results.Ok(new { id });
+        }).RequireConnector();
+
+        // Servir la foto alojada. Público (las imágenes de catálogo no llevan token) y
+        // cacheable. La URL que manda el conector es /media/models/{SystemId}.jpg.
+        app.MapGet("/media/models/{id}", async (string id, HttpResponse response, AppDbContext db) =>
+        {
+            var key = id.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ? id[..^4] : id;
+            var asset = await db.MediaAssets.SingleOrDefaultAsync(a => a.ExternalId == key);
+            if (asset is null || asset.Bytes.Length == 0)
+                return Results.NotFound();
+            response.Headers.CacheControl = "public, max-age=3600";
+            return Results.File(asset.Bytes, asset.ContentType);
+        });
 
         // Rutas que el conector deriva de la URL de clientes con sufijos hardcodeados (contrato 04)
         // El usuario admin, además de guardarse crudo, provisiona el AppUser del portal.
