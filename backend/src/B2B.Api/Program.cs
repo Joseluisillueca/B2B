@@ -40,6 +40,7 @@ builder.Services.AddAuthorization(options =>
 });
 builder.Services.AddLoginRateLimiter(builder.Configuration);
 builder.Services.AddHttpClient();   // asistente del portal → API de Anthropic (opcional)
+builder.Services.AddHttpClient<B2B.Api.Integration.BcClient>();   // portal → Business Central (OData)
 
 // PDFs comerciales (ficha técnica, line-sheet). Licencia Community de QuestPDF.
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
@@ -82,6 +83,9 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     if (db.Database.IsRelational())
         db.Database.Migrate();
+
+    // Siembra de eventos/canales/transformers por defecto + orígenes de documentos (idempotente)
+    B2B.Api.Integration.IntegrationDefaults.SeedAsync(db).GetAwaiter().GetResult();
 
     // Usuario de integración para el conector BC (Setup: Integration User/Password)
     var seedEmail = app.Configuration["Seed:UserEmail"];
@@ -179,6 +183,8 @@ app.MapContentEndpoints();
 app.MapMediaEndpoints();
 app.MapModelImageEndpoints();
 app.MapEntityCrudEndpoints();
+app.MapIntegrationEndpoints();
+app.MapDocumentDownloadEndpoints();
 app.MapUserAdminEndpoints();
 app.MapOrderAdminEndpoints();
 app.MapShopEndpoints();

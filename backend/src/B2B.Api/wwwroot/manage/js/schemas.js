@@ -227,6 +227,10 @@ export const NAV = [
     ['agents', 'Agentes', 'user'], ['users', 'Accesos', 'key'],
   ] },
   { title: 'Ventas', items: [['orders', 'Pedidos', 'cart']] },
+  { title: 'Integración', items: [
+    ['notifications-config', 'Notificaciones', 'send'], ['notifications-log', 'Realizadas', 'list'],
+    ['connections', 'Conexiones', 'layers'], ['doc-sources', 'Origen de documentos', 'fileDown'],
+  ] },
 ];
 
 // Ruta (slug del menú) → entityType del esquema, para las vistas genéricas

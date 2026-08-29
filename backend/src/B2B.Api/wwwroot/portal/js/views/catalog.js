@@ -169,24 +169,22 @@ export default async function catalog(host) {
   let data = null;
 
   host.innerHTML = `
-    <div class="page catalog">
-      <aside class="rail" id="rail" aria-label="${esc(t('catalog.filters'))}"></aside>
-      <div class="cat-main">
-        <div class="cat-bar">
-          <div class="cat-title">
-            ${pageHead(t('nav.catalog'), [t('nav.catalog')],
-              '<span class="cat-count" id="count" role="status"></span>')}
-          </div>
-          <div id="tools"></div>
+    <div class="page catalog-top">
+      <div class="cat-bar">
+        <div class="cat-title">
+          ${pageHead(t('nav.catalog'), [t('nav.catalog')],
+            '<span class="cat-count" id="count" role="status"></span>')}
         </div>
-        <div class="cat-list" id="list">
-          <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
-        </div>
-        <div id="pager"></div>
+        <div id="tools"></div>
       </div>
+      <div class="cat-filters" id="filters" aria-label="${esc(t('catalog.filters'))}"></div>
+      <div class="cat-list" id="list">
+        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+      </div>
+      <div id="pager"></div>
     </div>`;
 
-  const rail = host.querySelector('#rail');
+  const filters = host.querySelector('#filters');
   const list = host.querySelector('#list');
   const tools = host.querySelector('#tools');
   const count = host.querySelector('#count');
@@ -245,157 +243,192 @@ export default async function catalog(host) {
     list.removeAttribute('aria-busy');
     list.classList.remove('is-loading');
     paintCount();
-    paintRail();
+    renderFilters();
     paintTools();
     paintList();
     paintPager();
   }
 
-  // ── Rail de facetas ────────────────────────────────────────────────────────
-  function paintRail() {
-    const focused = railFocusKey();
-    const lines = data.facets?.families || [];
-    const attributes = data.facets?.attributes || [];
+  // ── Barra de filtros (lookups desplegables arriba) ─────────────────────────
+  // Sustituye al rail lateral: búsqueda + un desplegable (<details>) por Familia,
+  // Disponibilidad y cada atributo, más chips de filtros activos. Se construye UNA vez
+  // y solo se sincronizan estados (no se reconstruye al filtrar → no se cierran los
+  // desplegables ni se pierde el foco del buscador).
+  let filtersBuilt = false;
+  const allLinesLabel = () => { const l = t('catalog.allLines'); return l === 'catalog.allLines' ? 'Todas' : l; };
+  const cssSafe = s => String(s).replace(/"/g, '\\"');
 
-    rail.innerHTML = `
-      <section class="rail-lines">
-        <h2>${esc(t('catalog.facet.lines'))}</h2>
-        <button type="button" class="rail-line${query.family ? '' : ' on'}" data-family=""
-          aria-pressed="${query.family ? 'false' : 'true'}">
-          ${esc(t('nav.catalog'))}</button>
-        ${lines.map(line => `
-          <button type="button" class="rail-line${query.family === line.id ? ' on' : ''}"
-            data-family="${esc(line.id)}" aria-pressed="${query.family === line.id}"
-            >${esc(vocab('family', line.id, line.label, line.id))}</button>`).join('')}
-      </section>
-
-      <section class="rail-model">
-        <h2 id="modelLabel">${esc(t('catalog.facet.model'))}</h2>
-        <input type="search" id="modelSearch" value="${esc(query.q)}"
-          placeholder="${esc(t('catalog.searchPlaceholder'))}" aria-labelledby="modelLabel">
-      </section>
-
-      <section>
-        <h2>${esc(t('catalog.facet.availability'))}</h2>
-        ${AVAILABILITY.map(id => checkbox({
-          group: 'availability', value: id,
-          label: t(`catalog.availability.${id}`),
-          checked: query.availability.includes(id)
-        })).join('')}
-      </section>
-
-      ${attributes.map(attribute => attributeSection(attribute)).join('')}`;
-
-    bindRail();
-    restoreRailFocus(focused);
+  function renderFilters() {
+    if (!filtersBuilt) { buildFilters(); filtersBuilt = true; }
+    syncFilters();
   }
 
-  // Repintar el rail destruye el control que el usuario acaba de usar y el foco cae
-  // al principio del documento: marcar tres casillas seguidas con el teclado era
-  // imposible. Se anota qué control tenía el foco y se recupera tras el repintado.
-  function railFocusKey() {
-    const active = document.activeElement;
-    if (!active || !rail.contains(active)) return '';
-    if (active.id === 'modelSearch') return '#modelSearch';
-    if (active.dataset?.facet) return `.rail-more[data-facet="${CSS.escape(active.dataset.facet)}"]`;
-    if (active.dataset?.family !== undefined)
-      return `.rail-line[data-family="${CSS.escape(active.dataset.family)}"]`;
-    if (active.dataset?.group)
-      return `.rail-check input[data-group="${CSS.escape(active.dataset.group)}"][value="${CSS.escape(active.value)}"]`;
-    return '';
-  }
-
-  function restoreRailFocus(key) {
-    if (!key) return;
-    const target = rail.querySelector(key);
-    if (!target) return;
-    target.focus({ preventScroll: true });
-    if (key === '#modelSearch') target.setSelectionRange(target.value.length, target.value.length);
-  }
-
-  // m1: la referencia no lleva recuento por faceta; `count` llega y no se pinta
-  const checkbox = ({ group, value, label, checked }) => `
-    <label class="rail-check">
+  const catCheck = (group, value, label, checked) => `
+    <label class="cat-check">
       <input type="checkbox" data-group="${esc(group)}" value="${esc(value)}" ${checked ? 'checked' : ''}>
       <span>${esc(label)}</span>
     </label>`;
 
-  function attributeSection(attribute) {
-    const selected = query.attributes[attribute.key] || [];
-    const expanded = expandedFacets.has(attribute.key);
-    const values = expanded ? attribute.values : attribute.values.slice(0, FACET_PREVIEW);
-    const title = vocab('attr', attribute.keySlug, attribute.label, attribute.key);
+  function buildFilters() {
+    const lines = data.facets?.families || [];
+    const attributes = data.facets?.attributes || [];
 
-    // El nombre del atributo y el de cada valor se traducen; lo que viaja en el
-    // filtro sigue siendo `attribute.key` / `value.value`, tal cual llega de la API.
-    // "Ver más" se repite en cada faceta: el aria-label dice de cuál es.
-    return `
-      <section>
-        <h2>${esc(title)}</h2>
-        ${values.map(value => checkbox({
-          group: `a.${attribute.key}`, value: value.value,
-          label: vocab('attrValue', value.slug, value.label, value.value),
-          checked: selected.includes(value.value)
-        })).join('')}
-        ${attribute.values.length > FACET_PREVIEW ? `
-          <button type="button" class="rail-more" data-facet="${esc(attribute.key)}"
-            aria-expanded="${expanded}"
-            aria-label="${esc(`${t(expanded ? 'catalog.less' : 'catalog.more')} · ${title}`)}">
-            ${esc(t(expanded ? 'catalog.less' : 'catalog.more'))}</button>` : ''}
-      </section>`;
+    filters.innerHTML = `
+      <div class="cat-search">${icons.search(16)}
+        <input type="search" id="modelSearch" value="${esc(query.q)}"
+          placeholder="${esc(t('catalog.searchPlaceholder'))}" aria-label="${esc(t('catalog.facet.model'))}">
+      </div>
+      <details class="cat-lookup" data-lk="family">
+        <summary><span class="lk-name">${esc(t('catalog.facet.lines'))}</span><span class="lk-count" data-count="family"></span>${icons.chevron(14)}</summary>
+        <div class="cat-lookup-panel">
+          <button type="button" class="lk-line" data-family="">${esc(allLinesLabel())}</button>
+          ${lines.map(line => `<button type="button" class="lk-line" data-family="${esc(line.id)}">${esc(vocab('family', line.id, line.label, line.id))}</button>`).join('')}
+        </div>
+      </details>
+      <details class="cat-lookup" data-lk="availability">
+        <summary><span class="lk-name">${esc(t('catalog.facet.availability'))}</span><span class="lk-count" data-count="availability"></span>${icons.chevron(14)}</summary>
+        <div class="cat-lookup-panel">
+          ${AVAILABILITY.map(id => catCheck('availability', id, t(`catalog.availability.${id}`), query.availability.includes(id))).join('')}
+        </div>
+      </details>
+      ${attributes.map(attr => {
+        const title = vocab('attr', attr.keySlug, attr.label, attr.key);
+        const sel = query.attributes[attr.key] || [];
+        return `
+        <details class="cat-lookup" data-lk="a.${esc(attr.key)}">
+          <summary><span class="lk-name">${esc(title)}</span><span class="lk-count" data-count="a.${esc(attr.key)}"></span>${icons.chevron(14)}</summary>
+          <div class="cat-lookup-panel scroll">
+            ${attr.values.map(v => catCheck(`a.${attr.key}`, v.value, vocab('attrValue', v.slug, v.label, v.value), sel.includes(v.value))).join('')}
+          </div>
+        </details>`;
+      }).join('')}
+      <div class="cat-active" id="catActive"></div>`;
+
+    wireFilters();
   }
 
-  const expandedFacets = new Set();
+  function wireFilters() {
+    const search = filters.querySelector('#modelSearch');
+    let timer;
+    search.oninput = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => { query = { ...query, q: search.value.trim(), skip: 0 }; load({ keepScroll: true }); }, 300);
+    };
 
-  function bindRail() {
-    rail.querySelectorAll('.rail-line').forEach(button => {
+    // Familia (selección única) → cierra su desplegable al elegir
+    filters.querySelectorAll('.lk-line').forEach(button => {
       button.onclick = () => {
         query = { ...query, family: button.dataset.family, skip: 0 };
+        button.closest('details')?.removeAttribute('open');
         load();
       };
     });
 
-    rail.querySelectorAll('.rail-check input').forEach(input => {
-      input.onchange = () => {
-        const group = input.dataset.group;
-        if (group === 'availability') {
-          const set = new Set(query.availability);
-          input.checked ? set.add(input.value) : set.delete(input.value);
-          query = { ...query, availability: [...set], skip: 0 };
-        } else {
-          const key = group.slice(2);
-          const set = new Set(query.attributes[key] || []);
-          input.checked ? set.add(input.value) : set.delete(input.value);
-          const attributes = { ...query.attributes };
-          if (set.size) attributes[key] = [...set]; else delete attributes[key];
-          query = { ...query, attributes, skip: 0 };
-        }
-        load({ keepScroll: true });
-      };
+    // Facetas multi (disponibilidad / atributos) — delegado
+    filters.addEventListener('change', event => {
+      const input = event.target.closest('.cat-check input');
+      if (!input) return;
+      const group = input.dataset.group;
+      if (group === 'availability') {
+        const set = new Set(query.availability);
+        input.checked ? set.add(input.value) : set.delete(input.value);
+        query = { ...query, availability: [...set], skip: 0 };
+      } else {
+        const key = group.slice(2);
+        const set = new Set(query.attributes[key] || []);
+        input.checked ? set.add(input.value) : set.delete(input.value);
+        const attributes = { ...query.attributes };
+        if (set.size) attributes[key] = [...set]; else delete attributes[key];
+        query = { ...query, attributes, skip: 0 };
+      }
+      load({ keepScroll: true });
     });
 
-    rail.querySelectorAll('.rail-more').forEach(button => {
-      button.onclick = () => {
-        const key = button.dataset.facet;
-        expandedFacets.has(key) ? expandedFacets.delete(key) : expandedFacets.add(key);
-        paintRail();
-      };
-    });
+    // Solo un desplegable abierto a la vez
+    filters.querySelectorAll('details.cat-lookup').forEach(d =>
+      d.addEventListener('toggle', () => {
+        if (d.open) filters.querySelectorAll('details.cat-lookup[open]').forEach(o => { if (o !== d) o.removeAttribute('open'); });
+      }));
 
-    // La búsqueda por MODELO no recarga en cada tecla: espera a que pares de escribir
-    const search = rail.querySelector('#modelSearch');
-    let timer;
-    search.oninput = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        // El repintado ya devuelve el foco a quien lo tenía (restoreRailFocus); no
-        // se fuerza aquí, que arrancaba el foco a quien hubiera tabulado a otro
-        // control durante los 300 ms de espera.
-        query = { ...query, q: search.value.trim(), skip: 0 };
-        load({ keepScroll: true });
-      }, 300);
-    };
+    // Chips de filtros activos (delegado)
+    filters.querySelector('#catActive').addEventListener('click', event => {
+      const chipBtn = event.target.closest('[data-remove]');
+      if (chipBtn) return removeFilter(chipBtn.dataset.remove, chipBtn.dataset.value);
+      if (event.target.closest('#clearAll')) {
+        query = { ...query, q: '', family: '', availability: [], attributes: {}, skip: 0 };
+        const s = filters.querySelector('#modelSearch'); if (s) s.value = '';
+        load();
+      }
+    });
   }
+
+  function removeFilter(group, value) {
+    if (group === 'family') query = { ...query, family: '', skip: 0 };
+    else if (group === 'q') { query = { ...query, q: '', skip: 0 }; const s = filters.querySelector('#modelSearch'); if (s) s.value = ''; }
+    else if (group === 'availability') query = { ...query, availability: query.availability.filter(v => v !== value), skip: 0 };
+    else {
+      const key = group.slice(2);
+      const rest = (query.attributes[key] || []).filter(v => v !== value);
+      const attributes = { ...query.attributes };
+      if (rest.length) attributes[key] = rest; else delete attributes[key];
+      query = { ...query, attributes, skip: 0 };
+    }
+    load({ keepScroll: true });
+  }
+
+  // Actualiza estados sin reconstruir la barra (mantiene desplegables abiertos y foco).
+  function syncFilters() {
+    const lines = data.facets?.families || [];
+    const attributes = data.facets?.attributes || [];
+
+    const search = filters.querySelector('#modelSearch');
+    if (search && document.activeElement !== search) search.value = query.q;
+
+    filters.querySelectorAll('.cat-check input').forEach(input => {
+      const group = input.dataset.group;
+      input.checked = group === 'availability'
+        ? query.availability.includes(input.value)
+        : (query.attributes[group.slice(2)] || []).includes(input.value);
+    });
+
+    filters.querySelectorAll('.lk-line').forEach(b => b.classList.toggle('on', (b.dataset.family || '') === query.family));
+    const famCount = filters.querySelector('[data-count="family"]');
+    if (famCount) {
+      const label = query.family ? vocab('family', query.family, lines.find(l => l.id === query.family)?.label, query.family) : '';
+      famCount.textContent = label ? `: ${label}` : '';
+    }
+    filters.querySelector('details[data-lk="family"]')?.classList.toggle('active', !!query.family);
+
+    const setCount = (lk, n) => {
+      const el = filters.querySelector(`[data-count="${cssSafe(lk)}"]`);
+      if (el) el.textContent = n ? ` (${n})` : '';
+      filters.querySelector(`details[data-lk="${cssSafe(lk)}"]`)?.classList.toggle('active', n > 0);
+    };
+    setCount('availability', query.availability.length);
+    for (const attr of attributes) setCount(`a.${attr.key}`, (query.attributes[attr.key] || []).length);
+
+    paintActiveChips(lines, attributes);
+  }
+
+  function paintActiveChips(lines, attributes) {
+    const host2 = filters.querySelector('#catActive');
+    const chips = [];
+    if (query.q) chips.push(chip('q', '', `“${query.q}”`));
+    if (query.family) chips.push(chip('family', '', vocab('family', query.family, lines.find(l => l.id === query.family)?.label, query.family)));
+    for (const id of query.availability) chips.push(chip('availability', id, t(`catalog.availability.${id}`)));
+    for (const attr of attributes)
+      for (const v of (query.attributes[attr.key] || [])) {
+        const val = attr.values.find(x => x.value === v);
+        chips.push(chip(`a.${attr.key}`, v, vocab('attrValue', val?.slug, val?.label, v)));
+      }
+    host2.innerHTML = chips.length
+      ? chips.join('') + `<button type="button" class="cat-clear" id="clearAll">${esc(t('catalog.clear'))}</button>`
+      : '';
+  }
+
+  const chip = (group, value, label) => `
+    <button type="button" class="cat-chip" data-remove="${esc(group)}" data-value="${esc(value)}">
+      ${esc(label)} ${icons.close(13)}</button>`;
 
   // ── Toolbar ────────────────────────────────────────────────────────────────
   function paintTools() {

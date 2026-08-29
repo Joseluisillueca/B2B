@@ -26,6 +26,10 @@ public class Cart
     /// Referencia del cliente para el pedido (REF. PEDIDO CLIENTE del checkout)
     public string? Reference { get; set; }
 
+    /// JSON de origen del pedido (forma "cart" de la referencia) capturado al confirmar,
+    /// para alimentar el transformer JUST.net que lo envía a Business Central.
+    public string? SourceJson { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

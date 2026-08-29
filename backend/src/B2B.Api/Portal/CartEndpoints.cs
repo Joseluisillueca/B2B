@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using B2B.Api.Data;
+using B2B.Api.Notifications;
 using B2B.Api.Shop;
 using B2B.Api.Sync;
 using Microsoft.EntityFrameworkCore;
@@ -205,7 +206,8 @@ public static class CartEndpoints
         // Portal:OrdersMode=portal) el pedido se guarda ADEMÁS como documento "order"
         // nativo: se ve al instante en /orders y se gestiona su estado desde el CMS.
         app.MapPost("/api/portal/orders", async (
-            CartRequest body, ClaimsPrincipal principal, AppDbContext db, IConfiguration config) =>
+            CartRequest body, ClaimsPrincipal principal, AppDbContext db, IConfiguration config,
+            Integration.BcClient bc, IEmailSender email) =>
         {
             var actor = await PortalScope.ActorAsync(principal, db);
             if (actor is null) return Unknown();
@@ -213,6 +215,7 @@ public static class CartEndpoints
 
             var portalMode = PortalOrdersMode(config);
             string? orderType = null;
+            Data.ServiceWindow? window = null;
             JsonObject? address = null;
 
             // Modo autónomo: el pedido guardado ES la fuente de verdad, así que el servidor
@@ -220,7 +223,9 @@ public static class CartEndpoints
             // tipo por la ventana real y valida dirección y forma de pago del cliente.
             if (portalMode)
             {
-                orderType = await OrderTypeAsync(db, body.WindowId);
+                if (!string.IsNullOrWhiteSpace(body.WindowId))
+                    window = await db.ServiceWindows.SingleOrDefaultAsync(w => w.ExternalId == body.WindowId.ToLowerInvariant());
+                orderType = string.IsNullOrWhiteSpace(window?.OrderType) ? null : window!.OrderType;
 
                 var (priced, priceError) = await RepriceAsync(db, actor, orderType, lines);
                 if (priceError is not null) return Results.BadRequest(new { error = priceError });
@@ -250,6 +255,8 @@ public static class CartEndpoints
             };
             db.Carts.Add(order);
 
+            JsonObject? sourceJson = null;
+            var orderNumber = "";
             if (portalMode)
             {
                 // El cerrojo abarca leer el número + guardar: el siguiente pedido ya ve
@@ -257,16 +264,37 @@ public static class CartEndpoints
                 await OrderNumberLock.WaitAsync();
                 try
                 {
-                    var number = await NextOrderNumberAsync(db);
+                    orderNumber = await NextOrderNumberAsync(db);
                     var doc = NativeOrder.Build(
-                        orderId: order.Id.ToString(), number: number,
+                        orderId: order.Id.ToString(), number: orderNumber,
                         clientId: actor.ClientId, orderType: orderType, reference: body.Reference,
                         payMethodId: body.PayMethod, notes: body.Notes,
                         shippingAddress: address, lines: lines, now: DateTime.UtcNow);
                     await SyncEndpoints.IngestDocumentAsync(db, "order", order.Id.ToString(), actor.ClientId, doc);
+
+                    // JSON de origen (forma "cart" de la referencia) para el transformer a BC
+                    sourceJson = Integration.SourceJson.Order(
+                        order.Id.ToString(), actor.ClientId, body.ShippingAddressId, body.Reference,
+                        body.PayMethod, incotermId: "", saleId: "", lines: lines, window: window);
+                    order.SourceJson = sourceJson.ToJsonString();
+
                     await db.SaveChangesAsync();
                 }
                 finally { OrderNumberLock.Release(); }
+
+                // Despacho a los canales del evento "Orden de compra" (BC + email).
+                // Inerte si la conexión BC no está configurada (se registra "simulado").
+                var settings = await db.IntegrationSettings.FindAsync(1) ?? new Data.IntegrationSettings();
+                var vars = new Dictionary<string, string?>
+                {
+                    ["clientEmail"] = actor.User.Email,
+                    ["userEmail"] = actor.User.Email,
+                    ["companyEmail"] = config["Email:From"],
+                    ["saleEmail"] = null,
+                };
+                await Integration.NotificationDispatcher.DispatchAsync(
+                    db, bc, email, settings, "shoes.purchase_order.updated",
+                    "PurchaseOrder", orderNumber, sourceJson!, vars);
             }
             else
             {

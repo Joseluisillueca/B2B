@@ -527,6 +527,68 @@ body[data-focus="on"] .cat-count::before { content:none; }
    dejan de aceptar clics, y #count anuncia "Cargando…" (role="status"). */
 .cat-list.is-loading { opacity:.45; pointer-events:none; transition:opacity .15s var(--ease); }
 
+/* ── Catálogo con filtros ARRIBA (barra de lookups desplegables) ──
+   Lenguaje propio, distinto del rail lateral del original: la cuadrícula ocupa todo
+   el ancho y los filtros son menús desplegables (details/summary) en una barra. */
+.page.catalog-top { max-width:var(--maxw); margin:0 auto; padding:2.4rem var(--gutter) 4.5rem; display:block; }
+.cat-filters { display:flex; flex-wrap:wrap; align-items:center; gap:.6rem; margin:0 0 1.8rem; }
+.cat-search { position:relative; flex:1 1 15rem; max-width:22rem; }
+.cat-search input { width:100%; border:1px solid var(--line-control); border-radius:var(--r-sm);
+  padding:.62rem .8rem .62rem 2.3rem; background:#fff; transition:border-color .15s var(--ease); }
+.cat-search svg { position:absolute; left:.7rem; top:50%; translate:0 -50%; color:var(--muted); }
+.cat-search input:focus { border-color:var(--blue); }
+
+.cat-lookup { position:relative; }
+.cat-lookup > summary { list-style:none; cursor:pointer; display:inline-flex; align-items:center; gap:.4rem;
+  border:1px solid var(--line-control); background:#fff; padding:.62rem .85rem; font-size:.88rem; color:var(--ink);
+  white-space:nowrap; user-select:none; transition:border-color .12s var(--ease), color .12s var(--ease); }
+.cat-lookup > summary::-webkit-details-marker { display:none; }
+.cat-lookup > summary:hover { border-color:var(--ink); }
+.cat-lookup[open] > summary { border-color:var(--blue); }
+.cat-lookup.active > summary { border-color:var(--blue); color:var(--blue-deep); font-weight:600; }
+.cat-lookup .lk-count { color:var(--blue-deep); font-weight:700; }
+.cat-lookup > summary svg { color:var(--muted); transition:rotate .15s var(--ease); }
+.cat-lookup[open] > summary svg { rotate:180deg; }
+.cat-lookup > summary:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+.cat-lookup-panel { position:absolute; z-index:15; top:calc(100% + .35rem); left:0; min-width:14rem; max-width:22rem;
+  background:#fff; border:1px solid var(--line); box-shadow:var(--shadow-card); padding:.5rem; }
+.cat-lookup-panel.scroll { max-height:19rem; overflow-y:auto; overscroll-behavior:contain; }
+.lk-line { display:block; width:100%; text-align:left; padding:.44rem .6rem; font-size:.9rem; color:var(--ink-2); }
+.lk-line:hover { background:var(--surface); color:var(--ink); }
+.lk-line.on { color:var(--blue-deep); font-weight:700; }
+.cat-check { display:flex; align-items:center; gap:.55rem; padding:.36rem .6rem; cursor:pointer; font-size:.9rem; color:var(--ink-2); }
+.cat-check:hover { background:var(--surface); color:var(--ink); }
+.cat-check input { appearance:none; width:1.1rem; height:1.1rem; flex:none; border:1.5px solid var(--line-control);
+  background:#fff; display:grid; place-items:center; }
+.cat-check input:checked { background:var(--blue); border-color:var(--blue); }
+.cat-check input:checked::after { content:""; width:.44rem; height:.24rem; border-left:2px solid #fff;
+  border-bottom:2px solid #fff; rotate:-45deg; translate:0 -1px; }
+
+/* Chips de filtros activos (bajan a su propia línea bajo los lookups) */
+.cat-active { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; flex-basis:100%; }
+.cat-active:empty { display:none; }
+.cat-chip { display:inline-flex; align-items:center; gap:.35rem; border:1px solid var(--line-control);
+  background:var(--surface); padding:.3rem .55rem; font-size:.8rem; color:var(--ink);
+  transition:border-color .12s var(--ease), color .12s var(--ease); }
+.cat-chip:hover { border-color:var(--out); color:var(--out); }
+.cat-chip svg { color:var(--muted); }
+.cat-chip:hover svg { color:var(--out); }
+.cat-clear { color:var(--blue); font-size:.82rem; text-decoration:underline; text-underline-offset:3px; padding:.3rem .3rem; }
+.cat-clear:hover { color:var(--blue-deep); }
+.cat-lookup-panel { max-width:calc(100vw - 1.5rem); }
+/* Vista sin distracciones (ojo del header): oculta los filtros como antes ocultaba el rail */
+body[data-focus="on"] .cat-filters { display:none; }
+/* Móvil: los filtros pasan a acordeón a ancho completo — el panel fluye BAJO su lookup
+   (position:static) en vez de flotar y salirse del viewport por la derecha. */
+@media (max-width:48rem) {
+  .cat-search { flex-basis:100%; max-width:none; }
+  .cat-lookup { width:100%; }
+  .cat-lookup > summary { width:100%; justify-content:space-between; }
+  .cat-lookup-panel { position:static; box-shadow:none; border:1px solid var(--line); border-top:none;
+    min-width:0; max-width:none; }
+  .cat-lookup-panel.scroll { max-height:14rem; }
+}
+
 /* Fila de artículo */
 .item { display:grid; grid-template-columns:17rem minmax(0,1fr);
   grid-template-areas:"photo info" "photo matrix"; column-gap:2.4rem; row-gap:1.6rem;

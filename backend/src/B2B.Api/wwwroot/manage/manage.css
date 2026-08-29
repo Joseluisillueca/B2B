@@ -32,19 +32,27 @@
 .mng-side { background:var(--card); border-right:1px solid var(--line); padding:1.5rem 0 2rem;
   position:sticky; top:var(--header-h); align-self:start; height:calc(100vh - var(--header-h));
   overflow-y:auto; scrollbar-width:thin; }
-.mng-group { margin-bottom:1.5rem; }
-.mng-group h3 { font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
-  color:var(--muted); margin:0 0 .5rem; padding:0 1.5rem; }
-.mng-link { display:flex; align-items:center; gap:.65rem; padding:.5rem 1.5rem; font-size:.9rem;
-  color:var(--ink-2); text-decoration:none; border-left:2px solid transparent;
+/* Menú de back-office con lenguaje PROPIO (distinto del portal): grupos separados por
+   filete, ítems con icono en cajita, y activo como BLOQUE sólido rojo de marca. */
+.mng-group { margin:0; padding:1rem 0; }
+.mng-group + .mng-group { border-top:1px solid var(--line); }
+.mng-group h3 { font-size:.64rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--muted-2); margin:0 0 .5rem; padding:0 1.4rem; }
+.mng-link { display:flex; align-items:center; gap:.7rem; padding:.5rem 1.4rem; font-size:.9rem;
+  color:var(--ink-2); text-decoration:none; position:relative;
   transition:color .12s var(--ease), background .12s var(--ease); }
-.mng-link svg { flex:none; color:var(--muted); }
-.mng-link:hover { color:var(--blue); background:var(--paper); }
-.mng-link:hover svg { color:var(--blue); }
-.mng-link.on { color:var(--ink); font-weight:700; border-left-color:var(--blue); background:var(--paper); }
-.mng-link.on svg { color:var(--blue); }
-.mng-link .mng-badge { margin-left:auto; font-size:.72rem; font-weight:600; color:var(--muted);
-  background:var(--surface); border-radius:999px; padding:.05rem .5rem; font-variant-numeric:tabular-nums; }
+/* icono en cajita cuadrada (radio 0) — aire de herramienta, no de portal editorial */
+.mng-link svg { flex:none; color:var(--ink-3); width:1.6rem; height:1.6rem; padding:.28rem;
+  background:var(--surface); border-radius:0; box-sizing:border-box; transition:all .12s var(--ease); }
+.mng-link:hover { color:var(--ink); background:var(--paper); }
+.mng-link:hover svg { color:var(--ink); }
+/* activo: bloque sólido rojo de marca, con icono en negativo (invierte el patrón del portal) */
+.mng-link.on { color:#fff; font-weight:700; background:var(--blue); }
+.mng-link.on svg { color:#fff; background:rgba(255,255,255,.18); }
+.mng-link.on:hover { background:var(--blue-deep); color:#fff; }
+.mng-link .mng-badge { margin-left:auto; font-size:.72rem; font-weight:700; color:var(--muted);
+  background:var(--surface); border-radius:0; padding:.05rem .45rem; font-variant-numeric:tabular-nums; }
+.mng-link.on .mng-badge { color:#fff; background:rgba(255,255,255,.22); }
 
 .mng-main { min-width:0; padding:clamp(1.5rem,3vw,2.8rem) clamp(1.25rem,4vw,3.5rem) 4rem; max-width:72rem; }
 

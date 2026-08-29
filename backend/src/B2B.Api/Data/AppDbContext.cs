@@ -25,6 +25,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ModelSelection> ModelSelections => Set<ModelSelection>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
+    public DbSet<IntegrationSettings> IntegrationSettings => Set<IntegrationSettings>();
+    public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
+    public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
+    public DbSet<DocumentSource> DocumentSources => Set<DocumentSource>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -118,6 +122,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             cart.Property(c => c.Status).HasMaxLength(20);
             cart.Property(c => c.Reference).HasMaxLength(120);
             cart.Property(c => c.LinesJson).HasColumnType("jsonb");
+            cart.Property(c => c.SourceJson).HasColumnType("jsonb");
             // El listado siempre entra por (cliente, estado): el índice cubre las dos
             cart.HasIndex(c => new { c.ClientId, c.Status });
             cart.HasIndex(c => c.UserId);
@@ -249,6 +254,57 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             pay.Property(p => p.Status).HasMaxLength(20);
             pay.Property(p => p.Amount).HasColumnType("numeric(12,2)");
             pay.HasIndex(p => new { p.ClientId, p.Kind, p.TargetId });
+        });
+
+        // ── Integración BC / Notificaciones (canales, transformers, conexiones) ──
+        modelBuilder.Entity<IntegrationSettings>(s =>
+        {
+            s.ToTable("integration_settings");
+            s.HasKey(x => x.Id);
+            s.Property(x => x.BcBaseUrl).HasMaxLength(500);
+            s.Property(x => x.BcTokenUrl).HasMaxLength(500);
+            s.Property(x => x.BcClientId).HasMaxLength(200);
+            s.Property(x => x.BcClientSecret).HasMaxLength(500);
+            s.Property(x => x.BcScope).HasMaxLength(200);
+            s.Property(x => x.ApiRestBaseUrl).HasMaxLength(500);
+            s.Property(x => x.ApiRestHeadersJson).HasColumnType("jsonb");
+        });
+
+        modelBuilder.Entity<NotificationChannel>(c =>
+        {
+            c.ToTable("notification_channels");
+            c.HasKey(x => x.Id);
+            c.Property(x => x.EventKey).HasMaxLength(80);
+            c.Property(x => x.ChannelType).HasMaxLength(30);
+            c.Property(x => x.Endpoint).HasMaxLength(200);
+            c.Property(x => x.ToVars).HasMaxLength(500);
+            c.Property(x => x.CcVars).HasMaxLength(500);
+            c.Property(x => x.BccVars).HasMaxLength(500);
+            c.HasIndex(x => x.EventKey);
+        });
+
+        modelBuilder.Entity<NotificationLog>(l =>
+        {
+            l.ToTable("notification_logs");
+            l.HasKey(x => x.Id);
+            l.Property(x => x.EventKey).HasMaxLength(80);
+            l.Property(x => x.EntityType).HasMaxLength(60);
+            l.Property(x => x.EntityId).HasMaxLength(120);
+            l.Property(x => x.ChannelType).HasMaxLength(30);
+            l.Property(x => x.Status).HasMaxLength(20);
+            l.Property(x => x.PayloadJson).HasColumnType("jsonb");
+            l.HasIndex(x => x.CreatedAt);
+            l.HasIndex(x => x.EventKey);
+        });
+
+        modelBuilder.Entity<DocumentSource>(d =>
+        {
+            d.ToTable("document_sources");
+            d.HasKey(x => x.DocType);
+            d.Property(x => x.DocType).HasMaxLength(30);
+            d.Property(x => x.SourceType).HasMaxLength(30);
+            d.Property(x => x.Method).HasMaxLength(10);
+            d.Property(x => x.Endpoint).HasMaxLength(500);
         });
 
         modelBuilder.Entity<ContactMessage>(message =>

@@ -1,6 +1,8 @@
 using System.Text.Json.Nodes;
 using B2B.Api.Auth;
 using B2B.Api.Data;
+using B2B.Api.Integration;
+using B2B.Api.Notifications;
 using B2B.Api.Sync;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,7 +31,8 @@ public static class EntityCrudEndpoints
     {
         // Upsert por id (crear = elegir un id nuevo; editar = reusar el existente).
         app.MapPut("/api/admin/entities/{entityType}/{id}",
-            async (string entityType, string id, HttpRequest request, AppDbContext db, string? parentId) =>
+            async (string entityType, string id, HttpRequest request, AppDbContext db,
+                   BcClient bc, IEmailSender email, string? parentId) =>
         {
             if (!Editable.Contains(entityType))
                 return Results.BadRequest(new { error = $"Tipo no editable desde el CMS: {entityType}" });
@@ -45,6 +48,11 @@ public static class EntityCrudEndpoints
 
             await SyncEndpoints.IngestDocumentAsync(db, entityType, id, parentId, payload);
             await db.SaveChangesAsync();
+
+            // Despacho a Business Central (Registro de clientes / direcciones). Inerte si
+            // la conexión BC no está configurada (se registra como "simulado").
+            await DispatchRegistrationAsync(db, bc, email, entityType, id, parentId, payload);
+
             return Results.Ok(new { id });
         }).RequireAdmin().DisableAntiforgery();
 
@@ -74,6 +82,39 @@ public static class EntityCrudEndpoints
         var body = await reader.ReadToEndAsync();
         try { return JsonNode.Parse(body); }
         catch (System.Text.Json.JsonException) { return null; }
+    }
+
+    // Al crear/editar un cliente o una dirección, despacha el evento de registro hacia
+    // Business Central (transform → POST). Inerte si BC no está configurado.
+    private static async Task DispatchRegistrationAsync(
+        AppDbContext db, BcClient bc, IEmailSender email,
+        string entityType, string id, string? parentId, JsonObject payload)
+    {
+        string eventKey, entityLabel;
+        JsonObject source;
+        var vars = new Dictionary<string, string?>();
+
+        if (entityType == "client")
+        {
+            var addrDocs = await db.SyncDocuments
+                .Where(d => d.EntityType == "shipping-address" && d.ParentId == id).ToListAsync();
+            var addrs = addrDocs
+                .Select(d => (d.ExternalId, Payload: Portal.ClientIdentity.Parse(d.Payload)))
+                .Where(x => x.Payload is not null)
+                .Select(x => (x.ExternalId, x.Payload!));
+            source = SourceJson.Client(id, payload, addrs);
+            eventKey = "client.registration"; entityLabel = "Customer";
+            vars["clientEmail"] = CatalogNormalizer.Text(payload["email"]);
+        }
+        else if (entityType == "shipping-address")
+        {
+            source = SourceJson.Address(id, parentId, payload);
+            eventKey = "address.registration"; entityLabel = "ShipToAddress";
+        }
+        else return;
+
+        var settings = await db.IntegrationSettings.FindAsync(1) ?? new IntegrationSettings();
+        await NotificationDispatcher.DispatchAsync(db, bc, email, settings, eventKey, entityLabel, id, source, vars);
     }
 
     // ── Validación de obligatorios por entidad (espejo del `req` del front) ──────

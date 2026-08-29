@@ -235,6 +235,34 @@ public class PortalAutonomoTests : IClassFixture<PortalAutonomoTests.PortalFacto
     }
 
     [Fact]
+    public async Task Pedido_DespachaCanalBc_SimuladoYRegistrado()
+    {
+        await SeedCatalogAsync("DISP", 20m);
+        var token = await SeedClientUserAsync("CLI-DISP", "cli-disp@portal.test", "Clave-1234");
+        await ClientAsync(HttpMethod.Post, "/api/portal/orders", token, OrderBody("DISP", 20m));
+
+        // El evento "Orden de compra" debe haber despachado el canal Business Central en
+        // modo SIMULADO (BC no configurado) con el JSON transformado (salesOrders).
+        var logs = await JsonAsync(await AdminAsync(HttpMethod.Get, "/api/admin/integration/logs?eventKey=shoes.purchase_order.updated"));
+        var items = logs.GetProperty("items").EnumerateArray().ToList();
+        var bc = items.FirstOrDefault(l => l.GetProperty("channelType").GetString() == "business-central");
+        Assert.Equal("simulated", bc.GetProperty("status").GetString());
+        var payload = bc.GetProperty("payloadJson").GetString() ?? "";
+        Assert.Contains("orderId", payload);
+        Assert.Contains("\"items\"", payload);
+    }
+
+    [Fact]
+    public async Task TestTransform_EndpointAplicaJustNet()
+    {
+        var res = await AdminAsync(HttpMethod.Post, "/api/admin/integration/test-transform",
+            new { transformer = """{"x":"#valueof($.a)"}""", input = """{"a":"hola"}""" });
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var j = await JsonAsync(res);
+        Assert.Contains("hola", j.GetProperty("result").GetString());
+    }
+
+    [Fact]
     public async Task Admin_RequierePermisos()
     {
         Assert.Equal(HttpStatusCode.Unauthorized, (await _client.GetAsync("/api/admin/users")).StatusCode);

@@ -64,6 +64,19 @@ export const api = {
   orderStatus: (id, status) => request('PUT', `/api/admin/orders/${encodeURIComponent(id)}/status`, { status }),
   delOrder: id => request('DELETE', `/api/admin/orders/${encodeURIComponent(id)}`),
 
+  // Integración BC / Notificaciones
+  intSettings: () => request('GET', '/api/admin/integration/settings'),
+  intSaveSettings: b => request('PUT', '/api/admin/integration/settings', b),
+  intEvents: () => request('GET', '/api/admin/integration/events'),
+  intCreateChannel: b => request('POST', '/api/admin/integration/channels', b),
+  intSaveChannel: (id, b) => request('PUT', `/api/admin/integration/channels/${id}`, b),
+  intDelChannel: id => request('DELETE', `/api/admin/integration/channels/${id}`),
+  intChannelDefault: id => request('GET', `/api/admin/integration/channels/${id}/default`),
+  intDocSources: () => request('GET', '/api/admin/integration/document-sources'),
+  intSaveDocSource: (docType, b) => request('PUT', `/api/admin/integration/document-sources/${encodeURIComponent(docType)}`, b),
+  intLogs: eventKey => request('GET', '/api/admin/integration/logs' + (eventKey ? `?eventKey=${encodeURIComponent(eventKey)}` : '')),
+  intTestTransform: (transformer, input) => request('POST', '/api/admin/integration/test-transform', { transformer, input }),
+
   // Imágenes de modelo (marketing): endpoints ya existentes
   modelImages: () => request('GET', '/api/admin/model-images'),
   setModelImage: (modelId, uri) => request('PUT', `/api/admin/model-images/${encodeURIComponent(modelId)}`, { uri }),

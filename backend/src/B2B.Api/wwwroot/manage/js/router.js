@@ -11,6 +11,7 @@ import clientView from './views/client.js';
 import usersView from './views/users.js';
 import imagesView from './views/images.js';
 import { ordersView, orderView } from './views/orders.js';
+import { configView, connectionsView, docSourcesView, logsView } from './views/integration.js';
 
 let shellReady = false;
 
@@ -42,6 +43,10 @@ export async function resolve() {
     if (view === 'dashboard') return await dashboardView(main);
     if (view === 'images') return await imagesView(main);
     if (view === 'users') return await usersView(main);
+    if (view === 'notifications-config') return await configView(main);
+    if (view === 'notifications-log') return await logsView(main);
+    if (view === 'connections') return await connectionsView(main);
+    if (view === 'doc-sources') return await docSourcesView(main);
     if (view === 'orders') return parts[1] ? await orderView(main, parts[1]) : await ordersView(main);
     if (view === 'clients') {
       if (parts[1] === 'new') return await clientView(main, null);
