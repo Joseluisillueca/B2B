@@ -352,7 +352,12 @@ export default function checkout(host) {
     name,
     windowId: state.prefs.window,
     reference: form.reference || null,
-    lines: state.cartLines()
+    lines: state.cartLines(),
+    // Instantánea del pedido para el modo portal (sin ERP): forma de pago, dirección
+    // y notas. En modo ERP el backend los ignora (el pedido lo cierra BC).
+    payMethod: form.payMethod === CARD ? 'card' : (form.payMethod || null),
+    shippingAddressId: form.shippingAddressId || null,
+    notes: form.notes || null
   });
 
   render();

@@ -1,7 +1,10 @@
 using System.Security.Claims;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using B2B.Api.Data;
+using B2B.Api.Shop;
+using B2B.Api.Sync;
 using Microsoft.EntityFrameworkCore;
 
 namespace B2B.Api.Portal;
@@ -16,7 +19,9 @@ public sealed record CartLine(
     int Qty,
     decimal Price);
 
-public sealed record CartRequest(string? Name, string? WindowId, string? Reference, CartLine[]? Lines);
+public sealed record CartRequest(
+    string? Name, string? WindowId, string? Reference, CartLine[]? Lines,
+    string? PayMethod = null, string? ShippingAddressId = null, string? Notes = null);
 
 // Carritos favoritos (06-shopping-carts.png), corazones del catálogo y el cierre del
 // checkout. Todo se acota al cliente del token: el clientId nunca llega por parámetro.
@@ -26,6 +31,11 @@ public static class CartEndpoints
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.Never
     };
+
+    // Serializa la emisión del nº de pedido nativo (leer el máximo + guardar) para que
+    // dos checkouts simultáneos no resuelvan el mismo número. Suficiente en despliegue
+    // de una instancia (Railway); un despliegue multi-instancia pediría una secuencia BD.
+    private static readonly SemaphoreSlim OrderNumberLock = new(1, 1);
 
     public static void MapCartEndpoints(this IEndpointRouteBuilder app)
     {
@@ -190,13 +200,39 @@ public static class CartEndpoints
         }).RequireAuthorization();
 
         // ── TERMINAR PEDIDO ───────────────────────────────────────────────────
-        // El pedido queda registrado y a la espera: la entrega real a Business
-        // Central es la Fase BC del plan (POST del contrato 04 §5).
-        app.MapPost("/api/portal/orders", async (CartRequest body, ClaimsPrincipal principal, AppDbContext db) =>
+        // En modo ERP (por defecto) el pedido queda registrado y a la espera de su
+        // envío a Business Central (Fase BC). En modo PORTAL (cliente sin ERP,
+        // Portal:OrdersMode=portal) el pedido se guarda ADEMÁS como documento "order"
+        // nativo: se ve al instante en /orders y se gestiona su estado desde el CMS.
+        app.MapPost("/api/portal/orders", async (
+            CartRequest body, ClaimsPrincipal principal, AppDbContext db, IConfiguration config) =>
         {
             var actor = await PortalScope.ActorAsync(principal, db);
             if (actor is null) return Unknown();
             if (Invalid(body, requireName: false, out var lines, out var problem)) return problem;
+
+            var portalMode = PortalOrdersMode(config);
+            string? orderType = null;
+            JsonObject? address = null;
+
+            // Modo autónomo: el pedido guardado ES la fuente de verdad, así que el servidor
+            // NO se fía del cliente. Re-tarifica cada línea contra el catálogo, resuelve el
+            // tipo por la ventana real y valida dirección y forma de pago del cliente.
+            if (portalMode)
+            {
+                orderType = await OrderTypeAsync(db, body.WindowId);
+
+                var (priced, priceError) = await RepriceAsync(db, actor, orderType, lines);
+                if (priceError is not null) return Results.BadRequest(new { error = priceError });
+                lines = priced;
+
+                address = await ShippingAddressAsync(db, actor.ClientId, body.ShippingAddressId);
+                if (!string.IsNullOrEmpty(body.ShippingAddressId) && address is null)
+                    return Results.BadRequest(new { error = "La dirección de envío indicada no pertenece al cliente." });
+
+                if (!await PayMethodValidAsync(db, actor.ClientId, body.PayMethod))
+                    return Results.BadRequest(new { error = "La forma de pago no está disponible para el cliente." });
+            }
 
             var order = new Cart
             {
@@ -213,10 +249,124 @@ public static class CartEndpoints
                 UpdatedAt = DateTime.UtcNow
             };
             db.Carts.Add(order);
-            await db.SaveChangesAsync();
+
+            if (portalMode)
+            {
+                // El cerrojo abarca leer el número + guardar: el siguiente pedido ya ve
+                // este número emitido y toma el siguiente (nunca dos iguales).
+                await OrderNumberLock.WaitAsync();
+                try
+                {
+                    var number = await NextOrderNumberAsync(db);
+                    var doc = NativeOrder.Build(
+                        orderId: order.Id.ToString(), number: number,
+                        clientId: actor.ClientId, orderType: orderType, reference: body.Reference,
+                        payMethodId: body.PayMethod, notes: body.Notes,
+                        shippingAddress: address, lines: lines, now: DateTime.UtcNow);
+                    await SyncEndpoints.IngestDocumentAsync(db, "order", order.Id.ToString(), actor.ClientId, doc);
+                    await db.SaveChangesAsync();
+                }
+                finally { OrderNumberLock.Release(); }
+            }
+            else
+            {
+                await db.SaveChangesAsync();
+            }
 
             return Results.Created($"/api/portal/carts/{order.Id}", Detail(order, actor.User.Email));
         }).RequireAuthorization();
+    }
+
+    // El modo de pedidos del despliegue: "portal" = autónomo (se guardan en el portal);
+    // cualquier otro valor = "erp" (comportamiento clásico, a la espera de BC).
+    private static bool PortalOrdersMode(IConfiguration config) =>
+        string.Equals(config["Portal:OrdersMode"], "portal", StringComparison.OrdinalIgnoreCase);
+
+    // Tipo de pedido de la ventana de servicio elegida (SCHEDULED/REPLENISHMENT/...).
+    private static async Task<string?> OrderTypeAsync(AppDbContext db, string? windowId)
+    {
+        if (string.IsNullOrWhiteSpace(windowId)) return null;
+        var key = windowId.ToLowerInvariant();
+        var window = await db.ServiceWindows.SingleOrDefaultAsync(w => w.ExternalId == key);
+        return string.IsNullOrWhiteSpace(window?.OrderType) ? null : window!.OrderType;
+    }
+
+    // Re-tarifica cada línea con el MISMO motor que el catálogo (CatalogPricing): el
+    // precio sale de las ofertas publicadas para ese cliente/ventana, nunca del cliente.
+    // Si una línea no tiene tarifa aplicable, el pedido se rechaza (no hay precio válido).
+    private static async Task<(CartLine[] Lines, string? Error)> RepriceAsync(
+        AppDbContext db, PortalActor actor, string? orderType, CartLine[] lines)
+    {
+        var context = new PriceContext(actor.ClientId, actor.GroupIds, orderType);
+        var now = DateTimeOffset.UtcNow;
+
+        var modelIds = lines.Select(l => l.ModelId).Where(m => !string.IsNullOrEmpty(m)).Distinct().ToList();
+        var offers = await db.Offers.Where(o => modelIds.Contains(o.ModelId)).ToListAsync();
+        var byModel = offers.GroupBy(o => o.ModelId).ToDictionary(g => g.Key, g => g.ToList());
+
+        var priced = new CartLine[lines.Length];
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            var modelOffers = byModel.GetValueOrDefault(line.ModelId ?? "", []);
+            var price = CatalogPricing.Resolve(modelOffers, "PVD", line.ProductId, context, now);
+            if (price is null)
+                return ([], $"El artículo «{line.Name ?? line.Reference ?? line.ProductId}» no tiene precio en el catálogo para este cliente.");
+            priced[i] = line with { Price = price.Value };
+        }
+        return (priced, null);
+    }
+
+    // Forma de pago válida: vacía o "card" (Stripe) siempre; en otro caso debe estar
+    // entre las del cliente (si el cliente no tiene ninguna configurada, no se restringe).
+    private static async Task<bool> PayMethodValidAsync(AppDbContext db, string? clientId, string? payMethod)
+    {
+        if (string.IsNullOrWhiteSpace(payMethod) || string.Equals(payMethod, "card", StringComparison.OrdinalIgnoreCase))
+            return true;
+        var client = await PortalScope.ClientPayloadAsync(db, clientId);
+        var methods = (client?["payMethods"] as JsonArray ?? [])
+            .Select(m => m is JsonObject o ? ClientIdentity.Text(o["id"] ?? o["code"]) : ClientIdentity.Text(m))
+            .Where(s => s.Length > 0).ToList();
+        return methods.Count == 0 || methods.Contains(payMethod, StringComparer.OrdinalIgnoreCase);
+    }
+
+    // Número de pedido visible, único y creciente. Se calcula sobre el MÁXIMO ya emitido
+    // (no el recuento: borrar un pedido no debe reciclar su número) y se sube hasta uno
+    // libre, de modo que nunca haya dos "P#####" iguales.
+    private static async Task<string> NextOrderNumberAsync(AppDbContext db)
+    {
+        var payloads = await db.SyncDocuments
+            .Where(d => d.EntityType == "order")
+            .Select(d => d.Payload)
+            .ToListAsync();
+
+        var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var max = 0;
+        foreach (var payload in payloads)
+        {
+            var number = ClientIdentity.Text(ClientIdentity.Parse(payload)?["externalReference"]);
+            if (number.Length == 0) continue;
+            used.Add(number);
+            if (number.Length > 1 && (number[0] is 'P' or 'p') && int.TryParse(number[1..], out var n))
+                max = Math.Max(max, n);
+        }
+
+        var next = max + 1;
+        string candidate;
+        do { candidate = $"P{next++:D5}"; } while (used.Contains(candidate));
+        return candidate;
+    }
+
+    // Snapshot de la dirección de envío elegida (documento shipping-address del cliente),
+    // para que el pedido conserve a dónde iba aunque luego cambie la ficha del cliente.
+    private static async Task<JsonObject?> ShippingAddressAsync(AppDbContext db, string? clientId, string? addressId)
+    {
+        if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(addressId))
+            return null;
+        var doc = await db.SyncDocuments.SingleOrDefaultAsync(d =>
+            d.EntityType == "shipping-address" && d.ExternalId == addressId && d.ParentId == clientId);
+        if (doc is null) return null;
+        return ClientIdentity.Parse(doc.Payload)?["address"] as JsonObject;
     }
 
     // ── Ámbito y validación ───────────────────────────────────────────────────

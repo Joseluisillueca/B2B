@@ -165,6 +165,10 @@ app.MapGet("/", () => Results.Content(
     """, "text/html"));
 
 app.MapGet("/admin", () => Results.Redirect("/admin.html"));
+// /manage y /manage/ → el shell del back-office. Se apunta al index.html explícito:
+// el routing normaliza la barra final, así que redirigir a "/manage/" se auto-invocaría
+// en bucle. (El SPA usa hash routing, así que index.html#/… funciona igual.)
+app.MapGet("/manage", () => Results.Redirect("/manage/index.html"));
 app.MapGet("/shop", () => Results.Redirect("/shop.html"));
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints();
@@ -174,6 +178,9 @@ app.MapAdminEndpoints();
 app.MapContentEndpoints();
 app.MapMediaEndpoints();
 app.MapModelImageEndpoints();
+app.MapEntityCrudEndpoints();
+app.MapUserAdminEndpoints();
+app.MapOrderAdminEndpoints();
 app.MapShopEndpoints();
 app.MapPortalEndpoints();
 app.MapAgentEndpoints();

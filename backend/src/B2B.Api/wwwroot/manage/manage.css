@@ -1,0 +1,203 @@
+/* Portal de GESTIÓN de maestros — reutiliza el sistema de diseño del portal B2B
+   (/portal/app.css: tokens Modernist, botones, tablas, formularios .biz-*/.acc-*).
+   Aquí solo va el ARMAZÓN propio del back-office: cabecera, barra lateral y layout. */
+
+.mng-boot { display:grid; place-items:center; min-height:100vh; color:var(--muted);
+  font-size:.9rem; letter-spacing:.02em; }
+
+/* ── Cabecera (negra, como el portal) ── */
+.mng-header { position:sticky; top:0; z-index:20; height:var(--header-h); display:flex; align-items:center;
+  gap:1.1rem; padding:0 clamp(1rem,3vw,2rem); background:var(--header-bg); color:var(--header-ink);
+  border-bottom:1px solid rgba(0,0,0,.14); }
+.mng-header .brand { font-size:1.55rem; color:var(--header-ink); text-decoration:none; line-height:1; }
+.mng-header .brand sup { font-size:.42em; letter-spacing:0; vertical-align:.95em; }
+.mng-tag { font-size:.7rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--header-ink-2); border-left:1px solid rgba(255,255,255,.24); padding-left:.9rem; }
+.mng-header .spacer { flex:1; }
+.mng-header a.mng-portal { color:var(--header-ink-2); text-decoration:none; font-size:.82rem;
+  display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .2rem; }
+.mng-header a.mng-portal:hover { color:var(--header-ink); }
+.mng-who { display:flex; align-items:center; gap:.6rem; }
+.mng-who .avatar { width:2rem; height:2rem; background:var(--blue); }
+.mng-who .who { text-align:right; line-height:1.3; font-size:.78rem; }
+.mng-who .who .l1 { color:var(--header-ink); }
+.mng-who .who .l2 { color:var(--header-ink-2); }
+.mng-out { color:var(--header-ink); border:1px solid rgba(255,255,255,.28); border-radius:999px;
+  padding:.4rem .9rem; font-size:.76rem; font-weight:600; letter-spacing:.03em; transition:background .15s var(--ease); }
+.mng-out:hover { background:rgba(255,255,255,.12); }
+.mng-header button:focus-visible, .mng-header a:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+
+/* ── Layout: barra lateral + contenido ── */
+.mng { display:grid; grid-template-columns:15.5rem minmax(0,1fr); }
+.mng-side { background:var(--card); border-right:1px solid var(--line); padding:1.5rem 0 2rem;
+  position:sticky; top:var(--header-h); align-self:start; height:calc(100vh - var(--header-h));
+  overflow-y:auto; scrollbar-width:thin; }
+.mng-group { margin-bottom:1.5rem; }
+.mng-group h3 { font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--muted); margin:0 0 .5rem; padding:0 1.5rem; }
+.mng-link { display:flex; align-items:center; gap:.65rem; padding:.5rem 1.5rem; font-size:.9rem;
+  color:var(--ink-2); text-decoration:none; border-left:2px solid transparent;
+  transition:color .12s var(--ease), background .12s var(--ease); }
+.mng-link svg { flex:none; color:var(--muted); }
+.mng-link:hover { color:var(--blue); background:var(--paper); }
+.mng-link:hover svg { color:var(--blue); }
+.mng-link.on { color:var(--ink); font-weight:700; border-left-color:var(--blue); background:var(--paper); }
+.mng-link.on svg { color:var(--blue); }
+.mng-link .mng-badge { margin-left:auto; font-size:.72rem; font-weight:600; color:var(--muted);
+  background:var(--surface); border-radius:999px; padding:.05rem .5rem; font-variant-numeric:tabular-nums; }
+
+.mng-main { min-width:0; padding:clamp(1.5rem,3vw,2.8rem) clamp(1.25rem,4vw,3.5rem) 4rem; max-width:72rem; }
+
+/* ── Cabecera de página ── */
+.mng-page-head { display:flex; align-items:flex-end; justify-content:space-between; gap:1.5rem;
+  flex-wrap:wrap; margin:0 0 2rem; }
+.mng-page-head .crumbs { margin:0 0 .5rem; }
+.mng-page-head h1.title { margin:0; font-size:clamp(1.9rem,3.4vw,2.6rem); }
+.mng-page-head .lead { margin:.5rem 0 0; color:var(--ink-2); font-size:.95rem; max-width:42rem; }
+
+/* ── Barra de herramientas del listado ── */
+.mng-tools { display:flex; align-items:center; gap:.8rem; flex-wrap:wrap; margin:0 0 1.4rem; }
+.mng-search { position:relative; flex:1; min-width:14rem; max-width:26rem; }
+.mng-search input { width:100%; border:1px solid var(--line-control); border-radius:var(--r-sm);
+  padding:.6rem .8rem .6rem 2.4rem; background:#fff; transition:border-color .15s var(--ease); }
+.mng-search input:focus { border-color:var(--blue); }
+.mng-search svg { position:absolute; left:.7rem; top:50%; translate:0 -50%; color:var(--muted); }
+.mng-tools .spacer { flex:1; }
+.mng-count { color:var(--muted); font-size:.85rem; }
+
+/* ── Estado vacío ── */
+.mng-empty { text-align:center; color:var(--muted); background:var(--card); border:1px dashed var(--line-control);
+  border-radius:var(--r-sm); padding:3rem 1.5rem; }
+.mng-empty svg { color:var(--line-control); margin-bottom:.8rem; }
+.mng-empty b { display:block; color:var(--ink); font-size:1.05rem; margin-bottom:.3rem; }
+.mng-empty p { margin:0 0 1.2rem; }
+
+/* ── Tabla clicable ── */
+table.grid tbody tr.row-link { cursor:pointer; }
+.grid-id { font-family:var(--display); font-size:.78rem; color:var(--muted); }
+.grid-chip { display:inline-flex; align-items:center; gap:.35rem; font-size:.72rem; font-weight:700;
+  letter-spacing:.04em; text-transform:uppercase; border:1px solid var(--line-control); border-radius:0;
+  padding:.16rem .5rem; color:var(--ink-2); }
+.grid-chip.ok { color:var(--ok); border-color:#b6d9c3; background:#f0f8f3; }
+.grid-chip.off { color:var(--muted); }
+.grid-chip.warn { color:var(--low); border-color:#e6d3a6; background:#fbf6e9; }
+.grid-chip.danger { color:var(--out); border-color:#e6b6b0; background:#fdf1f0; }
+
+/* ── Formulario (reutiliza .biz-*/.acc-*; aquí solo pequeños ajustes) ── */
+.mng-form .biz-grid { gap:0 1.6rem; }
+.mng-form .biz-grid.cols-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.mng-form .acc-field.wide { grid-column:1 / -1; }
+.mng-form textarea { width:100%; border:1px solid var(--line-control); border-radius:var(--r-sm);
+  padding:.62rem .8rem; background:#fff; font:inherit; resize:vertical; }
+.mng-form textarea:focus { border-color:var(--blue); }
+.mng-form .biz-card { padding:1.3rem 1.6rem 1.5rem; }
+.mng-check { display:flex; align-items:center; gap:.6rem; font-size:.92rem; color:var(--ink-2); padding:.3rem 0; }
+.mng-check input { appearance:none; width:1.15rem; height:1.15rem; flex:none; border:1.5px solid var(--line-control);
+  border-radius:3px; background:#fff; display:grid; place-items:center; cursor:pointer; }
+.mng-check input:checked { background:var(--ink); border-color:var(--ink); }
+.mng-check input:checked::after { content:""; width:.5rem; height:.28rem; border-left:2px solid #fff;
+  border-bottom:2px solid #fff; rotate:-45deg; translate:0 -1px; }
+/* .acc-field .acc-hint (0,2,0) gana a la regla del portal `.acc-field span` (0,1,1),
+   que forzaba MAYÚSCULAS también en las ayudas. */
+.acc-field .acc-hint, .acc-hint { display:block; font-size:.76rem; color:var(--muted); margin:.3rem 0 0;
+  font-weight:400; text-transform:none; letter-spacing:0; }
+/* Los CTA que son enlaces (<a class="btn-*">) no deben ir subrayados como un link */
+a.btn-primary, a.btn-ghost, a.btn-danger { text-decoration:none; }
+.acc-field label > span { font-weight:700; }
+
+/* Direcciones de envío (bloques dinámicos, como el alta del portal) */
+.nc-ship { border:1px solid var(--line); border-radius:var(--r-sm); padding:1.1rem 1.2rem; margin:.9rem 0; background:var(--paper); }
+.nc-ship-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:.7rem; }
+.nc-ship-head b { font-size:.72rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--ink); }
+.nc-remove { color:var(--out); border-color:var(--out); }
+.nc-add { margin-top:.4rem; }
+.mng-subhead { font-size:.9rem; font-weight:700; color:var(--ink-2); margin:1.1rem 0 .5rem; letter-spacing:.02em; }
+
+/* Multi-selección (grupos, formas de pago…) como fichas seleccionables */
+.mng-multi { display:flex; flex-wrap:wrap; gap:.5rem; }
+.mng-multi label { display:inline-flex; align-items:center; gap:.45rem; border:1px solid var(--line-control);
+  border-radius:0; padding:.4rem .7rem; font-size:.85rem; cursor:pointer; color:var(--ink-2);
+  transition:border-color .12s var(--ease), color .12s var(--ease); }
+.mng-multi label:hover { border-color:var(--ink); }
+.mng-multi input { appearance:none; width:1rem; height:1rem; border:1.5px solid var(--line-control);
+  border-radius:3px; display:grid; place-items:center; }
+.mng-multi input:checked { background:var(--blue); border-color:var(--blue); }
+.mng-multi input:checked::after { content:""; width:.44rem; height:.24rem; border-left:2px solid #fff;
+  border-bottom:2px solid #fff; rotate:-45deg; translate:0 -1px; }
+.mng-multi label:has(input:checked) { border-color:var(--blue); color:var(--ink); font-weight:600; }
+.mng-multi-empty { color:var(--muted); font-size:.85rem; }
+
+/* ── Accesos rápidos (dashboard) ── */
+.mng-quick { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1.1rem; }
+.qa { display:flex; align-items:center; gap:1rem; background:var(--card); border:1px solid var(--line);
+  border-radius:var(--r-sm); padding:1.1rem 1.3rem; text-decoration:none; color:var(--ink);
+  box-shadow:var(--shadow); transition:transform .18s var(--ease), box-shadow .18s var(--ease), border-color .18s var(--ease); }
+.qa:hover { transform:translateY(-2px); box-shadow:var(--shadow-card); border-color:var(--line-control); }
+.qa-ic { display:grid; place-items:center; width:2.8rem; height:2.8rem; flex:none; color:var(--blue);
+  background:var(--blue-soft); }
+.qa-txt { flex:1; display:flex; flex-direction:column; gap:.15rem; }
+.qa-txt b { font-size:1rem; }
+.qa-txt span { font-size:.84rem; color:var(--muted); }
+.qa > svg:last-child { color:var(--muted); flex:none; }
+.qa:hover > svg:last-child { color:var(--blue); }
+@media (max-width:40rem) { .mng-quick { grid-template-columns:1fr; } }
+
+/* ── Imágenes de modelo ── */
+.mng-imgs { display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr)); gap:1.4rem; }
+.mng-img-card { margin:0; display:flex; flex-direction:column; background:var(--card);
+  border:1px solid var(--line); border-radius:var(--r-sm); overflow:hidden; box-shadow:var(--shadow); }
+.mng-img-thumb { aspect-ratio:4/5; background:var(--surface); display:grid; place-items:center; overflow:hidden; }
+.mng-img-thumb img { width:100%; height:100%; object-fit:cover; }
+.mng-img-none { display:flex; flex-direction:column; align-items:center; gap:.4rem; color:var(--line-control); font-size:.78rem; }
+.mng-img-card figcaption { padding:.8rem .9rem 1rem; display:flex; flex-direction:column; gap:.15rem; }
+.mng-img-card figcaption b { font-size:.92rem; line-height:1.25; }
+.mng-img-card figcaption > span { font-size:.8rem; color:var(--muted); }
+.mng-img-actions { display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.7rem; }
+.mng-img-actions .btn-ghost { padding:.4rem .6rem; font-size:.72rem; }
+/* Widget de imagen dentro de la ficha del modelo */
+.mng-img-inline { display:flex; gap:1.2rem; align-items:center; }
+.mng-img-inline .mng-img-thumb2 { width:8rem; aspect-ratio:4/5; flex:none; background:var(--surface);
+  border:1px solid var(--line); display:grid; place-items:center; overflow:hidden; }
+.mng-img-inline .mng-img-thumb2 img { width:100%; height:100%; object-fit:cover; }
+@media (max-width:40rem){ .mng-img-inline { flex-direction:column; align-items:flex-start; } }
+
+/* ── Detalle de pedido ── */
+.mng-order-head { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; margin:0 0 1.6rem; }
+.mng-fact { background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm); padding:1rem 1.1rem; }
+.mng-fact dt { font-size:.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); }
+.mng-fact dd { margin:.35rem 0 0; font-size:1rem; color:var(--ink); font-variant-numeric:tabular-nums; }
+.mng-status-pills { display:flex; flex-wrap:wrap; gap:.5rem; }
+.mng-status-pills button { border:1px solid var(--line-control); border-radius:999px; padding:.45rem .95rem;
+  font-size:.8rem; font-weight:600; color:var(--ink-2); background:#fff; transition:all .12s var(--ease); }
+.mng-status-pills button:hover { border-color:var(--ink); }
+.mng-status-pills button.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+
+/* ── Toasts (reutiliza colores de .notice) ── */
+#mng-flash { position:fixed; left:50%; bottom:1.5rem; translate:-50% 0; z-index:60; min-width:16rem;
+  max-width:min(30rem,92vw); padding:.85rem 1.1rem; border-radius:var(--r-sm); box-shadow:var(--shadow-card);
+  font-size:.9rem; opacity:0; pointer-events:none; transition:opacity .2s var(--ease), translate .2s var(--ease);
+  translate:-50% .6rem; }
+#mng-flash.on { opacity:1; translate:-50% 0; }
+#mng-flash.ok { background:#0f6b34; color:#fff; }
+#mng-flash.err { background:var(--out); color:#fff; }
+
+/* ── Login (reutiliza login-split del portal) ── */
+.mng-login-note { font-size:.82rem; color:var(--muted); margin:.4rem 0 0; }
+
+@media (max-width:60rem) {
+  .mng { grid-template-columns:1fr; }
+  .mng-side { position:static; height:auto; display:flex; flex-wrap:wrap; gap:.2rem; padding:.8rem;
+    border-right:none; border-bottom:1px solid var(--line); }
+  .mng-group { margin:0; display:flex; align-items:center; gap:.2rem; flex-wrap:wrap; }
+  .mng-group h3 { display:none; }
+  .mng-link { padding:.4rem .7rem; border-left:none; border-bottom:2px solid transparent; }
+  .mng-link.on { border-left:none; border-bottom-color:var(--blue); }
+  .mng-order-head { grid-template-columns:1fr 1fr; }
+
+  /* Cabecera compacta: sin ella "Salir" se salía del viewport (A1) */
+  .mng-header { gap:.55rem; padding:0 .9rem; }
+  .mng-header a.mng-portal { font-size:0; gap:0; }                         /* solo el icono (gana a la regla base) */
+  .mng-header a.mng-portal svg { width:20px; height:20px; }
+  .mng-who .who { display:none; }                                          /* rol/email fuera en móvil */
+  .mng-out { padding:.4rem .7rem; }
+}

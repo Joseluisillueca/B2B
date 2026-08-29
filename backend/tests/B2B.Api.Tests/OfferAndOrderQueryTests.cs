@@ -79,8 +79,10 @@ public class OfferAndOrderQueryTests : IClassFixture<TestWebApplicationFactory>
         var first = await _client.SendAsync(await Authenticated(HttpMethod.Delete, $"/api/catalog/offers/{offerId}"));
         var second = await _client.SendAsync(await Authenticated(HttpMethod.Delete, $"/api/catalog/offers/{offerId}"));
 
-        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        // 204 No Content (DELETE REST estándar sin cuerpo): el 200+JSON de antes rompía
+        // el HttpClient del conector. Idempotente: el segundo DELETE también da 204.
+        Assert.Equal(HttpStatusCode.NoContent, first.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, second.StatusCode);
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

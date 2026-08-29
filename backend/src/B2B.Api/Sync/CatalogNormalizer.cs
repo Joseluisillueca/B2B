@@ -39,6 +39,45 @@ public static class CatalogNormalizer
         }
     }
 
+    // Borrado desde el CMS autónomo: además de quitar el documento crudo, hay que
+    // limpiar la proyección de dominio. Con CASCADA para no dejar filas huérfanas que
+    // "resuciten" al recrear el padre (un producto/oferta/stock sin su modelo, o un
+    // stock/oferta sin su producto): al borrar un modelo se llevan sus variantes,
+    // ofertas y stock; al borrar una variante, su stock y sus ofertas.
+    public static void Remove(AppDbContext db, string entityType, string externalId)
+    {
+        switch (entityType)
+        {
+            case "model":
+                if (db.CatalogModels.SingleOrDefault(m => m.ExternalId == externalId) is { } model)
+                    db.CatalogModels.Remove(model);
+                var childProducts = db.CatalogProducts.Where(p => p.ModelExternalId == externalId).ToList();
+                foreach (var child in childProducts)
+                    db.StockLevels.RemoveRange(db.StockLevels.Where(s => s.ProductExternalId == child.ExternalId));
+                db.CatalogProducts.RemoveRange(childProducts);
+                db.Offers.RemoveRange(db.Offers.Where(o => o.ModelId == externalId));
+                break;
+            case "product":
+                if (db.CatalogProducts.SingleOrDefault(p => p.ExternalId == externalId) is { } product)
+                    db.CatalogProducts.Remove(product);
+                db.StockLevels.RemoveRange(db.StockLevels.Where(s => s.ProductExternalId == externalId));
+                db.Offers.RemoveRange(db.Offers.Where(o => o.ProductId == externalId));
+                break;
+            case "inventory":
+                db.StockLevels.RemoveRange(db.StockLevels.Where(s => s.ProductExternalId == externalId));
+                break;
+            case "service-window":
+                var key = externalId.ToLowerInvariant();
+                if (db.ServiceWindows.SingleOrDefault(w => w.ExternalId == key) is { } window)
+                    db.ServiceWindows.Remove(window);
+                break;
+            case "offer":
+                if (db.Offers.SingleOrDefault(o => o.ExternalId == externalId) is { } offer)
+                    db.Offers.Remove(offer);
+                break;
+        }
+    }
+
     // Contrato 03 §2: la URL identifica el producto; la ventana viaja en el body
     // (stockServiceId) con mayúsculas inconsistentes → clave normalizada a minúsculas.
     private static void UpsertStock(AppDbContext db, string productExternalId, JsonObject obj)

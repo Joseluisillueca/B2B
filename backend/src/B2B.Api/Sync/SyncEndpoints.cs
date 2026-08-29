@@ -228,6 +228,14 @@ public static class SyncEndpoints
     // en SQL en vez de leerse todos los pedidos del mundo (Fase 3).
     private static readonly string[] ClientOwnedDocuments = ["order", "delivery-note", "invoice"];
 
+    // Ingesta reutilizable por el CMS autónomo (Admin/EntityCrudEndpoints): guarda el
+    // MISMO documento que produciría el conector y normaliza a las tablas de dominio.
+    // No hace SaveChanges — lo hace quien llama, para poder agrupar varios upserts.
+    public static Task IngestDocumentAsync(
+        AppDbContext db, string entityType, string externalId, string? parentId, JsonNode? payload) =>
+        UpsertDocumentAsync(db, entityType, externalId, parentId,
+            payload?.ToJsonString() ?? "{}", payload, DateTime.UtcNow);
+
     private static async Task UpsertDocumentAsync(
         AppDbContext db, string entityType, string externalId, string? parentId,
         string body, JsonNode? payload, DateTime now)

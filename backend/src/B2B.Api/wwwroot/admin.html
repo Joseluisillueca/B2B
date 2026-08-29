@@ -217,6 +217,17 @@
   #modal header .muted { font-size:.78rem; }
   #modal header button { margin-left:auto; }
   #modal pre { margin:0; padding:1rem 1.2rem; overflow:auto; font-size:.8rem; line-height:1.5; }
+/* CRUD manual del CMS */
+.ed-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.9rem 1.2rem; }
+.ed-field { display:flex; flex-direction:column; gap:.25rem; min-width:0; }
+.ed-field.wide { grid-column:1 / -1; }
+.ed-field label.grow { display:flex; flex-direction:column; gap:.3rem; font-size:.82rem; font-weight:600; }
+.ed-field input, .ed-field select, .ed-field textarea {
+  font:inherit; padding:.5rem .6rem; border:2px solid var(--line,#e5e5e5); border-radius:0; background:#fff; width:100%; }
+.ed-field select[multiple] { padding:.2rem; }
+.ed-field .chk { flex-direction:row; align-items:center; gap:.4rem; }
+.ed-field .help { font-weight:400; color:#777; font-size:.75rem; }
+@media (max-width:720px){ .ed-grid { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -347,6 +358,7 @@ const VIEWS = {
     ['CP','zipCode|address.zipCode','text'], ['País','countryIsoId|address.countryIsoId','text']]},
   agentes:   { title:'Agentes comerciales', crumb:'Clientes / Agentes', type:'agent', cols:[
     ['Id','__externalId','id'], ['Nombre','name|firstName','text'], ['Email','email','text']]},
+  accesos:   { title:'Accesos / Usuarios', crumb:'Clientes / Accesos', users:true },
 
   pedidos:   { title:'Pedidos', crumb:'Pedidos / Pedidos', type:'order', cols:[
     ['Nº','externalReference|reference|__externalId','id'], ['Cliente','clientId','id'],
@@ -369,13 +381,14 @@ const VIEWS = {
 };
 
 const NAV = [
-  { title:'Dashboard', items:[['dashboard','Dashboard']] },
+  { title:'Dashboard', items:[['dashboard','Dashboard'],['manage','Portal de gestión']] },
   { title:'Productos', items:[['modelos','Modelos','model'],['productos','Productos','product'],['atributos','Atributos','attribute'],
       ['familias','Familias','family'],['categorias','Categorías','category'],['imagenes','Imágenes','model-image']] },
   { title:'Inventario y Precios', items:[['ofertas','Precios','offer'],['stocks','Stocks','inventory'],
       ['ventanas','Servicios de stock','service-window'],['almacenes','Almacenes','warehouse'],['pagos','Formas de pago','payment-method']] },
   { title:'Clientes', items:[['clientes','Clientes','client'],['grupos','Grupos de clientes','client-group'],
-      ['usuariosCliente','Usuarios de cliente','client-user'],['direcciones','Direcciones envío','shipping-address'],['agentes','Agentes comerciales','agent']] },
+      ['usuariosCliente','Usuarios de cliente','client-user'],['direcciones','Direcciones envío','shipping-address'],['agentes','Agentes comerciales','agent'],
+      ['accesos','Accesos / Usuarios']] },
   { title:'Pedidos', items:[['pedidos','Pedidos','order'],['facturas','Facturas','invoice'],['albaranes','Albaranes','delivery-note']] },
   { title:'Web', items:[['portada','Portada'],['lookbook','Lookbook'],['portal','Ver el portal']] },
   { title:'Salud', items:[['comunicacion','Comunicación BC'],['docs','Documentación API']] },
@@ -441,6 +454,8 @@ function renderNav() {
         return `<a class="nav-item" href="/docs" target="_blank">${label} ↗</a>`;
       if (key === 'portal')
         return `<a class="nav-item" href="/es/es/dashboard" target="_blank">${label} ↗</a>`;
+      if (key === 'manage')
+        return `<a class="nav-item" href="/manage/">${label} →</a>`;
       const count = key === 'comunicacion'
         ? Object.values(summary).reduce((a, s) => a + s.count, 0)
         : (type && summary[type]?.count);
@@ -479,6 +494,7 @@ function show(key) {
   else if (v.content) renderContent();
   else if (v.lookbook) renderLookbook();
   else if (v.manager) renderModelImages();
+  else if (v.users) renderUsers();
   else renderList();
 }
 
@@ -512,12 +528,15 @@ function showByType(type) {
 
 async function renderList() {
   const v = VIEWS[current];
+  const canEdit = EDITABLE.has(v.type);
   $('content').innerHTML = `
     <div class="toolbar">
       <input type="search" id="q" placeholder="Filtrar en la página actual…">
       <button class="btn-ghost" id="reload">↻ Actualizar</button>
+      ${canEdit ? `<button class="btn-primary" id="newBtn">+ Nuevo · ${esc(EDIT[v.type].singular.toLowerCase())}</button>` : ''}
       <div class="spacer"></div><span class="muted" id="count"></span>
     </div>
+    ${canEdit ? '' : '<p class="muted" style="margin:-.4rem 0 .8rem">Solo lectura: esta entidad la sincroniza el conector. Al pulsar una fila verás su JSON.</p>'}
     <div class="card">
       <div style="overflow-x:auto"><table>
         <thead><tr>${v.cols.map(c => `<th>${c[0]}</th>`).join('')}<th>Recibido</th></tr></thead>
@@ -528,6 +547,7 @@ async function renderList() {
       </div>
     </div>`;
   $('reload').onclick = () => { loadSummary(); loadPage(); };
+  if (canEdit) $('newBtn').onclick = () => gotoManage(v.type, null);
   $('q').oninput = renderRows;
   $('prev').onclick = () => { if (skip >= PAGE) { skip -= PAGE; loadPage(); } };
   $('next').onclick = () => { if (skip + PAGE < total) { skip += PAGE; loadPage(); } };
@@ -562,8 +582,516 @@ function renderRows() {
     return `<tr data-i="${i}">${cells}<td class="muted">${r.payload.__last}</td></tr>`;
   }).join('') || `<tr><td colspan="${v.cols.length+1}" class="empty">
       ${q ? 'Sin resultados con ese filtro' : 'BC todavía no ha enviado nada de este tipo'}</td></tr>`;
+  const editable = EDITABLE.has(v.type);
   document.querySelectorAll('#rows tr[data-i]').forEach(tr =>
-    tr.onclick = () => openDetail(rows[tr.dataset.i]));
+    tr.onclick = () => editable ? gotoManage(v.type, rows[tr.dataset.i].payload.__externalId)
+      : v.type === 'order' ? gotoManage('order', rows[tr.dataset.i].payload.__externalId)
+      : openDetail(rows[tr.dataset.i]));
+}
+
+/* ================= CRUD manual del CMS (portal autónomo, sin ERP) =================
+   Un solo motor dirigido por esquema: cada entidad declara sus campos y este código
+   pinta el listado + formulario, arma el MISMO JSON que mandaría el conector y hace
+   PUT /api/admin/entities/{type}/{id}. Añadir una entidad = añadir un esquema. */
+
+// Opciones estáticas de los desplegables
+const OPTS = {
+  priceType:  [['PVD','PVD (precio de venta)'],['PVP','PVP (informativo)']],
+  orderType:  [['','(todos los tipos)'],['SCHEDULED','Programación'],['REPLENISHMENT','Reposición'],['NOT_DEFINED','No definido']],
+  windowType: [['SCHEDULED','Programación'],['REPLENISHMENT','Reposición'],['NOT_DEFINED','No definido']],
+  attrType:   [['ListString','Lista de textos'],['String','Texto'],['Int','Número']],
+  attrFormat: [['List','Lista'],['Box','Caja']],
+};
+// Etiqueta legible de cada entidad al usarla como opción de un desplegable (FK)
+const OPT_LABEL = {
+  model: 'name.es_ES|externalReference', product: 'sku|name.es_ES',
+  family: 'name.es_ES', category: 'name.es_ES', 'service-window': 'name.es_ES|id',
+  'payment-method': 'name.es_ES', 'client-group': 'name.es_ES|externalReference',
+  client: 'name.es_ES|name|externalReference',
+};
+
+// Esquemas: k = ruta en el JSON · l = etiqueta · t = tipo · src = entidad origen (FK)
+// · opts = lista estática · req = obligatorio · help = ayuda. idFrom define el id del doc.
+const EDIT = {
+  model: { singular:'Modelo', idFrom:{mode:'guid'}, defaults:{ productSegments:[], attributes:{} }, fields:[
+    { k:'name', l:'Nombre', t:'i18n', req:true },
+    { k:'description', l:'Descripción', t:'area' },
+    { k:'externalReference', l:'Referencia comercial', t:'text', req:true },
+    { k:'familyId', l:'Familia', t:'sel', src:'family' },
+    { k:'active', l:'Activo', t:'bool', def:true } ]},
+
+  product: { singular:'Producto / variante', idFrom:{mode:'guid'}, defaults:{}, fields:[
+    { k:'modelId', l:'Modelo', t:'sel', src:'model', req:true },
+    { k:'name', l:'Nombre', t:'i18n', req:true },
+    { k:'sku', l:'SKU / Referencia', t:'text', req:true },
+    { k:'attributes.tallas', l:'Talla', t:'text', help:'Ej.: 38, M, U…' },
+    { k:'ean', l:'EAN / código de barras', t:'text' },
+    { k:'taxId', l:'Impuesto (taxId)', t:'text' },
+    { k:'active', l:'Activo', t:'bool', def:true } ]},
+
+  family: { singular:'Familia', idFrom:{mode:'slug', from:'code'}, defaults:{ atributes:[] }, fields:[
+    { k:'code', l:'Código', t:'text', req:true, help:'Se usa como id (en minúsculas).' },
+    { k:'name', l:'Nombre', t:'i18n', req:true } ]},
+
+  category: { singular:'Categoría', idFrom:{mode:'raw', from:'__id'}, defaults:{ models:[] }, fields:[
+    { k:'__id', l:'Id de categoría', t:'text', req:true, help:'Formato jerárquico: catalog.familia.subfamilia' },
+    { k:'name', l:'Nombre', t:'i18n', req:true },
+    { k:'search.familyIds', l:'Familias que agrupa', t:'multi', src:'family' },
+    { k:'active', l:'Activa', t:'bool', def:true } ]},
+
+  attribute: { singular:'Atributo', idFrom:{mode:'raw', from:'code'}, defaults:{}, fields:[
+    { k:'code', l:'Código', t:'text', req:true, help:'Ej.: tallas (se usa como id).' },
+    { k:'name', l:'Nombre', t:'i18n', req:true },
+    { k:'type', l:'Tipo', t:'sel', opts:'attrType', def:'ListString' },
+    { k:'visibleFormat', l:'Formato', t:'sel', opts:'attrFormat', def:'List' },
+    { k:'visibleWeb', l:'Visible en web', t:'bool', def:true },
+    { k:'values', l:'Valores', t:'valuelist', help:'Un valor por línea o separados por coma.' } ]},
+
+  offer: { singular:'Precio / oferta', idFrom:{mode:'guid'}, defaults:{ pricesPerUnit:[] }, fields:[
+    { k:'modelId', l:'Modelo', t:'sel', src:'model', req:true },
+    { k:'productId', l:'Producto (vacío = todas las tallas)', t:'sel', src:'product' },
+    { k:'priceType', l:'Tipo de precio', t:'sel', opts:'priceType', def:'PVD' },
+    { k:'basePrice', l:'Precio', t:'money', req:true },
+    { k:'stock', l:'Desde (uds mínimas)', t:'num', help:'0 = sin mínimo.' },
+    { k:'discounts.0.percent', l:'Descuento %', t:'num' },
+    { k:'clientGroupId', l:'Solo para el grupo (opcional)', t:'sel', src:'client-group' },
+    { k:'clientId', l:'Solo para el cliente (opcional)', t:'sel', src:'client' },
+    { k:'orderType', l:'Tipo de pedido', t:'sel', opts:'orderType' },
+    { k:'fromDate', l:'Válido desde', t:'date' },
+    { k:'toDate', l:'Válido hasta', t:'date' },
+    { k:'priority', l:'Prioridad', t:'num' } ]},
+
+  inventory: { singular:'Stock', idFrom:{mode:'raw', from:'__productId'}, defaults:{ type:'Inventory' }, fields:[
+    { k:'__productId', l:'Producto', t:'sel', src:'product', req:true, help:'El stock se cuelga de la variante.' },
+    { k:'stock', l:'Unidades', t:'num', req:true },
+    { k:'stockServiceId', l:'Ventana de servicio', t:'sel', src:'service-window', req:true },
+    { k:'orderType', l:'Tipo de pedido', t:'sel', opts:'orderType' },
+    { k:'entryDate', l:'Fecha de entrada', t:'date' } ]},
+
+  'service-window': { singular:'Servicio de stock', idFrom:{mode:'slug', from:'id'}, defaults:{}, fields:[
+    { k:'id', l:'Código', t:'text', req:true, help:'Se usa como id (en minúsculas).' },
+    { k:'name', l:'Nombre', t:'i18n', req:true },
+    { k:'orderType', l:'Tipo', t:'sel', opts:'windowType', def:'REPLENISHMENT' },
+    { k:'from', l:'Desde', t:'date' },
+    { k:'to', l:'Hasta', t:'date' },
+    { k:'limit', l:'Fecha límite de pedido', t:'date' } ]},
+
+  warehouse: { singular:'Almacén', idFrom:{mode:'raw', from:'code'}, defaults:{ transportIds:[], markets:['es'] }, fields:[
+    { k:'code', l:'Código', t:'text', req:true },
+    { k:'description', l:'Nombre', t:'i18n', req:true },
+    { k:'active', l:'Activo', t:'bool', def:true },
+    { k:'address.streetAddress', l:'Dirección', t:'text' },
+    { k:'address.city', l:'Ciudad', t:'text' },
+    { k:'address.province', l:'Provincia', t:'text' },
+    { k:'address.zipCode', l:'Código postal', t:'text' },
+    { k:'address.countryIsoId', l:'País (ISO)', t:'text', def:'ES' } ]},
+
+  'payment-method': { singular:'Forma de pago', idFrom:{mode:'slug', from:'externalReference'}, defaults:{}, fields:[
+    { k:'externalReference', l:'Código', t:'text', req:true },
+    { k:'name', l:'Nombre', t:'i18n', req:true },
+    { k:'order', l:'Orden en el checkout', t:'num' },
+    { k:'allowCredit', l:'Permite crédito', t:'bool' },
+    { k:'requiredForConfirm', l:'Obligatoria para confirmar', t:'bool' } ]},
+
+  'client-group': { singular:'Grupo de clientes', idFrom:{mode:'slug', from:'externalReference'}, defaults:{}, fields:[
+    { k:'externalReference', l:'Código', t:'text', req:true },
+    { k:'name', l:'Nombre', t:'i18n', req:true },
+    { k:'paymentMethods', l:'Formas de pago', t:'multi', src:'payment-method' } ]},
+
+  client: { singular:'Cliente', idFrom:{mode:'guid'}, defaults:{ markets:['es'], productSegments:[] }, fields:[
+    { k:'name', l:'Nombre comercial', t:'text', req:true },
+    { k:'externalReference', l:'Código de cliente', t:'text', req:true, help:'El nº con el que se le reconoce (aparece en su ficha).' },
+    { k:'email', l:'Email de contacto', t:'text' },
+    { k:'canShop', l:'Puede comprar', t:'bool', def:true },
+    { k:'taxId', l:'NIF / CIF', t:'text' },
+    { k:'groupIds', l:'Grupos de tarifa', t:'multi', src:'client-group' },
+    { k:'payMethods', l:'Formas de pago', t:'multi', src:'payment-method' },
+    { k:'fiscalInfo.fiscalName', l:'Razón social (facturación)', t:'text' },
+    { k:'address.streetAddress', l:'Dirección', t:'text' },
+    { k:'address.city', l:'Ciudad', t:'text' },
+    { k:'address.province', l:'Provincia', t:'text' },
+    { k:'address.zipCode', l:'Código postal', t:'text' },
+    { k:'address.countryIsoId', l:'País (ISO)', t:'text', def:'ES' } ]},
+
+  agent: { singular:'Agente comercial', idFrom:{mode:'guid'}, defaults:{ markets:['es'] }, fields:[
+    { k:'email', l:'Email', t:'text', req:true, help:'Con este email entra al portal (rol comercial).' },
+    { k:'name', l:'Nombre', t:'text', req:true },
+    { k:'culture', l:'Idioma', t:'text', def:'es_ES' },
+    { k:'clientIds', l:'Cartera de clientes', t:'multi', src:'client' } ]},
+
+  'shipping-address': { singular:'Dirección de envío', idFrom:{mode:'guid'}, parentFrom:'__clientId', defaults:{}, fields:[
+    { k:'__clientId', l:'Cliente', t:'sel', src:'client', req:true },
+    { k:'alias', l:'Alias', t:'text', req:true },
+    { k:'address.streetAddress', l:'Dirección', t:'text' },
+    { k:'address.num', l:'Número', t:'text' },
+    { k:'address.city', l:'Ciudad', t:'text' },
+    { k:'address.province', l:'Provincia', t:'text' },
+    { k:'address.zipCode', l:'Código postal', t:'text' },
+    { k:'address.countryIsoId', l:'País (ISO)', t:'text', def:'ES' } ]},
+};
+const EDITABLE = new Set(Object.keys(EDIT));
+
+// Los maestros se gestionan ahora en el NUEVO Portal de gestión (/manage), con
+// formularios cuidados y el diseño del portal. El CMS clásico redirige allí en vez de
+// abrir los formularios embebidos (retirados). Mapa entityType → slug de /manage.
+const MSLUG = { model:'models', product:'products', offer:'offers', inventory:'inventory',
+  'service-window':'service-windows', category:'categories', family:'families', attribute:'attributes',
+  warehouse:'warehouses', 'payment-method':'payment-methods', 'client-group':'client-groups',
+  client:'clients', agent:'agents', order:'orders', 'shipping-address':'clients' };
+const gotoManage = (type, id) => {
+  const slug = MSLUG[type] || '';
+  location.href = '/manage/#/' + slug + (id ? '/edit/' + encodeURIComponent(id) : '/new');
+};
+
+/* ---- utilidades de esquema ---- */
+const LOCS4 = ['es_ES','en_EN','fr_FR','it_IT'];
+const slugify = s => String(s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+
+function setPath(obj, path, val) {
+  const keys = path.split('.');
+  let o = obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const k = keys[i], nextIdx = /^\d+$/.test(keys[i+1]);
+    if (o[k] == null) o[k] = nextIdx ? [] : {};
+    o = o[k];
+  }
+  o[keys[keys.length - 1]] = val;
+}
+
+// Opciones de FK: se cargan una vez por tipo y se cachean
+const optionsCache = {};
+async function loadFkOptions(type) {
+  if (optionsCache[type]) return optionsCache[type];
+  const q = new URLSearchParams({ entityType: type, take: 200, includePayload: true });
+  const data = await api('/api/admin/sync-documents?' + q).catch(() => ({ items: [] }));
+  const label = OPT_LABEL[type] || '__externalId';
+  optionsCache[type] = (data.items || []).map(d => {
+    let p = {}; try { p = JSON.parse(d.payload); } catch {}
+    if (Array.isArray(p)) p = p[0] ?? {};
+    p.__externalId = d.externalId;
+    return { value: d.externalId, label: pick(p, label) || d.externalId };
+  }).sort((a, b) => String(a.label).localeCompare(String(b.label)));
+  return optionsCache[type];
+}
+
+/* ---- editor ---- */
+let editing = null;   // { type, id (o null si nuevo), payload }
+
+async function openEditor(type, row) {
+  editing = {
+    type,
+    id: row ? row.payload.__externalId : null,
+    parentId: row ? (row.payload.__parentId || null) : null,
+    payload: row ? structuredClone(stripMeta(row.payload)) : {},
+  };
+  // Precarga de todas las FK que use el esquema
+  const srcs = [...new Set(EDIT[type].fields.filter(f => f.src).map(f => f.src))];
+  await Promise.all(srcs.map(loadFkOptions));
+  paintEditor();
+}
+const stripMeta = p => { const c = { ...p }; for (const k of Object.keys(c)) if (k.startsWith('__')) delete c[k]; return c; };
+
+function paintEditor() {
+  const sc = EDIT[editing.type], p = editing.payload;
+  const title = editing.id ? `Editar ${sc.singular.toLowerCase()}` : `Nuevo · ${sc.singular.toLowerCase()}`;
+  $('content').innerHTML = `
+    <div class="toolbar">
+      <button class="btn-ghost" id="edBack">← Volver al listado</button>
+      <div class="spacer"></div>
+      ${editing.id ? `<span class="muted">id: <code class="id" title="${esc(editing.id)}">${esc(String(editing.id).slice(0,12))}…</code></span>` : ''}
+    </div>
+    <div class="card block">
+      <header><h2>${title}</h2>
+        <div class="spacer"></div>
+        <span class="block-actions">
+          ${editing.id ? '<button class="btn-ghost" id="edDelete">Eliminar</button>' : ''}
+          <button class="btn-ghost" id="edRaw">Avanzado (JSON)</button>
+          <button class="btn-primary" id="edSave">Guardar</button>
+        </span>
+      </header>
+      <div class="ed-grid">${sc.fields.map(f => fieldHtml(f, p)).join('')}</div>
+      <div id="edRawBox" style="display:none;margin-top:1rem">
+        <label class="grow">JSON completo (lo que se guardará; edítalo con cuidado)
+          <textarea id="edRawText" rows="12" style="width:100%;font-family:monospace"></textarea></label>
+      </div>
+    </div>`;
+  $('edBack').onclick = () => show(current);
+  $('edSave').onclick = saveEditor;
+  $('edRaw').onclick = toggleRaw;
+  if (editing.id) $('edDelete').onclick = deleteEditor;
+}
+
+function fieldHtml(f, p) {
+  const cur = f.k.startsWith('__') ? '' : dig(p, f.k);
+  const id = 'f_' + f.k.replace(/[^a-z0-9]/gi, '_');
+  const help = f.help ? `<span class="help">${esc(f.help)}</span>` : '';
+  const wide = (f.t === 'area' || f.t === 'valuelist' || f.t === 'multi') ? ' wide' : '';
+  let control;
+  if (f.t === 'bool') {
+    const on = cur === undefined ? !!f.def : !!cur;
+    control = `<label class="chk"><input type="checkbox" id="${id}" ${on ? 'checked' : ''}> ${esc(f.l)}</label>`;
+    return `<div class="ed-field${wide}">${control}${help}</div>`;
+  }
+  if (f.t === 'i18n')      control = `<input type="text" id="${id}" value="${esc(pick(p, f.k + '.es_ES') ?? '')}">`;
+  else if (f.t === 'area') control = `<textarea id="${id}" rows="3">${esc(pick(p, f.k + '.es_ES') ?? (typeof cur === 'string' ? cur : ''))}</textarea>`;
+  else if (f.t === 'num')  control = `<input type="number" step="any" id="${id}" value="${esc(f.k.includes('.') ? (dig(p, f.k) ?? '') : (cur ?? ''))}">`;
+  else if (f.t === 'date') control = `<input type="date" id="${id}" value="${esc(String(cur || '').slice(0,10))}">`;
+  else if (f.t === 'money') control = `<input type="number" step="any" id="${id}" value="${esc(dig(p, f.k + '.value') ?? '')}">`;
+  else if (f.t === 'valuelist') {
+    const vals = Array.isArray(cur) ? cur.map(v => (v && typeof v === 'object') ? v.id : v).join('\n') : '';
+    control = `<textarea id="${id}" rows="4">${esc(vals)}</textarea>`;
+  }
+  else if (f.t === 'sel' || f.t === 'multi') {
+    const opts = f.opts ? OPTS[f.opts] : (optionsCache[f.src] || []).map(o => [o.value, o.label]);
+    const selected = f.t === 'multi' ? (Array.isArray(cur) ? cur.map(String) : []) : String(cur ?? '');
+    const optHtml = (f.t === 'sel' && !f.req && !f.opts ? [['','—']] : []).concat(opts)
+      .map(([v, l]) => `<option value="${esc(v)}" ${f.t === 'multi' ? (selected.includes(String(v)) ? 'selected' : '') : (selected === String(v) ? 'selected' : '')}>${esc(l)}</option>`).join('');
+    control = `<select id="${id}" ${f.t === 'multi' ? 'multiple size="4"' : ''}>${optHtml}</select>`;
+  }
+  else control = `<input type="text" id="${id}" value="${esc(cur ?? '')}">`;
+  return `<div class="ed-field${wide}"><label class="grow">${esc(f.l)}${f.req ? ' *' : ''}${control}</label>${help}</div>`;
+}
+
+function collectPayload() {
+  const sc = EDIT[editing.type];
+  const p = structuredClone({ ...(sc.defaults || {}), ...editing.payload });
+  for (const f of sc.fields) {
+    const el = $('f_' + f.k.replace(/[^a-z0-9]/gi, '_'));
+    if (!el) continue;
+    if (f.t === 'bool') { setPath(p, f.k, el.checked); continue; }
+    if (f.k.startsWith('__')) { p[f.k] = el.value.trim(); continue; }   // solo para el id; se quita luego
+    const raw = el.value;
+    if (f.t === 'i18n' || f.t === 'area') {
+      const v = raw.trim();
+      if (f.t === 'i18n') { const o = {}; for (const l of LOCS4) o[l] = v; setPath(p, f.k, o); }
+      else { const o = {}; for (const l of LOCS4) o[l] = v; setPath(p, f.k, o); }
+    } else if (f.t === 'num') { setPath(p, f.k, raw === '' ? 0 : Number(raw)); }
+    else if (f.t === 'money') { setPath(p, f.k, { code:'EUR', value: raw === '' ? 0 : Number(raw) }); }
+    else if (f.t === 'multi') { setPath(p, f.k, [...el.selectedOptions].map(o => o.value).filter(Boolean)); }
+    else if (f.t === 'valuelist') {
+      const items = raw.split(/[\n,]/).map(s => s.trim()).filter(Boolean).map((id, order) => ({ order, id }));
+      setPath(p, f.k, items);
+    }
+    else if (f.t === 'sel') { if (raw) setPath(p, f.k, raw); else if (dig(p, f.k) !== undefined) setPath(p, f.k, null); }
+    else { const v = raw.trim(); if (v || dig(p, f.k) !== undefined) setPath(p, f.k, v); }
+  }
+  return p;
+}
+
+function computeId(p) {
+  if (editing.id) return editing.id;                 // editar: nunca se regenera
+  const src = EDIT[editing.type].idFrom;
+  if (src.mode === 'guid') return (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+  const base = String(dig(p, src.from) || '').trim();
+  return src.mode === 'slug' ? slugify(base) : base;
+}
+
+async function saveEditor() {
+  try {
+    let p;
+    if ($('edRawBox').style.display !== 'none') {
+      p = JSON.parse($('edRawText').value);           // modo avanzado: manda el JSON tal cual
+    } else {
+      p = collectPayload();
+      const missing = EDIT[editing.type].fields.filter(f => f.req).find(f => {
+        const el = $('f_' + f.k.replace(/[^a-z0-9]/gi, '_'));
+        return !el || (f.t === 'multi' ? ![...el.selectedOptions].length : !String(el.value).trim());
+      });
+      if (missing) { flash(`Falta un campo obligatorio: ${missing.l}`, 'err'); return; }
+    }
+    const sc = EDIT[editing.type];
+    const parentId = sc.parentFrom ? (String(p[sc.parentFrom] || '').trim() || null) : (editing.parentId || null);
+    const id = computeId(p);
+    if (!id) { flash('No se pudo determinar el id del registro.', 'err'); return; }
+    for (const k of Object.keys(p)) if (k.startsWith('__')) delete p[k];   // limpia campos auxiliares
+    const url = `/api/admin/entities/${editing.type}/${encodeURIComponent(id)}`
+      + (parentId ? `?parentId=${encodeURIComponent(parentId)}` : '');
+    await apiSend('PUT', url, p);
+    flash(`${EDIT[editing.type].singular}: guardado.`);
+    optionsCache[editing.type] = null;                // la FK pudo cambiar
+    editing = null;
+    show(current);
+  } catch (e) { flash(e.message, 'err'); }
+}
+
+async function deleteEditor() {
+  if (!confirm(`¿Eliminar este registro? Desaparecerá del portal.`)) return;
+  try {
+    await apiSend('DELETE', `/api/admin/entities/${editing.type}/${encodeURIComponent(editing.id)}`);
+    flash(`${EDIT[editing.type].singular}: eliminado.`);
+    optionsCache[editing.type] = null;
+    editing = null;
+    show(current);
+  } catch (e) { flash(e.message, 'err'); }
+}
+
+function toggleRaw() {
+  const box = $('edRawBox');
+  if (box.style.display === 'none') {
+    $('edRawText').value = JSON.stringify(collectPayload(), null, 2);
+    box.style.display = '';
+  } else box.style.display = 'none';
+}
+
+/* ---------- Gestión de estado de pedidos (portal autónomo) ---------- */
+const ORDER_STATUSES = [
+  ['open','Abierto'],['shipped','Enviado'],['partially-shipped','Envío parcial'],
+  ['invoiced','Facturado'],['canceled','Cancelado']];
+
+function openOrderPanel(row) {
+  const p = row.payload;
+  const id = p.__externalId;
+  const cur = String(pick(p, 'status') || 'open');
+  const num = pick(p, 'externalReference') || id;
+  const items = Array.isArray(p.items) ? p.items : [];
+  const total = pick(p, 'totals.total.value');
+  const money = v => v == null ? '—' : Number(v).toLocaleString('es-ES', { minimumFractionDigits:2 }) + ' €';
+  const rows = items.map(it => {
+    const info = it?.transactionInfo?.info || {};
+    return `<tr><td>${esc(pick(it,'productName.es_ES|productInfo.name.es_ES') || '')}</td>
+      <td>${esc(pick(it,'productInfo.sku') || '')}</td>
+      <td>${esc(info.quantity ?? '')}</td>
+      <td>${money(info.price?.value)}</td>
+      <td>${money(info.amount?.value)}</td></tr>`;
+  }).join('') || '<tr><td colspan="5" class="empty">Sin líneas</td></tr>';
+
+  $('content').innerHTML = `
+    <div class="toolbar">
+      <button class="btn-ghost" id="ordBack">← Volver a pedidos</button>
+      <div class="spacer"></div>
+      <span class="muted">Origen: ${esc(pick(p,'source') || 'ERP')}</span>
+    </div>
+    <div class="card block">
+      <header><h2>Pedido ${esc(num)}</h2>
+        <div class="spacer"></div>
+        <span class="block-actions">
+          <label class="grow" style="font-size:.82rem;font-weight:600">Estado
+            <select id="ordStatus">${ORDER_STATUSES.map(([v,l]) =>
+              `<option value="${v}" ${v===cur?'selected':''}>${l}</option>`).join('')}</select></label>
+          <button class="btn-primary" id="ordSave" style="align-self:end">Guardar estado</button>
+          <button class="del" id="ordDel" style="align-self:end">Eliminar</button>
+        </span>
+      </header>
+      <div class="ed-grid">
+        <div class="ed-field"><label class="grow">Ref. de cliente<input value="${esc(pick(p,'purchaseOrderId|reference')||'')}" disabled></label></div>
+        <div class="ed-field"><label class="grow">Forma de pago<input value="${esc(pick(p,'payMethodId')||'')}" disabled></label></div>
+        <div class="ed-field"><label class="grow">Fecha<input value="${esc(String(pick(p,'orderedDate')||'').slice(0,10))}" disabled></label></div>
+        <div class="ed-field"><label class="grow">Total<input value="${money(total)}" disabled></label></div>
+      </div>
+      <div style="overflow-x:auto;margin-top:1rem"><table>
+        <thead><tr><th>Artículo</th><th>SKU</th><th>Uds</th><th>Precio</th><th>Importe</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>
+    </div>`;
+  $('ordBack').onclick = () => show(current);
+  $('ordSave').onclick = async () => {
+    try {
+      await apiSend('PUT', `/api/admin/orders/${encodeURIComponent(id)}/status`, { status: $('ordStatus').value });
+      flash('Estado del pedido actualizado.');
+      show(current);
+    } catch (e) { flash(e.message, 'err'); }
+  };
+  $('ordDel').onclick = async () => {
+    if (!confirm('¿Eliminar este pedido? Desaparecerá del portal.')) return;
+    try {
+      await apiSend('DELETE', `/api/admin/orders/${encodeURIComponent(id)}`);
+      flash('Pedido eliminado.');
+      show(current);
+    } catch (e) { flash(e.message, 'err'); }
+  };
+}
+
+/* ---------- Accesos / Usuarios (portal autónomo) ---------- */
+const USER_ROLES = [['admin','Administrador CMS'],['client-admin','Usuario de cliente'],
+  ['agent','Comercial'],['integration','Integración']];
+let usersList = [];
+
+async function renderUsers() {
+  $('content').innerHTML = '<p class="muted">Cargando accesos…</p>';
+  try { usersList = (await api('/api/admin/users')).items || []; } catch { return; }
+  await loadFkOptions('client').catch(() => {});
+  paintUsers();
+}
+
+function paintUsers() {
+  const roleLabel = r => (USER_ROLES.find(x => x[0] === r) || [r, r])[1];
+  const clientOpts = (optionsCache['client'] || []);
+  const rows = usersList.map(u => `
+    <tr data-id="${u.id}">
+      <td>${esc(u.email)}</td>
+      <td><span class="chip plain">${esc(roleLabel(u.role))}</span></td>
+      <td>${esc(u.name || '—')}</td>
+      <td>${u.clientExternalId ? shortId(u.clientExternalId) : '—'}</td>
+      <td>${u.hasPassword ? '<span class="chip ok">Con contraseña</span>' : '<span class="chip err">Sin contraseña</span>'}</td>
+      <td>${u.isActive ? '<span class="chip ok">Activo</span>' : '<span class="chip err">Inactivo</span>'}</td>
+      <td class="u-actions">
+        <button class="btn-ghost" data-act="pwd">Contraseña</button>
+        <button class="btn-ghost" data-act="activate">Activar por email</button>
+        <button class="del" data-act="del">Eliminar</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="7" class="empty">Todavía no hay accesos.</td></tr>';
+
+  $('content').innerHTML = `
+    <div class="card block">
+      <header><h2>Nuevo acceso</h2><span class="help">Da de alta quién entra al portal: admin del CMS, usuario de un cliente o comercial.</span></header>
+      <div class="ed-grid">
+        <div class="ed-field"><label class="grow">Email *<input id="u_email" type="email"></label></div>
+        <div class="ed-field"><label class="grow">Rol *<select id="u_role">${USER_ROLES.map(([v,l]) => `<option value="${v}">${l}</option>`).join('')}</select></label></div>
+        <div class="ed-field"><label class="grow">Nombre<input id="u_name" type="text"></label></div>
+        <div class="ed-field"><label class="grow">Idioma<input id="u_culture" type="text" value="es_ES"></label></div>
+        <div class="ed-field"><label class="grow">Cliente (para usuario de cliente)
+          <select id="u_client"><option value="">—</option>${clientOpts.map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('')}</select></label></div>
+        <div class="ed-field"><label class="grow">Contraseña (vacío = enviar activación)<input id="u_pwd" type="text" autocomplete="off"></label></div>
+      </div>
+      <div style="margin-top:.8rem"><button class="btn-primary" id="u_create">Crear acceso</button></div>
+    </div>
+    <div class="card block">
+      <header><h2>Accesos (${usersList.length})</h2></header>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>Email</th><th>Rol</th><th>Nombre</th><th>Cliente</th><th>Contraseña</th><th>Estado</th><th></th></tr></thead>
+        <tbody>${rows}</tbody></table></div>
+    </div>`;
+
+  $('u_create').onclick = createUser;
+  document.querySelectorAll('#content tr[data-id] [data-act]').forEach(b =>
+    b.onclick = () => userAction(b.closest('tr').dataset.id, b.dataset.act));
+}
+
+async function createUser() {
+  const body = {
+    email: $('u_email').value.trim(),
+    role: $('u_role').value,
+    name: $('u_name').value.trim() || null,
+    culture: $('u_culture').value.trim() || null,
+    clientExternalId: $('u_client').value || null,
+    password: $('u_pwd').value.trim() || null,
+    sendActivation: !$('u_pwd').value.trim(),
+  };
+  if (!body.email) { flash('Indica el email.', 'err'); return; }
+  try {
+    await apiSend('POST', '/api/admin/users', body);
+    flash(body.password ? 'Acceso creado con contraseña.' : 'Acceso creado; se ha enviado el email de activación.');
+    optionsCache['client'] = optionsCache['client'];
+    renderUsers();
+  } catch (e) { flash(e.message, 'err'); }
+}
+
+async function userAction(id, act) {
+  try {
+    if (act === 'del') {
+      if (!confirm('¿Eliminar este acceso? El usuario ya no podrá entrar.')) return;
+      await apiSend('DELETE', `/api/admin/users/${id}`);
+      flash('Acceso eliminado.');
+    } else if (act === 'pwd') {
+      const pwd = prompt('Nueva contraseña para este acceso:');
+      if (!pwd) return;
+      await apiSend('PUT', `/api/admin/users/${id}`, { password: pwd });
+      flash('Contraseña actualizada.');
+    } else if (act === 'activate') {
+      await apiSend('PUT', `/api/admin/users/${id}`, { sendActivation: true });
+      flash('Email de activación enviado.');
+    }
+    renderUsers();
+  } catch (e) { flash(e.message, 'err'); }
 }
 
 /* ---------- Web / Portada (portal_content) ---------- */
