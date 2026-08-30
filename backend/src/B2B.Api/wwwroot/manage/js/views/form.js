@@ -4,7 +4,7 @@
 import { SCHEMAS, OPTS } from '../schemas.js';
 import { icons } from '../icons.js';
 import { api } from '../api.js';
-import { esc, dig, setPath, delPath, slugify, i18nObject, fkOptions, flash, invalidateOptions } from '../util.js';
+import { esc, dig, setPath, delPath, slugify, i18nObject, fkOptions, flash, invalidateOptions, showJson } from '../util.js';
 import { go } from '../router.js';
 
 const SLUG = { model: 'models', product: 'products', offer: 'offers', inventory: 'inventory',
@@ -15,9 +15,9 @@ export default async function form(main, type, id) {
   const sc = SCHEMAS[type];
   const editing = !!id;
   const article = sc.fem ? 'Nueva' : 'Nuevo';
-  let payload = {};
+  let payload = {}, rawPayload = null;
   if (editing) {
-    try { payload = JSON.parse((await api.doc(type, id)).payload); } catch { payload = {}; }
+    try { const d = await api.doc(type, id); rawPayload = d.payload; payload = JSON.parse(d.payload); } catch { payload = {}; }
     if (Array.isArray(payload)) payload = payload[0] ?? {};
     // Ofertas del conector llegan envueltas en offerData{}: se aplanan para prefijar el form
     if (type === 'offer' && payload.offerData) payload = { ...payload, ...payload.offerData };
@@ -36,6 +36,7 @@ export default async function form(main, type, id) {
         <p class="crumbs"><a href="#/${SLUG[type]}">${esc(sc.plural)}</a> · <span>${editing ? 'Editar' : article}</span></p>
         <h1 class="title">${editing ? 'Editar' : article} ${esc(sc.singular)}</h1>
       </div>
+      ${editing ? `<button type="button" class="btn-ghost" id="viewJson">${icons.list ? icons.list(15) : ''} Ver JSON recibido</button>` : ''}
     </div>
     <form class="mng-form nc-form" id="f" novalidate>
       <div id="notice"></div>
@@ -50,6 +51,13 @@ export default async function form(main, type, id) {
 
   const formEl = main.querySelector('#f');
   const notice = main.querySelector('#notice');
+
+  // "Ver JSON recibido": el payload original que envió Business Central para esta ficha,
+  // sin salir a Comunicación BC (trazabilidad a un clic).
+  const jsonBtn = main.querySelector('#viewJson');
+  if (jsonBtn) jsonBtn.onclick = () =>
+    showJson(`${cap(sc.singular)} · ${id}`, rawPayload ?? payload,
+      rawPayload ? 'JSON recibido de Business Central' : 'Datos actuales de la ficha (creada en el portal)');
 
   function sectionHtml(section) {
     return `

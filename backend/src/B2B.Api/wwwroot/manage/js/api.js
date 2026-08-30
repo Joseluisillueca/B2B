@@ -4,9 +4,7 @@
 const TOKEN = 'mng_token', WHO = 'mng_who';
 
 export const auth = {
-  // Reutiliza también el token del CMS clásico (admin.html usa `b2b_token`) para que,
-  // al venir de allí, no haya que iniciar sesión otra vez.
-  get token() { return sessionStorage.getItem(TOKEN) || sessionStorage.getItem('b2b_token') || ''; },
+  get token() { return sessionStorage.getItem(TOKEN) || ''; },
   set token(v) { v ? sessionStorage.setItem(TOKEN, v) : sessionStorage.removeItem(TOKEN); },
   get who() { return sessionStorage.getItem(WHO) || ''; },
   set who(v) { v ? sessionStorage.setItem(WHO, v) : sessionStorage.removeItem(WHO); },
@@ -51,6 +49,9 @@ export const api = {
   summary: () => request('GET', '/api/admin/summary'),
   docs: type => request('GET', `/api/admin/sync-documents?entityType=${encodeURIComponent(type)}&take=500&includePayload=true`),
   doc: (type, id) => request('GET', `/api/admin/sync-documents/${encodeURIComponent(type)}/${encodeURIComponent(id)}`),
+  // Documentos recibidos (Comunicación BC), sin filtrar por tipo. El servidor capa `take`
+  // a 200: quien lo llame debe paginar con `skip` hasta agotar `total`.
+  allDocs: (skip = 0, take = 200) => request('GET', `/api/admin/sync-documents?skip=${skip}&take=${take}&includePayload=true`),
   saveEntity: (type, id, body, parentId) =>
     request('PUT', `/api/admin/entities/${encodeURIComponent(type)}/${encodeURIComponent(id)}`
       + (parentId ? `?parentId=${encodeURIComponent(parentId)}` : ''), body),

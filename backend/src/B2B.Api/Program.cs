@@ -168,7 +168,9 @@ app.MapGet("/", () => Results.Content(
     </body></html>
     """, "text/html"));
 
-app.MapGet("/admin", () => Results.Redirect("/admin.html"));
+// El CMS se unificó en GESTIÓN: /admin va directo al back-office (admin.html queda solo
+// como redirect para marcadores antiguos).
+app.MapGet("/admin", () => Results.Redirect("/manage/index.html"));
 // /manage y /manage/ → el shell del back-office. Se apunta al index.html explícito:
 // el routing normaliza la barra final, así que redirigir a "/manage/" se auto-invocaría
 // en bucle. (El SPA usa hash routing, así que index.html#/… funciona igual.)

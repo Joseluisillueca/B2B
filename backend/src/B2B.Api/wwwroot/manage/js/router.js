@@ -48,6 +48,11 @@ export async function resolve() {
     if (view === 'connections') return await connectionsView(main);
     if (view === 'doc-sources') return await docSourcesView(main);
     if (view === 'orders') return parts[1] ? await orderView(main, parts[1]) : await ordersView(main);
+    // Contenido web + comunicación (vistas nativas portadas del antiguo CMS). Import
+    // dinámico: si un módulo aún no existe, solo falla su ruta, no todo el back-office.
+    if (view === 'received') return await (await import('./views/received.js')).default(main);
+    if (view === 'content') return await (await import('./views/content.js')).default(main);
+    if (view === 'lookbook') return await (await import('./views/lookbook.js')).default(main);
     if (view === 'clients') {
       if (parts[1] === 'new') return await clientView(main, null);
       if (parts[1] === 'edit') return await clientView(main, parts[2]);

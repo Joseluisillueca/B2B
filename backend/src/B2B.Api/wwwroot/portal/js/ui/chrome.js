@@ -52,11 +52,11 @@ const AGENT_GROUPS = [
 ];
 
 const SOCIAL = [
-  ['facebook', 'https://www.facebook.com/lejanbrand'],
-  ['instagram', 'https://www.instagram.com/lejanbrand'],
-  ['linkedin', 'https://www.linkedin.com/company/lejanbrand'],
-  ['youtube', 'https://www.youtube.com/@lejanbrand'],
-  ['tiktok', 'https://www.tiktok.com/@lejanbrand']
+  ['facebook', 'https://www.facebook.com/mitoprojects'],
+  ['instagram', 'https://www.instagram.com/mitoprojects'],
+  ['linkedin', 'https://www.linkedin.com/company/mitoprojects'],
+  ['youtube', 'https://www.youtube.com/@mitoprojects'],
+  ['tiktok', 'https://www.tiktok.com/@mitoprojects']
 ];
 
 const windowLabel = () => t(`window.${state.prefs.window}`).toUpperCase();

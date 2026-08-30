@@ -14,10 +14,7 @@ export function renderShell() {
   app.innerHTML = `
     <header class="mng-header">
       <a class="brand" href="#/dashboard">MITO PROJECTS<sup>™</sup></a>
-      <nav class="mng-switch" aria-label="Área del back-office">
-        <a class="mng-seg on" href="#/dashboard" aria-current="page">Gestión</a>
-        <a class="mng-seg" href="/admin.html">CMS</a>
-      </nav>
+      <span class="mng-tag">Back-office</span>
       <span class="spacer"></span>
       <a class="mng-portal" href="/es/es/dashboard" target="_blank" rel="noopener">Ver el portal ↗</a>
       <div class="mng-who">

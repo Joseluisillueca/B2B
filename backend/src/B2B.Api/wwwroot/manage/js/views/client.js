@@ -4,7 +4,7 @@
 // cliente del portal (views/new-client.js), con el mismo lenguaje visual.
 import { api } from '../api.js';
 import { icons } from '../icons.js';
-import { esc, dig, setPath, delPath, fkOptions, flash, invalidateOptions } from '../util.js';
+import { esc, dig, setPath, delPath, fkOptions, flash, invalidateOptions, showJson } from '../util.js';
 
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
 import { go } from '../router.js';
@@ -34,9 +34,10 @@ const addressFields = (prefix, a = {}) => `
 export default async function client(main, id) {
   const editing = !!id;
   let c = {};
+  let rawPayload = null;
   let addresses = [];   // {id, payload}
   if (editing) {
-    try { c = JSON.parse((await api.doc('client', id)).payload); } catch { c = {}; }
+    try { const d = await api.doc('client', id); rawPayload = d.payload; c = JSON.parse(d.payload); } catch { c = {}; }
     if (Array.isArray(c)) c = c[0] ?? {};
     const all = await api.docs('shipping-address').catch(() => ({ items: [] }));
     addresses = (all.items || []).filter(d => d.parentId === id).map(d => {
@@ -56,6 +57,7 @@ export default async function client(main, id) {
         <h1 class="title">${editing ? esc(c.name || 'Cliente') : 'Nuevo cliente'}</h1>
         <p class="lead">Todo lo que el portal necesita del cliente: identificación, fiscalidad, direcciones de envío y condiciones comerciales.</p>
       </div>
+      ${editing ? `<button type="button" class="btn-ghost" id="viewJson">${icons.list ? icons.list(15) : ''} Ver JSON recibido</button>` : ''}
     </div>
     <form class="mng-form nc-form" id="f" novalidate>
       <div id="notice"></div>
@@ -121,6 +123,11 @@ export default async function client(main, id) {
 
   const formEl = main.querySelector('#f');
   const notice = main.querySelector('#notice');
+
+  const jsonBtn = main.querySelector('#viewJson');
+  if (jsonBtn) jsonBtn.onclick = () =>
+    showJson(`Cliente · ${id}`, rawPayload ?? c,
+      rawPayload ? 'JSON recibido de Business Central' : 'Datos actuales de la ficha (creada en el portal)');
   const shipHost = main.querySelector('#shipHost');
   const removedAddrIds = [];
 
