@@ -12,9 +12,15 @@ import { go } from '../router.js';
 const COUNTRIES = [['ES', 'España'], ['PT', 'Portugal'], ['FR', 'Francia'], ['IT', 'Italia'],
   ['DE', 'Alemania'], ['GB', 'Reino Unido'], ['NL', 'Países Bajos'], ['BE', 'Bélgica'], ['US', 'EE. UU.']];
 
-const field = (name, label, value = '', { type = 'text', wide = false } = {}) => `
+const field = (name, label, value = '', { type = 'text', wide = false, hint = '' } = {}) => `
   <p class="acc-field${wide ? ' wide' : ''}"><label><span>${esc(label)}</span>
-    <input type="${type}" data-key="${esc(name)}" value="${esc(value ?? '')}" maxlength="200"></label></p>`;
+    <input type="${type}" data-key="${esc(name)}" value="${esc(value ?? '')}" maxlength="200"></label>${hint ? `<span class="acc-hint">${esc(hint)}</span>` : ''}</p>`;
+
+// Select atado a un `data-key` (se recoge igual que un input en collectClient).
+const selectField = (name, label, value, options, { wide = false } = {}) => `
+  <p class="acc-field${wide ? ' wide' : ''}"><label><span>${esc(label)}</span>
+    <select data-key="${esc(name)}">${options.map(([v, l]) =>
+      `<option value="${v}"${v === (value || options[0][0]) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label></p>`;
 
 const countrySelect = (name, value = 'ES') => `
   <p class="acc-field"><label><span>País</span>
@@ -49,6 +55,7 @@ export default async function client(main, id) {
   const chosenGroups = (Array.isArray(c.groupIds) ? c.groupIds : []).map(String);
   const chosenMethods = (Array.isArray(c.payMethods) ? c.payMethods : []).map(x => String(typeof x === 'object' ? (x.id || x.code || '') : x));
   const fiscal = c.fiscalInfo || {};
+  const credit = c.creditInfo || {};
 
   main.innerHTML = `
     <div class="mng-page-head">
@@ -70,7 +77,7 @@ export default async function client(main, id) {
             ${field('externalReference', 'Código de cliente *', c.externalReference)}
             ${field('email', 'Email de contacto', c.email, { type: 'email' })}
             ${field('web', 'Web', c.web, { type: 'url' })}
-            ${field('taxId', 'NIF / CIF', c.taxId)}
+            ${field('taxId', 'Grupo de IVA / Impuesto', c.taxId, { hint: 'Código del grupo de IVA, p. ej. iva-general' })}
             ${field('phone', 'Teléfono', typeof c.phone === 'string' ? c.phone : (c.phone?.number || ''))}
           </div>
           <p class="acc-field"><label class="mng-check">
@@ -84,7 +91,9 @@ export default async function client(main, id) {
           <div class="biz-grid">
             ${field('fiscalInfo.fiscalName', 'Razón social', fiscal.fiscalName)}
             ${field('fiscalInfo.alias', 'Alias', fiscal.alias)}
-            ${field('fiscalInfo.fiscalId.document', 'NIF fiscal', fiscal.fiscalId?.document)}
+            ${field('fiscalInfo.fiscalId.document', 'NIF / CIF', fiscal.fiscalId?.document)}
+            ${selectField('fiscalInfo.fiscalId.type', 'Tipo de identificador', fiscal.fiscalId?.type,
+              [['nif', 'NIF'], ['cif', 'CIF'], ['nie', 'NIE'], ['other', 'Otro']])}
           </div>
           <p class="mng-subhead">Dirección fiscal</p>
           ${addressFields('fiscalInfo.address', fiscal.address || {})}
@@ -103,10 +112,18 @@ export default async function client(main, id) {
       <section class="biz-section">
         <header class="acc-head biz-head"><h2>${icons.users(20)}Condiciones comerciales</h2></header>
         <div class="biz-card">
-          <p class="acc-field wide"><label><span>Grupos de tarifa</span></label>
+          <p class="acc-field wide"><label><span>Grupos de clientes</span></label>
             <div class="mng-multi" id="groups">${groups.length ? groups.map(o =>
               `<label><input type="checkbox" value="${esc(o.value)}"${chosenGroups.includes(String(o.value)) ? ' checked' : ''}> ${esc(o.label)}</label>`).join('')
               : '<span class="mng-multi-empty">No hay grupos. Créalos en «Grupos».</span>'}</div></p>
+          <div class="biz-grid" style="margin-top:1rem">
+            <p class="acc-field"><label><span>Límite de crédito (€)</span>
+              <input type="number" id="creditVal" min="0" step="0.01" value="${esc(credit.value ?? '')}"></label>
+              <span class="acc-hint">Deja vacío si no aplica. Se guarda en euros.</span></p>
+            <p class="acc-field"><label><span>Segmentos de producto</span>
+              <input type="text" id="segments" value="${esc((Array.isArray(c.productSegments) ? c.productSegments : []).join(', '))}" maxlength="200"></label>
+              <span class="acc-hint">Separados por comas, p. ej. A+, premium.</span></p>
+          </div>
           <p class="acc-field wide" style="margin-top:1rem"><label><span>Formas de pago disponibles</span></label>
             <div class="mng-multi" id="methods">${methods.length ? methods.map(o =>
               `<label><input type="checkbox" value="${esc(o.value)}" data-name="${esc(o.label)}"${chosenMethods.includes(String(o.value)) ? ' checked' : ''}> ${esc(o.label)}</label>`).join('')
@@ -207,6 +224,15 @@ export default async function client(main, id) {
     }
     body.groupIds = [...main.querySelectorAll('#groups input:checked')].map(i => i.value);
     body.payMethods = [...main.querySelectorAll('#methods input:checked')].map(i => ({ id: i.value, name: i.dataset.name }));
+
+    // Límite de crédito → objeto { code:'EUR', value:<num> }; vacío/ inválido → sin fijar.
+    const creditRaw = (main.querySelector('#creditVal')?.value ?? '').trim();
+    if (creditRaw !== '' && !Number.isNaN(Number(creditRaw))) body.creditInfo = { code: 'EUR', value: Number(creditRaw) };
+    else delete body.creditInfo;
+
+    // Segmentos de producto → array de strings (texto libre separado por comas).
+    body.productSegments = (main.querySelector('#segments')?.value || '')
+      .split(',').map(s => s.trim()).filter(Boolean);
     return body;
   }
 

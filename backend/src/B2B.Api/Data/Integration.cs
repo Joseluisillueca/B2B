@@ -15,6 +15,12 @@ public class IntegrationSettings
     // API REST genérica (headers globales como JSON {clave:valor})
     public string? ApiRestBaseUrl { get; set; }
     public string ApiRestHeadersJson { get; set; } = "{}";
+
+    // Diseño global de los emails: envoltorio HTML de marca compartido por TODOS los
+    // correos. Debe contener {{content}} (donde entra el cuerpo del email) y puede usar
+    // {{subject}} y {{year}}. Editable desde /manage → Conexiones. Null = layout por defecto.
+    public string? EmailLayoutHtml { get; set; }
+
     public DateTime UpdatedAt { get; set; }
 
     public bool BcConfigured =>
@@ -41,6 +47,11 @@ public class NotificationChannel
     public string? ToVars { get; set; }
     public string? CcVars { get; set; }
     public string? BccVars { get; set; }
+
+    // Email — contenido editable. Asunto y cuerpo HTML (solo el CUERPO; la cabecera/pie de
+    // marca los pone el layout global). Admiten variables {{clientName}} {{orderRef}} …
+    public string? Subject { get; set; }
+    public string? BodyHtml { get; set; }
 }
 
 // Historial de envíos (Notificaciones → Realizadas).

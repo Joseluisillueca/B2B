@@ -20,6 +20,7 @@ public static class IntegrationEndpoints
             {
                 s.Id, s.BcBaseUrl, s.BcTokenUrl, s.BcClientId, s.BcScope,
                 s.ApiRestBaseUrl, s.ApiRestHeadersJson,
+                emailLayoutHtml = string.IsNullOrWhiteSpace(s.EmailLayoutHtml) ? EmailTemplate.DefaultLayout : s.EmailLayoutHtml,
                 bcConfigured = s.BcConfigured, hasSecret = !string.IsNullOrEmpty(s.BcClientSecret),
             });
         }).RequireAdmin();
@@ -35,9 +36,26 @@ public static class IntegrationEndpoints
             s.BcScope = string.IsNullOrWhiteSpace(body.BcScope) ? s.BcScope : body.BcScope.Trim();
             s.ApiRestBaseUrl = body.ApiRestBaseUrl?.Trim();
             if (!string.IsNullOrWhiteSpace(body.ApiRestHeadersJson)) s.ApiRestHeadersJson = body.ApiRestHeadersJson;
+            // Layout de email: si llega vacío → null (vuelve al por defecto); si llega igual al
+            // por defecto, tampoco se persiste (así los cambios del código siguen propagándose).
+            if (body.EmailLayoutHtml is not null)
+                s.EmailLayoutHtml = string.IsNullOrWhiteSpace(body.EmailLayoutHtml) || body.EmailLayoutHtml.Trim() == EmailTemplate.DefaultLayout
+                    ? null : body.EmailLayoutHtml;
             s.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync();
             return Results.Ok(new { ok = true, bcConfigured = s.BcConfigured });
+        }).RequireAdmin();
+
+        // Diseño global del email (layout de marca). Endpoint dedicado para no tocar la
+        // config de BC al guardar solo el layout. Vacío o == por defecto → null.
+        app.MapPut("/api/admin/integration/email-layout", async (EmailLayoutBody body, AppDbContext db) =>
+        {
+            var s = await db.IntegrationSettings.FindAsync(1);
+            if (s is null) { s = new IntegrationSettings { Id = 1 }; db.IntegrationSettings.Add(s); }
+            s.EmailLayoutHtml = string.IsNullOrWhiteSpace(body.Layout) || body.Layout.Trim() == EmailTemplate.DefaultLayout ? null : body.Layout;
+            s.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+            return Results.Ok(new { ok = true });
         }).RequireAdmin();
 
         // ── Eventos + canales (Notificaciones → Configuración) ──
@@ -71,6 +89,9 @@ public static class IntegrationEndpoints
             ch.ToVars = body.ToVars?.Trim();
             ch.CcVars = body.CcVars?.Trim();
             ch.BccVars = body.BccVars?.Trim();
+            // Email: asunto y cuerpo editables (vacío → por defecto vía DefaultXFor).
+            ch.Subject = string.IsNullOrWhiteSpace(body.Subject) ? null : body.Subject.Trim();
+            ch.BodyHtml = string.IsNullOrWhiteSpace(body.BodyHtml) ? null : body.BodyHtml;
             ch.Active = body.Active;
             await db.SaveChangesAsync();
             return Results.Ok(Project(ch));
@@ -80,6 +101,8 @@ public static class IntegrationEndpoints
         {
             var ch = await db.NotificationChannels.FindAsync(id);
             if (ch is null) return Results.NotFound();
+            if (ch.ChannelType == "email")
+                return Results.Ok(new { subject = EmailTemplate.DefaultSubjectFor(ch.EventKey), bodyHtml = EmailTemplate.DefaultBodyFor(ch.EventKey) });
             var t = IntegrationDefaults.DefaultTransformer(ch.Endpoint);
             return t is null
                 ? Results.NotFound(new { error = "No hay plantilla por defecto para este endpoint." })
@@ -128,6 +151,16 @@ public static class IntegrationEndpoints
             try { return Results.Ok(new { result = JsonTransformService.Transform(body.Transformer ?? "{}", body.Input ?? "{}") }); }
             catch (Exception ex) { return Results.BadRequest(new { error = ex.Message }); }
         }).RequireAdmin();
+
+        // ── Previsualizar email (asunto + cuerpo + layout, con variables de ejemplo) ──
+        app.MapPost("/api/admin/integration/preview-email", async (EmailPreview body, AppDbContext db) =>
+        {
+            var s = await db.IntegrationSettings.FindAsync(1);
+            var vars = SampleEmailVars(body.EventKey);
+            var subject = System.Net.WebUtility.HtmlDecode(EmailTemplate.Fill(body.Subject ?? "", vars));
+            var html = EmailTemplate.RenderHtml(body.Layout ?? s?.EmailLayoutHtml, body.BodyHtml ?? "", vars);
+            return Results.Ok(new { subject, html });
+        }).RequireAdmin();
     }
 
     private static object Project(NotificationChannel c) => new
@@ -135,7 +168,26 @@ public static class IntegrationEndpoints
         id = c.Id, eventKey = c.EventKey, channelType = c.ChannelType, order = c.Order,
         active = c.Active, c.Fixed, endpoint = c.Endpoint, transformer = c.Transformer,
         toVars = c.ToVars, ccVars = c.CcVars, bccVars = c.BccVars,
+        subject = c.Subject ?? EmailTemplate.DefaultSubjectFor(c.EventKey),
+        bodyHtml = c.BodyHtml ?? EmailTemplate.DefaultBodyFor(c.EventKey),
+    };
+
+    // Variables de ejemplo para la previsualización de emails.
+    private static Dictionary<string, string?> SampleEmailVars(string? eventKey) => new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["eventName"] = IntegrationDefaults.Event(eventKey ?? "")?.Name ?? "Evento",
+        ["ref"] = "PED-1024", ["year"] = DateTime.UtcNow.Year.ToString(),
+        ["greeting"] = "Hola", ["name"] = "Ana García",
+        ["intro"] = "Se ha creado tu acceso al portal B2B. Para empezar, define tu contraseña:",
+        ["button"] = "Definir mi contraseña",
+        ["link"] = "https://portal.mitoprojects.com/es/es/activate?token=EJEMPLO",
+        ["expiry"] = "El enlace caduca en 72 horas. Si no esperabas este correo, puedes ignorarlo.",
+        ["signature"] = "Equipo Mito Projects B2B",
+        ["clientEmail"] = "tienda@ejemplo.com", ["companyEmail"] = "ventas@mitoprojects.com",
+        ["saleEmail"] = "comercial@mitoprojects.com", ["userEmail"] = "ana@ejemplo.com",
     };
 }
 
 public sealed record TransformTest(string? Transformer, string? Input);
+public sealed record EmailPreview(string? EventKey, string? Subject, string? BodyHtml, string? Layout);
+public sealed record EmailLayoutBody(string? Layout);

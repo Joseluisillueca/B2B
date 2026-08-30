@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using B2B.Api.Data;
+using B2B.Api.Integration;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -53,7 +54,9 @@ public sealed class ActivationService(
         var raw = await IssueAsync(user, purpose, lifetime);
         var lang = Lang(user.Culture);
         var link = BuildLink(raw, lang);
-        var message = Compose(user, purpose, link, lang);
+        // Layout de marca compartido (editable en /manage → Conexiones). Null → por defecto.
+        var layout = (await db.IntegrationSettings.FindAsync(1))?.EmailLayoutHtml;
+        var message = Compose(user, purpose, link, lang, layout);
 
         EmailResult result;
         try
@@ -124,7 +127,7 @@ public sealed class ActivationService(
         return $"{baseUrl}/{market}/{lang}/activate?token={Uri.EscapeDataString(rawToken)}";
     }
 
-    private EmailMessage Compose(AppUser user, string purpose, string link, string lang)
+    private EmailMessage Compose(AppUser user, string purpose, string link, string lang, string? layout)
     {
         var name = string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name!;
         var t = Templates.TryGetValue(lang, out var found) ? found : Templates["es"];
@@ -133,21 +136,17 @@ public sealed class ActivationService(
         var subject = reset ? t.ResetSubject : t.ActivationSubject;
         var intro = reset ? t.ResetIntro : t.ActivationIntro;
 
+        // La copia va traducida; el diseño (marca, colores) lo pone el layout global editable.
+        // Los datos de usuario se escapan; el enlace va crudo (URL de token en el href).
+        var vars = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["greeting"] = Esc(t.Hello), ["name"] = Esc(name), ["intro"] = Esc(intro),
+            ["button"] = Esc(t.Button), ["link"] = link, ["expiry"] = Esc(t.Expiry),
+            ["signature"] = Esc(t.Signature), ["subject"] = Esc(subject),
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        };
+        var html = EmailTemplate.RenderHtml(layout, EmailTemplate.ActivationBody, vars);
         var text = $"{t.Hello} {name},\n\n{intro}\n\n{link}\n\n{t.Expiry}\n\n{t.Signature}";
-        var html = $"""
-            <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;color:#1a1a1a">
-              <p style="font-size:1.4rem;font-weight:700;color:#1f5c46">MITO PROJECTS<sup>™</sup></p>
-              <p>{Esc(t.Hello)} <b>{Esc(name)}</b>,</p>
-              <p>{Esc(intro)}</p>
-              <p style="margin:1.6em 0">
-                <a href="{Esc(link)}" style="background:#1f5c46;color:#fff;text-decoration:none;
-                   padding:.8em 1.4em;border-radius:8px;display:inline-block">{Esc(t.Button)}</a>
-              </p>
-              <p style="font-size:.85rem;color:#666">{Esc(t.Expiry)}</p>
-              <p style="font-size:.8rem;color:#999;word-break:break-all">{Esc(link)}</p>
-              <p style="font-size:.85rem;color:#666">{Esc(t.Signature)}</p>
-            </div>
-            """;
         return new EmailMessage(user.Email, subject, html, text);
     }
 

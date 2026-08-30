@@ -32,7 +32,7 @@ public static class NotificationDispatcher
                     if (ch.ChannelType == "business-central")
                         await DispatchBcAsync(db, bc, settings, ch, eventKey, entityType, entityId, inputJson);
                     else if (ch.ChannelType == "email")
-                        await DispatchEmailAsync(db, email, ch, eventKey, entityType, entityId, emailVars);
+                        await DispatchEmailAsync(db, email, settings, ch, eventKey, entityType, entityId, emailVars);
                 }
                 catch (Exception ex)
                 {
@@ -62,7 +62,7 @@ public static class NotificationDispatcher
     }
 
     private static async Task DispatchEmailAsync(
-        AppDbContext db, IEmailSender email, NotificationChannel ch,
+        AppDbContext db, IEmailSender email, IntegrationSettings settings, NotificationChannel ch,
         string eventKey, string entityType, string entityId, IReadOnlyDictionary<string, string?>? vars)
     {
         var to = ResolveRecipients(ch.ToVars, vars);
@@ -72,11 +72,26 @@ public static class NotificationDispatcher
             return;
         }
         var name = IntegrationDefaults.Event(eventKey)?.Name ?? eventKey;
-        var body = $"<p>{System.Net.WebUtility.HtmlEncode(name)}</p><p>Ref: {System.Net.WebUtility.HtmlEncode(entityId)}</p>";
+
+        // Variables de contenido: las del despacho (escapadas, son datos) + utilitarias del evento.
+        var content = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        if (vars is not null)
+            foreach (var kv in vars) content[kv.Key] = System.Net.WebUtility.HtmlEncode(kv.Value ?? "");
+        content["eventName"] = System.Net.WebUtility.HtmlEncode(name);
+        content["ref"] = System.Net.WebUtility.HtmlEncode(entityId);
+        content["year"] = DateTime.UtcNow.Year.ToString();
+
+        // Asunto y cuerpo editables por canal (o los por defecto), dentro del layout de marca.
+        var subjTpl = string.IsNullOrWhiteSpace(ch.Subject) ? EmailTemplate.DefaultSubjectFor(eventKey) : ch.Subject;
+        var bodyTpl = string.IsNullOrWhiteSpace(ch.BodyHtml) ? EmailTemplate.DefaultBodyFor(eventKey) : ch.BodyHtml;
+        var subject = System.Net.WebUtility.HtmlDecode(EmailTemplate.Fill(subjTpl, content));
+        var html = EmailTemplate.RenderHtml(settings.EmailLayoutHtml, bodyTpl, content);
+        var text = EmailTemplate.ToText(html);
+
         var cc = ResolveRecipients(ch.CcVars, vars);
         var bcc = ResolveRecipients(ch.BccVars, vars);
         // Envío por el transporte configurado (en modo "log" solo se registra, no sale correo).
-        var res = await email.SendAsync(new EmailMessage(string.Join(",", to), name, body, name + " " + entityId));
+        var res = await email.SendAsync(new EmailMessage(string.Join(",", to), subject, html, text));
         var extra = (cc.Count > 0 ? " · CC: " + string.Join(", ", cc) : "") + (bcc.Count > 0 ? " · BCC: " + string.Join(", ", bcc) : "");
         Log(db, eventKey, entityType, entityId, "email", res.Ok ? "completed" : "errors", "To: " + string.Join(", ", to) + extra, null);
     }

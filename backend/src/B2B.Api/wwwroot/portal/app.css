@@ -355,22 +355,81 @@ body[data-chrome="credentials"] { background:var(--ink); }
 .activate-card .activate-ok { color:var(--blue-deep); font-size:.9rem; margin:.8rem 0 0; }
 .activate-card .forgot { display:block; text-align:center; font-size:.9rem; color:var(--blue); margin:1.2rem 0 0; }
 
-/* Selección de credenciales (01-tras-login.png) */
-.cred-card { width:min(46rem,100%); }
-.cred-card h1 { font-size:1.35rem; letter-spacing:-.01em; margin:0 0 1.6rem; }
-.cred-row { display:flex; align-items:center; gap:1rem; padding:.9rem 0; border-top:1px solid transparent; }
-.cred-row + .cred-row { border-top-color:var(--line); }
-.cred-row .avatar { width:3.1rem; height:3.1rem; background:var(--ink); font-size:1.3rem; }
-.cred-row .id { flex:1; min-width:0; line-height:1.35; }
-.cred-row .id b { display:block; font-size:.98rem; }
-.cred-row .id .type { color:var(--muted); font-size:.85rem; text-transform:uppercase; }
-.cred-row .id .role { color:var(--muted); font-size:.85rem; }
-.cred-row .pick { display:flex; align-items:center; gap:.5rem; background:var(--blue); color:#fff;
-  font-weight:700; letter-spacing:.03em; border-radius:4px; padding:.72rem 1.3rem;
-  transition:background .15s var(--ease); }
-.cred-row .pick:hover { background:var(--blue-deep); }
-.cred-empty { color:var(--muted); border-top:1px solid var(--line); padding-top:1.2rem; }
-.cred-empty a { color:var(--blue); }
+/* Selección de acceso — "split" (hero rojo + panel de tarjetas), coherente con el login.
+   El hero rojo lleva SOLO display grande (marca + saludo + nombre), como el login: el
+   texto pequeño en blanco sobre el rojo de marca no llega a AA, así que la guía de lectura
+   vive en el panel claro (tinta sobre papel), que además es donde se decide. */
+.cred-split { min-height:100vh; display:grid; grid-template-columns:1.05fr 1fr; background:var(--paper); }
+.cred-hero { background:var(--blue); color:#fff; display:flex; flex-direction:column; justify-content:space-between;
+  gap:2rem; padding:clamp(2rem,5vw,3.5rem); }
+.cred-hero .brand { color:#fff; font-size:1.9rem; }
+.cred-hero-mid { display:flex; flex-direction:column; }
+.cred-hero-mid .hero-kicker { font-size:.9rem; font-weight:700; letter-spacing:.22em; text-transform:uppercase;
+  color:#fff; margin:0 0 .7rem; font-style:normal; }
+.cred-hero-name { font-family:var(--display); font-weight:800; text-transform:uppercase; letter-spacing:-.03em;
+  line-height:.94; font-size:clamp(2.4rem,5.8vw,4.8rem); margin:0; color:#fff; text-wrap:balance; }
+
+.cred-panel { display:grid; place-items:center; padding:2rem clamp(1.5rem,5vw,4rem); }
+.cred-wrap { width:min(30rem,100%); }
+.cred-h { font-family:var(--display); font-weight:800; font-size:2rem; letter-spacing:-.02em; margin:0;
+  padding-bottom:1rem; border-bottom:2px solid var(--ink); }
+.cred-lead { color:var(--ink-2); font-size:.95rem; line-height:1.5; max-width:30rem; margin:1.1rem 0 0; }
+.cred-cards { display:flex; flex-direction:column; gap:.8rem; margin-top:1.5rem; }
+
+.cred-card2 { display:flex; align-items:center; gap:1rem; width:100%; text-align:left; background:var(--card);
+  border:1px solid var(--line); border-left:3px solid transparent; padding:1rem 1.1rem; cursor:pointer;
+  transition:border-color .15s var(--ease), transform .15s var(--ease), box-shadow .15s var(--ease); }
+.cred-card2:hover { border-color:#cfcaca; border-left-color:var(--blue); transform:translateX(3px); box-shadow:var(--shadow-card); }
+.cred-card2:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+.cred-av { flex:none; width:2.9rem; height:2.9rem; background:var(--blue); color:#fff; display:grid; place-items:center;
+  font-family:var(--display); font-weight:800; font-size:1.15rem; }
+.cred-meta { flex:1; min-width:0; display:flex; flex-direction:column; gap:.2rem; }
+.cred-meta b { font-size:1.02rem; letter-spacing:-.01em; }
+.cred-sub { font-size:.82rem; color:var(--muted); }
+.cred-type { font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--blue); font-size:.72rem; }
+/* Acción explícita: el propio botón dice qué pasará ("Entrar" / "Elegir cliente") */
+.cred-action { flex:none; display:flex; align-items:center; gap:.55rem; color:var(--muted);
+  transition:color .15s var(--ease); }
+.cred-action-label { font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--ink-2); transition:color .15s var(--ease); }
+.cred-go { display:flex; transition:transform .15s var(--ease); }
+.cred-card2:hover .cred-action, .cred-card2:focus-visible .cred-action { color:var(--blue); }
+.cred-card2:hover .cred-action-label, .cred-card2:focus-visible .cred-action-label { color:var(--blue); }
+.cred-card2:hover .cred-go, .cred-card2:focus-visible .cred-go { transform:translateX(3px); }
+
+/* Credencial única: la tarjeta gana presencia (más aire, avatar y nombre mayores) */
+.cred-cards.single .cred-card2 { padding:1.5rem 1.4rem; border-left-width:4px; }
+.cred-cards.single .cred-av { width:3.4rem; height:3.4rem; font-size:1.35rem; }
+.cred-cards.single .cred-meta b { font-size:1.18rem; }
+
+/* Salida discreta y accesible bajo las tarjetas */
+.cred-exit { margin:1.4rem 0 0; font-size:.86rem; color:var(--muted); }
+.cred-exit-link { color:var(--ink); font-weight:600; text-decoration:underline; text-underline-offset:3px;
+  text-decoration-thickness:1px; background:none; border:none; padding:0; cursor:pointer; }
+.cred-exit-link:hover { color:var(--blue); }
+.cred-exit-link:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+
+.cred-empty { color:var(--ink-2); border:1px solid var(--line); padding:1.2rem; line-height:1.5; margin-top:1.5rem; }
+.cred-empty a { color:var(--blue); font-weight:600; text-underline-offset:3px; }
+
+@media (max-width:52rem) {
+  .cred-split { grid-template-columns:1fr; }
+  .cred-hero { min-height:30vh; }
+  /* En apilado, el nombre gigante ya no necesita empujar al fondo: pega al saludo */
+  .cred-hero { justify-content:flex-start; gap:1.4rem; }
+}
+/* En móvil la tarjeta ya es full-width y evidentemente pulsable, y el "lead" ya comunica
+   el siguiente paso: la etiqueta de acción se reduce a la flecha para que el nombre (que
+   puede ser largo) no compita ni envuelva. El aria-label del botón conserva la acción. */
+@media (max-width:30rem) {
+  .cred-action-label { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+    clip-path:inset(50%); white-space:nowrap; }
+  .cred-meta b { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .cred-card2, .cred-card2:hover, .cred-go, .cred-action { transition:none; transform:none; }
+  .cred-card2:hover .cred-go, .cred-card2:focus-visible .cred-go { transform:none; }
+}
 
 /* ══════════════ Piezas comunes (Fase 2) ══════════════ */
 .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
@@ -1362,7 +1421,6 @@ table.grid .num { white-space:nowrap; }
   .page { padding:1.2rem 1rem 6rem; }
   h1.title { font-size:1.9rem; }
   .sheet .card { padding:1.8rem 1.3rem; }
-  .cred-row { flex-wrap:wrap; }
 
   /* Artículo del catálogo: miniatura + datos arriba, matriz a lo ancho debajo.
      Las tres columnas de escritorio no caben en 390 px sin dejar la matriz en 0. */

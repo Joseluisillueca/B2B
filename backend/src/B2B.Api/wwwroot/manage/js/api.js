@@ -77,6 +77,8 @@ export const api = {
   intSaveDocSource: (docType, b) => request('PUT', `/api/admin/integration/document-sources/${encodeURIComponent(docType)}`, b),
   intLogs: eventKey => request('GET', '/api/admin/integration/logs' + (eventKey ? `?eventKey=${encodeURIComponent(eventKey)}` : '')),
   intTestTransform: (transformer, input) => request('POST', '/api/admin/integration/test-transform', { transformer, input }),
+  intPreviewEmail: b => request('POST', '/api/admin/integration/preview-email', b),
+  intSaveEmailLayout: layout => request('PUT', '/api/admin/integration/email-layout', { layout }),
 
   // Imágenes de modelo (marketing): endpoints ya existentes
   modelImages: () => request('GET', '/api/admin/model-images'),

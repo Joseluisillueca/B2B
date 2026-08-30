@@ -121,6 +121,8 @@ a.btn-primary, a.btn-ghost, a.btn-danger { text-decoration:none; }
 .nc-remove { color:var(--out); border-color:var(--out); }
 .nc-add { margin-top:.4rem; }
 .mng-subhead { font-size:.9rem; font-weight:700; color:var(--ink-2); margin:1.1rem 0 .5rem; letter-spacing:.02em; }
+/* Flecha de flujo entre pasos (entrada → transformer → resultado) */
+.nc-flowarrow { display:flex; justify-content:center; color:var(--muted); margin:.2rem 0; }
 
 /* Multi-selección (grupos, formas de pago…) como fichas seleccionables */
 .mng-multi { display:flex; flex-wrap:wrap; gap:.5rem; }
