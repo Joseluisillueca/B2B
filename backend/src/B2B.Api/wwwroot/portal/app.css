@@ -11,6 +11,10 @@
   --ink:#201e1d; --ink-2:#605d5d; --ink-3:#7d7979;
   --paper:#f3f2f2; --surface:#eae9e9; --card:#f8f4f4; --line:#d3cfcf;
   --gutter:clamp(1.25rem, 5vw, 4rem); --maxw:1240px;
+  /* Ancho AMPLIO para superficies de rejilla (catálogo): casi a sangre en pantallas
+     grandes, con solo --gutter de canal lateral. Cap alto para no volverse absurdo en
+     monitores 4K. Las páginas de LECTURA siguen usando --maxw (1240). */
+  --maxw-wide:2400px;
   --muted:#7d7979; --muted-2:#9b9797; --line-control:#bab6b6;
   /* --blue* = ahora el ROJO de marca (acento único). Rojo a tamaño de párrafo
      usa --accent-deep (#c94b39 ≈ accent-700), no el base, por contraste. */
@@ -115,8 +119,11 @@ main { flex:1; outline:none; }
 /* ══════════════ Barra de navegación ══════════════ */
 /* El padding con max() alinea el contenido con la columna centrada de .page sin
    necesitar un wrapper (el nav pinta <a> directo desde chrome.js). */
+/* El nav se alinea con el catálogo (superficie ancha): así las pestañas quedan bajo
+   la cabecera negra sin el salto visual del contenido centrado a 1240. En páginas de
+   lectura el nav queda algo más ancho que el texto, lo cual es habitual en app chrome. */
 #chrome-nav { background:var(--card); border-bottom:1px solid var(--line);
-  padding:0 max(var(--gutter), calc((100% - var(--maxw)) / 2)); }
+  padding:0 max(var(--gutter), calc((100% - var(--maxw-wide)) / 2)); }
 #chrome-nav a { display:inline-block; padding:.95rem .2rem; margin-right:1.6rem; font-size:.9rem;
   letter-spacing:.01em; text-decoration:none; border-bottom:2px solid transparent; transition:border-color .15s var(--ease), color .15s var(--ease); }
 #chrome-nav a:hover { border-bottom-color:var(--blue); color:var(--blue); }
@@ -530,7 +537,7 @@ body[data-focus="on"] .cat-count::before { content:none; }
 /* ── Catálogo con filtros ARRIBA (barra de lookups desplegables) ──
    Lenguaje propio, distinto del rail lateral del original: la cuadrícula ocupa todo
    el ancho y los filtros son menús desplegables (details/summary) en una barra. */
-.page.catalog-top { max-width:var(--maxw); margin:0 auto; padding:2.4rem var(--gutter) 4.5rem; display:block; }
+.page.catalog-top { max-width:var(--maxw-wide); margin:0 auto; padding:2.4rem var(--gutter) 4.5rem; display:block; }
 .cat-filters { display:flex; flex-wrap:wrap; align-items:center; gap:.6rem; margin:0 0 1.8rem; }
 .cat-search { position:relative; flex:1 1 15rem; max-width:22rem; }
 .cat-search input { width:100%; border:1px solid var(--line-control); border-radius:var(--r-sm);
@@ -594,7 +601,10 @@ body[data-focus="on"] .cat-filters { display:none; }
   grid-template-areas:"photo info" "photo matrix"; column-gap:2.4rem; row-gap:1.6rem;
   align-items:start; padding:2.4rem 0; border-bottom:1px solid var(--line); }
 .item-photo { grid-area:photo; }
-.item-info { grid-area:info; min-width:0; }
+/* En filas anchas el bloque de texto (título + ref + atributos + precio) se acota a
+   una medida legible para que el corazón no flote lejos del nombre; la matriz de
+   tallas sí aprovecha todo el ancho de la fila (ver .item-matrix). */
+.item-info { grid-area:info; min-width:0; max-width:52rem; }
 .item-matrix { grid-area:matrix; min-width:0; align-self:end; }
 .item:first-child { padding-top:.6rem; }
 .item-photo { aspect-ratio:4/5; background:var(--surface); border-radius:var(--r); display:grid;
