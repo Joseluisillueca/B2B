@@ -123,7 +123,7 @@ main { flex:1; outline:none; }
    la cabecera negra sin el salto visual del contenido centrado a 1240. En páginas de
    lectura el nav queda algo más ancho que el texto, lo cual es habitual en app chrome. */
 #chrome-nav { background:var(--card); border-bottom:1px solid var(--line);
-  padding:0 max(var(--gutter), calc((100% - var(--maxw-wide)) / 2)); }
+  padding:0 max(clamp(1rem,4vw,2.4rem), calc((100% - var(--maxw-wide)) / 2)); }
 #chrome-nav a { display:inline-block; padding:.95rem .2rem; margin-right:1.6rem; font-size:.9rem;
   letter-spacing:.01em; text-decoration:none; border-bottom:2px solid transparent; transition:border-color .15s var(--ease), color .15s var(--ease); }
 #chrome-nav a:hover { border-bottom-color:var(--blue); color:var(--blue); }
@@ -537,7 +537,9 @@ body[data-focus="on"] .cat-count::before { content:none; }
 /* ── Catálogo con filtros ARRIBA (barra de lookups desplegables) ──
    Lenguaje propio, distinto del rail lateral del original: la cuadrícula ocupa todo
    el ancho y los filtros son menús desplegables (details/summary) en una barra. */
-.page.catalog-top { max-width:var(--maxw-wide); margin:0 auto; padding:2.4rem var(--gutter) 4.5rem; display:block; }
+/* Padding lateral = el del header (clamp…2.4rem) para que el catálogo arranque justo
+   bajo el logo y aproveche el ancho (gutter menor que el genérico --gutter). */
+.page.catalog-top { max-width:var(--maxw-wide); margin:0 auto; padding:2.4rem clamp(1rem,4vw,2.4rem) 4.5rem; display:block; }
 .cat-filters { display:flex; flex-wrap:wrap; align-items:center; gap:.6rem; margin:0 0 1.8rem; }
 .cat-search { position:relative; flex:1 1 15rem; max-width:22rem; }
 .cat-search input { width:100%; border:1px solid var(--line-control); border-radius:var(--r-sm);
