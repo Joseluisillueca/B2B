@@ -14,7 +14,7 @@ export default function credentials(host) {
   host.innerHTML = `
     <div class="sheet">
       <div class="card cred-card">
-        <span class="brand">lejan<sup>™</sup></span>
+        <span class="brand">MITO PROJECTS<sup>™</sup></span>
         <h1>${esc(t('credentials.title'))}</h1>
         ${list.length ? list.map(row).join('') : empty()}
       </div>

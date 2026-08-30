@@ -14,7 +14,7 @@
   "login.noAccountTitle": "DON'T HAVE AN ACCOUNT?",
   "login.help": "If you have trouble accessing the B2B, email us at: tiendas@lejanbrand.com",
   "login.create": "Create an account",
-  "login.legal": "Under the agreements with the manufacturers we represent, Lejan sells exclusively to distributors and professionals in the sector. To start working with us, fill in the following details and we will activate your account within 24 working hours.",
+  "login.legal": "Under the agreements with the manufacturers we represent, Mito Projects sells exclusively to distributors and professionals in the sector. To start working with us, fill in the following details and we will activate your account within 24 working hours.",
   "activate.title": "Set your password",
   "activate.leadFor": "You are activating the account for",
   "activate.password": "New password",
@@ -187,7 +187,7 @@
   "pay.error.title": "Payment not found",
   "pay.error.body": "We couldn't retrieve the payment status. Please try again.",
   "nav.lookbook": "Lookbook",
-  "lookbook.title": "lejan Collections",
+  "lookbook.title": "Mito Projects Collections",
   "lookbook.heroLabel": "Lookbook cover",
   "lookbook.empty": "New stories are coming soon.",
   "lookbook.shopTheLook": "Shop the look",
@@ -689,5 +689,5 @@
   "soon.title": "Coming soon",
   "soon.body": "This section of agent mode arrives in an upcoming phase. Navigation, language and session are already final.",
   "soon.tag": "AGENT MODE",
-  "footer.copyright": "© 2026 | LEJAN BRAND"
+  "footer.copyright": "© 2026 | MITO PROJECTS"
 }

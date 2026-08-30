@@ -14,7 +14,7 @@
   "login.noAccountTitle": "NON HAI UN ACCOUNT?",
   "login.help": "Se hai difficoltà ad accedere al B2B, scrivici a: tiendas@lejanbrand.com",
   "login.create": "Crea un account",
-  "login.legal": "In base agli accordi con i produttori che rappresentiamo, Lejan vende esclusivamente a distributori e professionisti del settore. Per iniziare a lavorare con noi, compila i seguenti dati e attiveremo il tuo account entro 24 ore lavorative.",
+  "login.legal": "In base agli accordi con i produttori che rappresentiamo, Mito Projects vende esclusivamente a distributori e professionisti del settore. Per iniziare a lavorare con noi, compila i seguenti dati e attiveremo il tuo account entro 24 ore lavorative.",
   "activate.title": "Imposta la password",
   "activate.leadFor": "Stai attivando l'account di",
   "activate.password": "Nuova password",
@@ -187,7 +187,7 @@
   "pay.error.title": "Pagamento non trovato",
   "pay.error.body": "Impossibile recuperare lo stato del pagamento. Riprova.",
   "nav.lookbook": "Lookbook",
-  "lookbook.title": "Collezioni lejan",
+  "lookbook.title": "Collezioni Mito Projects",
   "lookbook.heroLabel": "Copertina del lookbook",
   "lookbook.empty": "Presto nuove storie qui.",
   "lookbook.shopTheLook": "Acquista il look",
@@ -689,5 +689,5 @@
   "soon.title": "Prossimamente",
   "soon.body": "Questa sezione della modalità agente arriva in una fase successiva. Navigazione, lingua e sessione sono già definitive.",
   "soon.tag": "MODALITÀ AGENTE",
-  "footer.copyright": "© 2026 | LEJAN BRAND"
+  "footer.copyright": "© 2026 | MITO PROJECTS"
 }

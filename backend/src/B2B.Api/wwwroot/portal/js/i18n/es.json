@@ -14,7 +14,7 @@
   "login.noAccountTitle": "¿NO TIENES CUENTA?",
   "login.help": "Si tienes dificultades para entrar en la B2B, envíanos un email a: tiendas@lejanbrand.com",
   "login.create": "Crear una cuenta",
-  "login.legal": "Lejan, en base a los acuerdos con los Fabricantes representados, vendemos exclusivamente a distribuidores/profesionales del sector. Para comenzar a trabajar con nosotros, deberás rellenar los siguientes datos y en 24 horas nos comprometemos a darte de alta (sólo laborables).",
+  "login.legal": "Mito Projects, en base a los acuerdos con los Fabricantes representados, vendemos exclusivamente a distribuidores/profesionales del sector. Para comenzar a trabajar con nosotros, deberás rellenar los siguientes datos y en 24 horas nos comprometemos a darte de alta (sólo laborables).",
   "activate.title": "Fija tu contraseña",
   "activate.leadFor": "Estás activando la cuenta de",
   "activate.password": "Nueva contraseña",
@@ -187,7 +187,7 @@
   "pay.error.title": "No encontramos el pago",
   "pay.error.body": "No hemos podido recuperar el estado del pago. Vuelve a intentarlo.",
   "nav.lookbook": "Lookbook",
-  "lookbook.title": "Colecciones lejan",
+  "lookbook.title": "Colecciones Mito Projects",
   "lookbook.heroLabel": "Portada del lookbook",
   "lookbook.empty": "Pronto habrá nuevas historias por aquí.",
   "lookbook.shopTheLook": "Compra el look",
@@ -689,5 +689,5 @@
   "soon.title": "Próximamente",
   "soon.body": "Esta sección del modo agente llega en una próxima fase. La navegación, el idioma y la sesión ya son los definitivos.",
   "soon.tag": "MODO AGENTE",
-  "footer.copyright": "© 2026 | LEJAN BRAND"
+  "footer.copyright": "© 2026 | MITO PROJECTS"
 }

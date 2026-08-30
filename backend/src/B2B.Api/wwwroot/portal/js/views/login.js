@@ -10,7 +10,7 @@ export default function login(host) {
   host.innerHTML = `
     <div class="login-split">
       <aside class="login-hero">
-        <span class="brand">lejan<sup>™</sup></span>
+        <span class="brand">MITO PROJECTS<sup>™</sup></span>
         <h1 class="login-display">${esc(t('login.display'))}</h1>
       </aside>
       <div class="login-panel">

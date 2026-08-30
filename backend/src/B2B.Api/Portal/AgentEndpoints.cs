@@ -673,15 +673,15 @@ public static class AgentEndpoints
     private static EmailMessage SelectionEmail(string to, string name, List<string> modelNames)
     {
         var list = string.Join("\n", modelNames.Select(m => $" · {m}"));
-        var text = $"Hola,\n\nTu comercial te ha preparado una selección de modelos «{name}» para tu pedido de temporada:\n\n{list}\n\nEntra en el portal B2B de lejan para hacer tu pedido.\n\nEquipo lejan B2B";
+        var text = $"Hola,\n\nTu comercial te ha preparado una selección de modelos «{name}» para tu pedido de temporada:\n\n{list}\n\nEntra en el portal B2B de Mito Projects para hacer tu pedido.\n\nEquipo Mito Projects B2B";
         var items = string.Join("", modelNames.Select(m => $"<li>{System.Net.WebUtility.HtmlEncode(m)}</li>"));
         var html = $"""
             <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;color:#1a1a1a">
-              <p style="font-size:1.4rem;font-weight:700;color:#1f5c46">lejan<sup>™</sup></p>
+              <p style="font-size:1.4rem;font-weight:700;color:#1f5c46">MITO PROJECTS<sup>™</sup></p>
               <p>Tu comercial te ha preparado la selección <b>{System.Net.WebUtility.HtmlEncode(name)}</b> para tu pedido de temporada:</p>
               <ul>{items}</ul>
-              <p>Entra en el portal B2B de lejan para hacer tu pedido.</p>
-              <p style="font-size:.85rem;color:#666">Equipo lejan B2B</p>
+              <p>Entra en el portal B2B de Mito Projects para hacer tu pedido.</p>
+              <p style="font-size:.85rem;color:#666">Equipo Mito Projects B2B</p>
             </div>
             """;
         return new EmailMessage(to, $"Selección de modelos: {name}", html, text);

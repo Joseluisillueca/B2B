@@ -44,7 +44,7 @@ main { flex:1; outline:none; }
   padding:.6rem 1rem; z-index:100; }
 .skip:focus { left:0; }
 
-.brand { font-family:var(--display); font-weight:800; letter-spacing:-.03em; text-transform:lowercase; }
+.brand { font-family:var(--display); font-weight:800; letter-spacing:-.03em; text-transform:none; }
 .brand sup { font-size:.42em; letter-spacing:0; vertical-align:.95em; }
 
 /* ══════════════ Header verde de marca ══════════════ */

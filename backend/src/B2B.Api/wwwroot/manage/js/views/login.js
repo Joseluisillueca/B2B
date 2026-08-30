@@ -7,7 +7,7 @@ export default function login(app) {
   app.innerHTML = `
     <div class="login-split">
       <div class="login-hero">
-        <a class="brand" href="#/login" style="text-decoration:none">lejan<sup>™</sup></a>
+        <a class="brand" href="#/login" style="text-decoration:none">MITO PROJECTS<sup>™</sup></a>
         <div>
           <p class="hero-kicker">Back-office</p>
           <h1 class="login-display">Gestión<br>de maestros</h1>

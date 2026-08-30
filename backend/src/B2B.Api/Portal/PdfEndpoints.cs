@@ -162,7 +162,7 @@ public static class PdfEndpoints
 
         private void Header(IContainer c) => c.BorderBottom(1.5f).BorderColor(Green).PaddingBottom(8).Row(row =>
         {
-            row.RelativeItem().Text("lejan™").FontSize(22).Bold().FontColor(Green);
+            row.RelativeItem().Text("MITO PROJECTS™").FontSize(22).Bold().FontColor(Green);
             row.RelativeItem().AlignRight().AlignBottom().Text("FICHA TÉCNICA")
                 .FontSize(10).FontColor(Muted).LetterSpacing(0.1f);
         });
@@ -247,7 +247,7 @@ public static class PdfEndpoints
         {
             var forWhom = clientName.Length > 0 ? $"Precios para: {clientName}" : "Precios de tarifa";
             row.RelativeItem().Text(forWhom).FontSize(8).FontColor(Muted);
-            row.RelativeItem().AlignRight().Text($"lejan · {DateTime.Now:dd/MM/yyyy}").FontSize(8).FontColor(Muted);
+            row.RelativeItem().AlignRight().Text($"Mito Projects · {DateTime.Now:dd/MM/yyyy}").FontSize(8).FontColor(Muted);
         });
 
         private (string label, string text)? MainPrice()
@@ -281,7 +281,7 @@ public static class PdfEndpoints
         {
             row.RelativeItem().Column(col =>
             {
-                col.Item().Text("lejan™").FontSize(20).Bold().FontColor(Green);
+                col.Item().Text("MITO PROJECTS™").FontSize(20).Bold().FontColor(Green);
                 col.Item().Text(heading).FontSize(9).FontColor(Muted);
             });
             row.RelativeItem().AlignRight().AlignBottom().Text($"{label} · {rows.Count} modelos")
@@ -323,7 +323,7 @@ public static class PdfEndpoints
             row.RelativeItem().AlignRight().Text(txt =>
             {
                 txt.DefaultTextStyle(x => x.FontSize(8).FontColor(Muted));
-                txt.Span($"lejan · {DateTime.Now:dd/MM/yyyy} · ");
+                txt.Span($"Mito Projects · {DateTime.Now:dd/MM/yyyy} · ");
                 txt.CurrentPageNumber();
                 txt.Span(" / ");
                 txt.TotalPages();

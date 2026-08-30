@@ -365,7 +365,7 @@ public static class AssistantEndpoints
         {
             var model = config["Assistant:Model"] ?? "claude-haiku-4-5-20251001";
             var system =
-                "Eres el asistente del portal B2B de lejan. Respondes en español, breve y concreto, SOLO con los " +
+                "Eres el asistente del portal B2B de Mito Projects. Respondes en español, breve y concreto, SOLO con los " +
                 "datos del cliente que se te dan. Si la respuesta no está en los datos, dilo. Importes en euros " +
                 "(formato español); no inventes cifras.\n\nDATOS DEL CLIENTE (JSON):\n" + BuildContext(s);
 

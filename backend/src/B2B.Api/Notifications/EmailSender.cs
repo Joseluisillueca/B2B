@@ -28,7 +28,7 @@ public sealed class EmailOptions
     /// "log" (por defecto) | "smtp" | "brevo" (API HTTP, para cloud que bloquea SMTP)
     public string Mode { get; set; } = "log";
     public string From { get; set; } = "no-reply@lejanbrand.com";
-    public string FromName { get; set; } = "lejan B2B";
+    public string FromName { get; set; } = "Mito Projects B2B";
 
     public SmtpOptions Smtp { get; set; } = new();
     public BrevoOptions Brevo { get; set; } = new();

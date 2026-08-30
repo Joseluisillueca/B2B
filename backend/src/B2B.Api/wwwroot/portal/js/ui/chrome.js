@@ -106,7 +106,7 @@ function paintHeader() {
   const isAgentMenu = isAgent;
 
   header().innerHTML = `
-    <a class="brand" href="${href(isAgent && !acting ? 'clients' : 'dashboard')}" aria-label="lejan">lejan<sup>™</sup></a>
+    <a class="brand" href="${href(isAgent && !acting ? 'clients' : 'dashboard')}" aria-label="Mito Projects">MITO PROJECTS<sup>™</sup></a>
 
     ${showShop ? `
     <form class="h-search" role="search">

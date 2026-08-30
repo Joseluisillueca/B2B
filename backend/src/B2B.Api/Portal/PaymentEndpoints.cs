@@ -311,7 +311,7 @@ public static class PaymentEndpoints
         return $$"""
             <!doctype html><html lang="es"><head><meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>Pago de prueba — lejan B2B</title>
+            <title>Pago de prueba — Mito Projects B2B</title>
             <style>
               *{box-sizing:border-box}
               :root{--g:#1f5c46;--p:#faf6ef}
@@ -333,7 +333,7 @@ public static class PaymentEndpoints
               .hint{font-size:.8rem;color:#999;text-align:center;margin:.6rem 0 0}
             </style></head><body>
             <div class="card">
-              <p class="brand">lejan<sup>™</sup></p>
+              <p class="brand">MITO PROJECTS<sup>™</sup></p>
               <span class="tag">Pasarela de prueba</span>
               <h1>{{desc}}</h1>
               <div class="amt">{{amount}} €</div>
@@ -341,7 +341,7 @@ public static class PaymentEndpoints
               <button class="pay" id="pay">Pagar {{amount}} €</button>
               <button class="fail" id="fail">Simular pago rechazado</button>
               <button class="cancel" id="cancel">Cancelar</button>
-              <p class="hint">Modo simulado · lejan B2B</p>
+              <p class="hint">Modo simulado · Mito Projects B2B</p>
             </div>
             <script>
               const id={{idJs}}, secret={{secretJs}}, ok={{okJs}}, no={{noJs}};

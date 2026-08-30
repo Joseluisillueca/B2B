@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<title>B2B Platform — Admin</title>
+<title>MITO PROJECTS — CMS</title>
 <style>
   /* Rediseño Modernist del CMS: negro/rojo, Archivo, radio 0 (era azul) */
   @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&display=swap');
@@ -21,54 +21,100 @@
   body { margin:0; font:14px/1.45 "Archivo",system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); }
   h1,h2,h3,h4 { font-family:"Archivo",sans-serif; font-weight:800; letter-spacing:-.02em; }
 
-  /* ---------- Login ---------- */
-  #login-screen { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
-    background:var(--side); }
-  .login-card { background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:2.2rem; width:min(22rem,90vw);
-    display:flex; flex-direction:column; gap:.8rem; }
-  .login-card .brand { text-align:center; font-weight:800; font-size:1.5rem; letter-spacing:-.03em; margin-bottom:.6rem; }
-  .login-card .brand span { color:var(--accent); }
-  .login-card input { width:100%; }
-  input, select { font:inherit; padding:.6rem .75rem; border-radius:9px; border:1px solid var(--line); background:#fff; }
+  /* ---------- Login (mismo "login split" del portal/gestión) ---------- */
+  #login-screen { position:fixed; inset:0; z-index:30; background:var(--bg); overflow:auto; }
+  .login-split { min-height:100vh; display:grid; grid-template-columns:1.05fr 1fr; }
+  .login-hero { background:var(--accent); color:#fff; display:flex; flex-direction:column;
+    justify-content:space-between; gap:2rem; padding:clamp(2rem,5vw,3.5rem); }
+  .login-hero .brand { color:#fff; font-weight:800; font-size:1.9rem; letter-spacing:-.03em; }
+  .login-hero .brand sup { font-size:.42em; vertical-align:.9em; }
+  .login-hero .hero-kicker { font-size:.8rem; letter-spacing:.16em; text-transform:uppercase; opacity:.92; margin:0 0 .6rem; }
+  .login-display { font-weight:800; text-transform:uppercase; letter-spacing:-.03em; line-height:.96;
+    font-size:clamp(2.4rem,6vw,4.8rem); margin:0; color:#fff; }
+  .login-hero .hero-note { color:rgba(255,255,255,.85); max-width:26rem; margin:0; }
+  .login-panel { display:grid; place-items:center; padding:2rem clamp(1.5rem,5vw,4rem); }
+  .login-card { width:min(25rem,100%); background:none; box-shadow:none; padding:0; border-radius:0;
+    display:flex; flex-direction:column; gap:0; }
+  .login-h { font-weight:800; font-size:2rem; margin:0 0 1.4rem; letter-spacing:-.02em; }
+  .login-card .field { width:100%; border:1px solid var(--line); border-radius:4px; padding:.85rem 1rem;
+    margin-bottom:.9rem; background:#fff; }
+  .login-card .field:focus { border-color:var(--accent); box-shadow:none; }
+  .login-card .submit { width:100%; background:var(--accent); color:#fff; font-weight:700; letter-spacing:.04em;
+    border-radius:4px; padding:.95rem; border:none; }
+  .login-card .submit:hover { background:var(--accent-2); }
+  .login-card .submit[disabled] { opacity:.6; cursor:progress; }
+  .login-card .err { color:var(--err); font-size:.85rem; min-height:1.3em; margin:.6rem 0 0; }
+  .login-card .login-note { font-size:.82rem; color:var(--muted); margin:.7rem 0 0; }
+  @media (max-width:52rem) { .login-split { grid-template-columns:1fr; } .login-hero { min-height:34vh; } }
+  input, select { font:inherit; padding:.6rem .75rem; border-radius:0; border:1px solid var(--line); background:#fff; }
   input:focus-visible, select:focus-visible, button:focus-visible, .nav-item:focus-visible {
     outline:2px solid var(--accent); outline-offset:2px; }
   .nav-item:focus-visible { outline-color:#fff; outline-offset:-2px; }
   input:focus, select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(236,48,19,.18); }
-  button { font:inherit; font-weight:600; padding:.6rem 1rem; border-radius:9px; border:1px solid transparent; cursor:pointer; }
+  button { font:inherit; font-weight:600; padding:.6rem 1rem; border-radius:0; border:1px solid transparent; cursor:pointer; }
   .btn-primary { background:var(--accent); color:#fff; }
   .btn-primary:hover { background:var(--accent-2); }
   .btn-ghost { background:transparent; color:var(--accent); border-color:var(--line); }
   .btn-ghost:hover { border-color:var(--accent); }
   .error { color:var(--err); font-size:.85rem; min-height:1.2em; margin:0; }
 
-  /* ---------- Shell ---------- */
-  #app { display:none; height:100vh; }
-  #app.on { display:grid; grid-template-columns:15.5rem 1fr; }
-  aside { background:var(--side); color:var(--side-text); overflow-y:auto; display:flex; flex-direction:column; }
-  aside .logo { padding:1.15rem 1.25rem .9rem; font-weight:800; font-size:1.12rem; letter-spacing:-.02em; color:#fff; }
-  aside .logo span { color:var(--accent); }
-  nav { flex:1; padding:.3rem .6rem 1rem; }
-  .group-title { display:flex; align-items:center; gap:.6rem; width:100%; padding:.55rem .65rem; border-radius:8px;
-    background:none; border:none; color:var(--side-text); font-weight:600; font-size:.82rem; text-align:left; cursor:pointer; }
-  .group-title:hover { background:var(--side-2); color:#fff; }
-  .group-title .chev { margin-left:auto; transition:transform .15s; font-size:.7rem; opacity:.6; }
+  /* ---------- Shell (cabecera negra + sidebar claro, IGUAL que /manage) ---------- */
+  #app { display:none; }
+  #app.on { display:flex; flex-direction:column; min-height:100vh; }
+  /* Valores IDÉNTICOS a la cabecera de /manage (app.css): height 66px, #201e1d,
+     tinta #f3f2f2 / rgba(243,242,242,.62). Así conmutar no cambia el diseño. */
+  .cms-header { position:sticky; top:0; z-index:20; height:66px; display:flex; align-items:center; gap:1.1rem;
+    padding:0 clamp(1rem,3vw,2rem); background:#201e1d; color:#f3f2f2; border-bottom:1px solid rgba(0,0,0,.14); }
+  .cms-header .brand { font-weight:800; font-size:1.28rem; letter-spacing:-.02em; color:#f3f2f2; text-decoration:none; line-height:1; }
+  .cms-header .brand sup { font-size:.42em; vertical-align:.9em; }
+  .cms-header .hspace { flex:1; }
+  .cms-portal { color:rgba(243,242,242,.62); text-decoration:none; font-size:.82rem; display:inline-flex; align-items:center; gap:.4rem; }
+  .cms-portal:hover { color:#f3f2f2; }
+  .cms-who { display:flex; align-items:center; gap:.6rem; }
+  .cms-who .who { text-align:right; line-height:1.3; font-size:.78rem; }
+  .cms-who .who .l1 { color:#f3f2f2; }
+  .cms-who .who .l2 { color:rgba(243,242,242,.62); }
+  .cms-who .avatar { width:2rem; height:2rem; background:var(--accent); color:#fff; display:grid; place-items:center;
+    font-weight:800; font-size:.85rem; }
+  .cms-out { color:#f3f2f2; background:none; border:1px solid rgba(255,255,255,.28); border-radius:999px;
+    padding:.4rem .9rem; font-size:.76rem; font-weight:600; letter-spacing:.03em; }
+  .cms-out:hover { background:rgba(255,255,255,.12); }
+  .cms-header a:focus-visible, .cms-header button:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+  /* Conmutador de área (Gestión | CMS): idéntico a .mng-switch de /manage */
+  .seg { display:inline-flex; border:1px solid rgba(255,255,255,.28); }
+  .seg .seg-btn { padding:.42rem 1rem; font-size:.74rem; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+    color:rgba(243,242,242,.62); text-decoration:none; line-height:1.25; }
+  .seg .seg-btn + .seg-btn { border-left:1px solid rgba(255,255,255,.28); }
+  .seg a.seg-btn:hover { background:rgba(255,255,255,.12); color:#f3f2f2; }
+  .seg .seg-btn.on { background:var(--accent); color:#fff; }
+
+  .cms-body { display:grid; grid-template-columns:15.5rem 1fr; flex:1; min-height:0; }
+  aside { background:var(--card); color:var(--muted); border-right:1px solid var(--line); overflow-y:auto; display:block; }
+  nav { padding:.8rem 0 1.5rem; }
+  .group { padding:.6rem 0; }
+  .group + .group { border-top:1px solid var(--line); }
+  .group-title { display:flex; align-items:center; gap:.6rem; width:100%; padding:.4rem 1.4rem;
+    background:none; border:none; color:var(--muted); font-weight:800; font-size:.64rem; letter-spacing:.14em;
+    text-transform:uppercase; text-align:left; cursor:pointer; }
+  .group-title:hover { color:var(--text); background:none; }
+  .group-title .chev { margin-left:auto; transition:transform .15s; font-size:.7rem; opacity:.5; }
   .group.open .chev { transform:rotate(90deg); }
   .group .items { display:none; }
   .group.open .items { display:block; }
-  /* Los ítems son <button>: font/border/background/width los devuelven al estilo del panel.
-     Ojo con el orden — font:inherit va antes de font-size o se lo lleva por delante. */
-  .nav-item { font:inherit; display:flex; align-items:center; gap:.5rem; padding:.42rem .65rem .42rem 2.1rem;
-    border-radius:8px; color:var(--side-text); text-decoration:none; font-size:.86rem; cursor:pointer;
-    border:none; background:none; width:100%; text-align:left; }
-  .nav-item:hover { background:var(--side-2); color:#fff; }
-  .nav-item.active, .nav-item[aria-current="page"] { background:var(--accent); color:#fff; font-weight:600; }
-  .nav-item .count { margin-left:auto; font-size:.72rem; background:var(--side-2); border-radius:999px; padding:.05rem .5rem; }
-  .nav-item.active .count { background:rgba(255,255,255,.22); }
-  .nav-item.soon { opacity:.38; cursor:default; }
-  .nav-item.soon:hover { background:none; color:var(--side-text); }
-  aside footer { padding: .9rem 1.25rem; border-top:1px solid #23262f; display:flex; align-items:center; gap:.6rem; }
-  aside footer .who { font-size:.8rem; overflow:hidden; text-overflow:ellipsis; }
-  aside footer button { margin-left:auto; background:#2a1215; color:#ff9d95; border:1px solid #532027; padding:.35rem .7rem; font-size:.78rem; }
+  .nav-item { font:inherit; display:flex; align-items:center; gap:.6rem; padding:.5rem 1.4rem;
+    color:var(--text); text-decoration:none; font-size:.9rem; cursor:pointer; border:none; background:none; width:100%; text-align:left; }
+  .nav-item:hover { background:var(--bg); color:var(--text); }
+  .nav-item.active, .nav-item[aria-current="page"] { background:var(--accent); color:#fff; font-weight:700; }
+  .nav-item .count { margin-left:auto; font-size:.72rem; background:var(--bg); color:var(--muted); border-radius:0; padding:.05rem .5rem; }
+  .nav-item.active .count { background:rgba(255,255,255,.22); color:#fff; }
+  .nav-item.soon { opacity:.4; cursor:default; }
+  .nav-item.soon:hover { background:none; color:var(--text); }
+  /* Icono en cajita cuadrada, IGUAL que .mng-link svg de GESTIÓN */
+  .nav-item svg { flex:none; color:var(--muted); width:1.6rem; height:1.6rem; padding:.28rem;
+    background:var(--bg); box-sizing:border-box; transition:color .12s, background .12s; }
+  .nav-item > span { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .nav-item:hover svg { color:var(--text); }
+  .nav-item.active svg, .nav-item[aria-current="page"] svg { color:#fff; background:rgba(255,255,255,.18); }
 
   main { overflow-y:auto; padding:1.6rem 2rem 3rem; }
   .crumb { color:var(--muted); font-size:.8rem; margin-bottom:.2rem; }
@@ -103,8 +149,8 @@
   .pager button { padding:.3rem .7rem; }
 
   /* ---------- Web / Portada ---------- */
-  .tabs { display:flex; gap:.3rem; background:#e9ebf1; padding:.25rem; border-radius:10px; }
-  .tabs button { background:none; color:var(--muted); padding:.35rem .9rem; border-radius:8px; font-size:.85rem; }
+  .tabs { display:flex; gap:.3rem; background:#e9ebf1; padding:.25rem; border-radius:0; }
+  .tabs button { background:none; color:var(--muted); padding:.35rem .9rem; border-radius:0; font-size:.85rem; }
   .tabs button.on { background:#fff; color:var(--text); box-shadow:var(--shadow); }
   .block { margin-bottom:1.4rem; }
   .block > header { display:flex; align-items:center; gap:.8rem; padding:.9rem 1.1rem; border-bottom:1px solid var(--line); flex-wrap:wrap; }
@@ -113,9 +159,9 @@
   .block .help { color:var(--muted); font-size:.8rem; }
   .c-list { padding:.9rem 1.1rem; display:flex; flex-direction:column; gap:.9rem; }
   .c-item { display:grid; grid-template-columns:9.5rem 1fr auto; gap:.9rem; align-items:start;
-    border:1px solid var(--line); border-radius:10px; padding:.8rem; background:#fbfcfe; }
+    border:1px solid var(--line); border-radius:0; padding:.8rem; background:#fbfcfe; }
   .c-item.off { opacity:.55; }
-  .c-thumb { aspect-ratio:16/9; border-radius:8px; overflow:hidden; background:#eceef3; display:grid; place-items:center;
+  .c-thumb { aspect-ratio:16/9; border-radius:0; overflow:hidden; background:#eceef3; display:grid; place-items:center;
     color:var(--muted); font-size:.72rem; text-align:center; }
   /* La miniatura enseña el recorte real: el hero del portal es 3,4:1, no 16:9 */
   .block[data-kind="hero"] .c-thumb { aspect-ratio:3.4/1; }
@@ -135,7 +181,7 @@
   .badge { font-size:.72rem; color:var(--muted); }
   .media { display:flex; gap:.6rem; flex-wrap:wrap; padding:.9rem 1.1rem; }
   .media figure { margin:0; width:8.5rem; }
-  .media img { width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:8px; border:1px solid var(--line); background:#fff; }
+  .media img { width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:0; border:1px solid var(--line); background:#fff; }
   .media figcaption { display:flex; gap:.3rem; align-items:center; margin-top:.25rem; }
   .media figcaption code { flex:1; font:.68rem ui-monospace,Consolas,monospace; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .media figcaption button { padding:.1rem .4rem; font-size:.72rem; background:none; color:var(--muted); border:1px solid var(--line); }
@@ -143,8 +189,8 @@
   .mi table td { white-space:normal; overflow:visible; max-width:none; vertical-align:middle; }
   .mi tbody tr:hover { background:transparent; cursor:default; }
   .mi-thumb { width:5.5rem; }
-  .mi-thumb img { width:5rem; aspect-ratio:1/1; object-fit:cover; border-radius:8px; border:1px solid var(--line); background:#fff; display:block; }
-  .mi-thumb .ph { width:5rem; aspect-ratio:1/1; border-radius:8px; background:#eceef3; display:grid; place-items:center;
+  .mi-thumb img { width:5rem; aspect-ratio:1/1; object-fit:cover; border-radius:0; border:1px solid var(--line); background:#fff; display:block; }
+  .mi-thumb .ph { width:5rem; aspect-ratio:1/1; border-radius:0; background:#eceef3; display:grid; place-items:center;
     color:var(--muted); font-size:.62rem; text-align:center; }
   .mi-ref { font:.8rem ui-monospace,Consolas,monospace; color:var(--muted); }
   .mi-url { width:100%; min-width:13rem; }
@@ -157,13 +203,13 @@
   .block[data-kind="lb-story"] .c-thumb { aspect-ratio:4/3; }
   .lb-body { flex:1 1 100%; }
   .lb-body textarea { width:100%; min-height:4.4rem; resize:vertical; font:inherit; font-size:.82rem;
-    padding:.4rem .55rem; border-radius:9px; border:1px solid var(--line); background:#fff; }
+    padding:.4rem .55rem; border-radius:0; border:1px solid var(--line); background:#fff; }
   .lb-body textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(236,48,19,.18); outline:none; }
   .lb-color { flex-direction:row !important; align-items:center; gap:.4rem; align-self:end; padding-bottom:.15rem; }
   .lb-color input[type=color] { width:2.3rem; height:1.95rem; padding:.1rem; border:1px solid var(--line);
-    border-radius:8px; background:#fff; cursor:pointer; }
+    border-radius:0; background:#fff; cursor:pointer; }
   .lb-color input[type=text] { width:6rem; font:.76rem ui-monospace,Consolas,monospace; }
-  .lb-refs { flex:1 1 100%; border:1px dashed var(--line); border-radius:10px; padding:.6rem .7rem; background:#fff; }
+  .lb-refs { flex:1 1 100%; border:1px dashed var(--line); border-radius:0; padding:.6rem .7rem; background:#fff; }
   .lb-refs-title { font-size:.72rem; color:var(--muted); margin-bottom:.45rem; display:flex; gap:.5rem; align-items:center; }
   .lb-chips { display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.5rem; }
   .lb-chips:empty { display:none; }
@@ -176,13 +222,13 @@
   .lb-picker { position:relative; max-width:26rem; }
   .lb-picker input { width:100%; font-size:.82rem; padding:.4rem .55rem; }
   .lb-picker-list { position:absolute; z-index:6; left:0; right:0; top:calc(100% + .2rem); background:#fff;
-    border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); max-height:15rem; overflow-y:auto; display:none; }
+    border:1px solid var(--line); border-radius:0; box-shadow:var(--shadow); max-height:15rem; overflow-y:auto; display:none; }
   .lb-picker-list.on { display:block; }
   .lb-picker-list button { display:flex; align-items:center; gap:.5rem; width:100%; text-align:left; background:none;
     border:none; border-bottom:1px solid var(--line); padding:.4rem .55rem; font:inherit; font-size:.8rem; font-weight:500; cursor:pointer; }
   .lb-picker-list button:hover { background:#f0f4ff; }
   .lb-picker-list button:last-child { border-bottom:none; }
-  .lb-picker-list img, .lb-picker-list .ph { width:1.9rem; height:1.9rem; border-radius:6px; object-fit:cover; background:#eceef3; flex:none; }
+  .lb-picker-list img, .lb-picker-list .ph { width:1.9rem; height:1.9rem; border-radius:0; object-fit:cover; background:#eceef3; flex:none; }
   .lb-picker-list .ref { color:var(--muted); font:.72rem ui-monospace,Consolas,monospace; margin-left:auto; padding-left:.5rem; }
   .lb-picker-empty { padding:.5rem .6rem; color:var(--muted); font-size:.78rem; }
   .block-actions { display:inline-flex; gap:.6rem; white-space:nowrap; }
@@ -191,8 +237,8 @@
   /* Vista previa en vivo de la historia dentro del editor */
   .lbp-wrap { flex:1 1 100%; margin-bottom:.3rem; }
   .lbp-label { font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:.25rem; }
-  .lbp { display:flex; align-items:center; gap:.7rem; background:#fbfcfe; border:1px solid var(--line); border-radius:10px; padding:.55rem .65rem; }
-  .lbp-img { width:5.5rem; flex:none; aspect-ratio:4/3; border-radius:7px; overflow:hidden; background:#eceef3; }
+  .lbp { display:flex; align-items:center; gap:.7rem; background:#fbfcfe; border:1px solid var(--line); border-radius:0; padding:.55rem .65rem; }
+  .lbp-img { width:5.5rem; flex:none; aspect-ratio:4/3; border-radius:0; overflow:hidden; background:#eceef3; }
   .lbp-img img { width:100%; height:100%; object-fit:cover; display:block; }
   .lbp-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:.2rem; }
   .lbp-kicker { align-self:flex-start; font-size:.62rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
@@ -201,7 +247,7 @@
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .lbp-count { font-size:.68rem; color:var(--muted); }
 
-  #flash { position:fixed; left:50%; bottom:1.4rem; translate:-50% 0; z-index:20; padding:.6rem 1.1rem; border-radius:10px;
+  #flash { position:fixed; left:50%; bottom:1.4rem; translate:-50% 0; z-index:20; padding:.6rem 1.1rem; border-radius:0;
     box-shadow:var(--shadow); font-size:.85rem; display:none; max-width:min(46rem,90vw); }
   #flash.on { display:block; }
   #flash.ok { background:var(--ok-bg); color:var(--ok); }
@@ -210,7 +256,7 @@
   /* ---------- Modal ---------- */
   #modal { position:fixed; inset:0; background:rgba(13,16,24,.45); display:none; align-items:center; justify-content:center; padding:2rem; }
   #modal.on { display:flex; }
-  #modal .box { background:var(--card); border-radius:14px; box-shadow:var(--shadow); width:min(52rem,95vw); max-height:88vh;
+  #modal .box { background:var(--card); border-radius:0; box-shadow:var(--shadow); width:min(52rem,95vw); max-height:88vh;
     display:flex; flex-direction:column; }
   #modal header { display:flex; align-items:center; gap:.8rem; padding:.9rem 1.2rem; border-bottom:1px solid var(--line); }
   #modal header h3 { margin:0; font-size:.95rem; }
@@ -228,34 +274,68 @@
 .ed-field .chk { flex-direction:row; align-items:center; gap:.4rem; }
 .ed-field .help { font-weight:400; color:#777; font-size:.75rem; }
 @media (max-width:720px){ .ed-grid { grid-template-columns:1fr; } }
+/* Shell responsive del CMS */
+@media (max-width:56rem){
+  .login-split { grid-template-columns:1fr; }
+  .login-hero { min-height:32vh; }
+  .cms-header { gap:.6rem; padding:0 .9rem; }
+  .cms-header .brand { font-size:1.02rem; }
+  .seg .seg-btn { padding:.34rem .55rem; font-size:.66rem; letter-spacing:.04em; }
+  .cms-portal { display:none; }
+  .cms-who .who { display:none; }
+  .cms-body { grid-template-columns:1fr; }
+  aside { border-right:none; border-bottom:1px solid var(--line); }
+}
 </style>
 </head>
 <body>
 
 <div id="login-screen">
-  <div class="login-card">
-    <div class="brand">B2B <span>Platform</span></div>
-    <input id="email" type="email" placeholder="Email" autocomplete="username">
-    <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password">
-    <button class="btn-primary" id="doLogin">Iniciar sesión</button>
-    <p class="error" id="loginError"></p>
+  <div class="login-split">
+    <div class="login-hero">
+      <span class="brand">MITO PROJECTS<sup>™</sup></span>
+      <div>
+        <p class="hero-kicker">Back-office · CMS</p>
+        <h1 class="login-display">Contenido<br>del portal</h1>
+      </div>
+      <p class="hero-note">Portada, lookbook y salud de la comunicación con Business Central.</p>
+    </div>
+    <div class="login-panel">
+      <div class="login-card">
+        <h1 class="login-h">Entrar</h1>
+        <input id="email" class="field" type="email" placeholder="Email" autocomplete="username">
+        <input id="password" class="field" type="password" placeholder="Contraseña" autocomplete="current-password">
+        <button class="submit" id="doLogin">Entrar</button>
+        <p class="err" id="loginError" role="alert"></p>
+        <p class="login-note">Acceso reservado a administradores del portal.</p>
+      </div>
+    </div>
   </div>
 </div>
 
 <div id="app">
-  <aside>
-    <div class="logo">B2B <span>Platform</span></div>
-    <nav id="nav"></nav>
-    <footer>
-      <div class="who" id="who"></div>
-      <button id="logout">Salir</button>
-    </footer>
-  </aside>
-  <main>
-    <div class="crumb" id="crumb"></div>
-    <h1 id="title"></h1>
-    <div id="content"></div>
-  </main>
+  <header class="cms-header">
+    <a class="brand" href="#" id="brandHome">MITO PROJECTS<sup>™</sup></a>
+    <nav class="seg" aria-label="Área del back-office">
+      <a class="seg-btn" href="/manage/">Gestión</a>
+      <span class="seg-btn on" aria-current="page">CMS</span>
+    </nav>
+    <span class="hspace"></span>
+    <a class="cms-portal" href="/es/es/dashboard" target="_blank" rel="noopener">Ver el portal ↗</a>
+    <div class="cms-who">
+      <div class="who"><div class="l1" id="who"></div><div class="l2">Administrador</div></div>
+      <div class="avatar" id="avatar">A</div>
+    </div>
+    <button id="logout" class="cms-out">Salir</button>
+  </header>
+  <div class="cms-body">
+    <aside><nav id="nav"></nav></aside>
+    <main>
+      <div class="crumb" id="crumb"></div>
+      <h1 id="title"></h1>
+      <div id="content"></div>
+    </main>
+  </div>
 </div>
 
 <div id="flash"></div>
@@ -270,7 +350,9 @@
 <script>
 'use strict';
 const PAGE = 25;
-let token = sessionStorage.getItem('b2b_token') || '';
+// Sesión compartida con GESTIÓN (/manage usa `mng_token`): entrar en cualquiera de los
+// dos vale para el otro, sin volver a iniciar sesión.
+let token = sessionStorage.getItem('b2b_token') || sessionStorage.getItem('mng_token') || '';
 let summary = {};        // entityType -> {count,lastReceivedAt}
 let current = null;      // vista activa
 let skip = 0, total = 0, rowsCache = [];
@@ -380,8 +462,11 @@ const VIEWS = {
     ['Tipo','__entityType','text'], ['Id externo','__externalId','id'], ['Recibido','__last','text']]},
 };
 
+// CMS = trazabilidad de lo que envía BC (documentos recibidos, ver su JSON) + contenido
+// web. Se conservan TODOS los puntos del CMS anterior intactos; GESTIÓN (/manage) se
+// alcanza desde el conmutador de la cabecera.
 const NAV = [
-  { title:'Dashboard', items:[['dashboard','Dashboard'],['manage','Portal de gestión']] },
+  { title:'Dashboard', items:[['dashboard','Dashboard']] },
   { title:'Productos', items:[['modelos','Modelos','model'],['productos','Productos','product'],['atributos','Atributos','attribute'],
       ['familias','Familias','family'],['categorias','Categorías','category'],['imagenes','Imágenes','model-image']] },
   { title:'Inventario y Precios', items:[['ofertas','Precios','offer'],['stocks','Stocks','inventory'],
@@ -419,13 +504,15 @@ async function login() {
   });
   if (!res.ok) { $('loginError').textContent = 'Credenciales incorrectas'; return; }
   token = (await res.json()).token;
-  sessionStorage.setItem('b2b_token', token);
-  sessionStorage.setItem('b2b_who', $('email').value);
+  const who = $('email').value;
+  // Se guardan las DOS claves (b2b_* del CMS y mng_* de Gestión) para compartir sesión.
+  sessionStorage.setItem('b2b_token', token); sessionStorage.setItem('mng_token', token);
+  sessionStorage.setItem('b2b_who', who); sessionStorage.setItem('mng_who', who);
   enter();
 }
 function logout() {
   token = ''; sessionStorage.clear();
-  $('app').classList.remove('on'); $('login-screen').style.display = 'flex';
+  $('app').classList.remove('on'); $('login-screen').style.display = '';
 }
 // 403: la sesión es válida, lo que falta es el rol. Se sale del CMS y se dice por qué.
 function denied() {
@@ -435,7 +522,9 @@ function denied() {
 function enter() {
   $('login-screen').style.display = 'none';
   $('app').classList.add('on');
-  $('who').textContent = sessionStorage.getItem('b2b_who') || '';
+  const who = sessionStorage.getItem('b2b_who') || sessionStorage.getItem('mng_who') || '';
+  $('who').textContent = who;
+  $('avatar').textContent = (who.trim()[0] || 'A').toUpperCase();
   loadSummary().then(() => show('dashboard'));
 }
 
@@ -445,22 +534,56 @@ async function loadSummary() {
   summary = Object.fromEntries(data.items.map(i => [i.entityType, i]));
   renderNav();
 }
+// Iconos del menú (mismo trazo 24×24 stroke-2 que GESTIÓN, /manage/js/icons.js). Se
+// mapea cada vista a un icono; así el CMS luce la MISMA barra lateral con icono-en-caja.
+const NAV_SVGS = {
+  home:'<path d="M4 11 12 4l8 7"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/>',
+  box:'<path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5Z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/>',
+  tag:'<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9Z"/><circle cx="7.5" cy="7.5" r="1.4"/>',
+  layers:'<path d="m12 3 9 5-9 5-9-5Z"/><path d="m3 13 9 5 9-5"/>',
+  calendar:'<rect x="4" y="5" width="16" height="16"/><path d="M4 9h16M8 3v4M16 3v4"/>',
+  folder:'<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5A1.5 1.5 0 0 1 17.5 19h-13A1.5 1.5 0 0 1 3 17.5Z"/>',
+  users:'<circle cx="9" cy="8.5" r="3.3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3.3 3.3 0 0 1 0 6.4M20.5 19a5.5 5.5 0 0 0-4-5.3"/>',
+  key:'<circle cx="8" cy="15" r="4"/><path d="m11 12 8-8M17 4l3 3M15 6l2 2"/>',
+  image:'<rect x="3" y="4" width="18" height="16"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/>',
+  pin:'<path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10Z"/><circle cx="12" cy="11" r="2.2"/>',
+  file:'<path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4"/>',
+  truck:'<path d="M3 6h11v9H3Z"/><path d="M14 9h4l3 3v3h-7Z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/>',
+  activity:'<path d="M3 12h4l2.5 7 4-14 2.5 7H21"/>',
+  layout:'<rect x="3" y="4" width="18" height="16"/><path d="M3 9h18M9 9v11"/>',
+  book:'<path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2Z"/><path d="M18 6H8"/>',
+  external:'<path d="M14 4h6v6M20 4l-9 9M18 13v6H5V6h6"/>',
+  dots:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
+};
+const NAV_ICON = {
+  dashboard:'home', modelos:'box', productos:'tag', atributos:'tag', familias:'folder', categorias:'folder',
+  imagenes:'image', ofertas:'tag', stocks:'layers', ventanas:'calendar', almacenes:'box', pagos:'tag',
+  clientes:'users', grupos:'users', usuariosCliente:'users', direcciones:'pin', agentes:'users', accesos:'key',
+  pedidos:'file', facturas:'file', albaranes:'truck', portada:'layout', lookbook:'book',
+  comunicacion:'activity', docs:'file', portal:'external', manage:'box',
+};
+const navIcon = key => {
+  const body = NAV_SVGS[NAV_ICON[key] || 'dots'] || NAV_SVGS.dots;
+  return `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+};
+
 function renderNav() {
   $('nav').innerHTML = NAV.map(g => {
     const items = g.items.map(([key, label, type]) => {
+      const ic = navIcon(key);
       if (g.soon || key === null)
-        return `<button type="button" class="nav-item soon" disabled>${label}</button>`;
+        return `<button type="button" class="nav-item soon" disabled>${ic}<span>${label}</span></button>`;
       if (key === 'docs')
-        return `<a class="nav-item" href="/docs" target="_blank">${label} ↗</a>`;
+        return `<a class="nav-item" href="/docs" target="_blank">${ic}<span>${label}</span></a>`;
       if (key === 'portal')
-        return `<a class="nav-item" href="/es/es/dashboard" target="_blank">${label} ↗</a>`;
+        return `<a class="nav-item" href="/es/es/dashboard" target="_blank">${ic}<span>${label}</span></a>`;
       if (key === 'manage')
-        return `<a class="nav-item" href="/manage/">${label} →</a>`;
+        return `<a class="nav-item" href="/manage/">${ic}<span>${label}</span></a>`;
       const count = key === 'comunicacion'
         ? Object.values(summary).reduce((a, s) => a + s.count, 0)
         : (type && summary[type]?.count);
       const badge = count ? `<span class="count">${count}</span>` : '';
-      return `<button type="button" class="nav-item" data-view="${key}">${label}${badge}</button>`;
+      return `<button type="button" class="nav-item" data-view="${key}">${ic}<span>${label}</span>${badge}</button>`;
     }).join('');
     const open = g.soon ? '' : 'open';
     return `<div class="group ${open}">
@@ -1887,8 +2010,10 @@ $('modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
 
 /* ---------- init ---------- */
 $('doLogin').onclick = login;
+$('email').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 $('password').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 $('logout').onclick = logout;
+$('brandHome').onclick = e => { e.preventDefault(); show('dashboard'); };
 if (token) enter();
 </script>
 </body>

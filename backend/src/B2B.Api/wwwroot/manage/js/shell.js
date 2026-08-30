@@ -13,10 +13,13 @@ export function renderShell() {
   app.removeAttribute('aria-busy');
   app.innerHTML = `
     <header class="mng-header">
-      <a class="brand" href="#/dashboard">lejan<sup>™</sup></a>
-      <span class="mng-tag">Gestión</span>
+      <a class="brand" href="#/dashboard">MITO PROJECTS<sup>™</sup></a>
+      <nav class="mng-switch" aria-label="Área del back-office">
+        <a class="mng-seg on" href="#/dashboard" aria-current="page">Gestión</a>
+        <a class="mng-seg" href="/admin.html">CMS</a>
+      </nav>
       <span class="spacer"></span>
-      <a class="mng-portal" href="/es/es/dashboard" target="_blank" rel="noopener">${icons.login(16)} Ver el portal</a>
+      <a class="mng-portal" href="/es/es/dashboard" target="_blank" rel="noopener">Ver el portal ↗</a>
       <div class="mng-who">
         <div class="who"><div class="l1">${esc(auth.who || 'Administración')}</div><div class="l2">Administrador</div></div>
         <div class="avatar">${esc((auth.who || 'A').trim()[0] || 'A').toUpperCase()}</div>

@@ -16,7 +16,7 @@ export default async function activate(host) {
   host.innerHTML = `
     <div class="sheet">
       <div class="card login-card activate-card">
-        <span class="brand">lejan<sup>™</sup></span>
+        <span class="brand">MITO PROJECTS<sup>™</sup></span>
         <div id="actBody"><div class="skeleton short"></div></div>
       </div>
     </div>`;

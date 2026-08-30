@@ -136,7 +136,7 @@ public sealed class ActivationService(
         var text = $"{t.Hello} {name},\n\n{intro}\n\n{link}\n\n{t.Expiry}\n\n{t.Signature}";
         var html = $"""
             <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;color:#1a1a1a">
-              <p style="font-size:1.4rem;font-weight:700;color:#1f5c46">lejan<sup>™</sup></p>
+              <p style="font-size:1.4rem;font-weight:700;color:#1f5c46">MITO PROJECTS<sup>™</sup></p>
               <p>{Esc(t.Hello)} <b>{Esc(name)}</b>,</p>
               <p>{Esc(intro)}</p>
               <p style="margin:1.6em 0">
@@ -187,39 +187,39 @@ public sealed class ActivationService(
     {
         ["es"] = new(
             "Hola",
-            "Activa tu cuenta del portal B2B de lejan",
-            "Se ha creado tu acceso al portal B2B de lejan. Para empezar, define tu contraseña pulsando el botón:",
-            "Restablece tu contraseña del portal B2B de lejan",
+            "Activa tu cuenta del portal B2B de Mito Projects",
+            "Se ha creado tu acceso al portal B2B de Mito Projects. Para empezar, define tu contraseña pulsando el botón:",
+            "Restablece tu contraseña del portal B2B de Mito Projects",
             "Has pedido restablecer tu contraseña. Define una nueva pulsando el botón:",
             "Definir mi contraseña",
             "El enlace caduca en 72 horas. Si no esperabas este correo, puedes ignorarlo.",
-            "Equipo lejan B2B"),
+            "Equipo Mito Projects B2B"),
         ["en"] = new(
             "Hello",
-            "Activate your lejan B2B portal account",
-            "Your access to the lejan B2B portal has been created. To get started, set your password:",
-            "Reset your lejan B2B portal password",
+            "Activate your Mito Projects B2B portal account",
+            "Your access to the Mito Projects B2B portal has been created. To get started, set your password:",
+            "Reset your Mito Projects B2B portal password",
             "You requested a password reset. Set a new one below:",
             "Set my password",
             "The link expires in 72 hours. If you didn't expect this email, you can ignore it.",
-            "The lejan B2B team"),
+            "The Mito Projects B2B team"),
         ["fr"] = new(
             "Bonjour",
-            "Activez votre compte du portail B2B lejan",
-            "Votre accès au portail B2B de lejan a été créé. Pour commencer, définissez votre mot de passe :",
-            "Réinitialisez le mot de passe de votre portail B2B lejan",
+            "Activez votre compte du portail B2B Mito Projects",
+            "Votre accès au portail B2B de Mito Projects a été créé. Pour commencer, définissez votre mot de passe :",
+            "Réinitialisez le mot de passe de votre portail B2B Mito Projects",
             "Vous avez demandé la réinitialisation de votre mot de passe. Définissez-en un nouveau :",
             "Définir mon mot de passe",
             "Le lien expire dans 72 heures. Si vous n'attendiez pas cet e-mail, ignorez-le.",
-            "L'équipe lejan B2B"),
+            "L'équipe Mito Projects B2B"),
         ["it"] = new(
             "Ciao",
-            "Attiva il tuo account del portale B2B lejan",
-            "Il tuo accesso al portale B2B di lejan è stato creato. Per iniziare, imposta la password:",
-            "Reimposta la password del portale B2B lejan",
+            "Attiva il tuo account del portale B2B Mito Projects",
+            "Il tuo accesso al portale B2B di Mito Projects è stato creato. Per iniziare, imposta la password:",
+            "Reimposta la password del portale B2B Mito Projects",
             "Hai richiesto di reimpostare la password. Impostane una nuova:",
             "Imposta la password",
             "Il link scade tra 72 ore. Se non ti aspettavi questa email, puoi ignorarla.",
-            "Il team lejan B2B")
+            "Il team Mito Projects B2B")
     };
 }

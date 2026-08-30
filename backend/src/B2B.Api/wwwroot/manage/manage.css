@@ -9,16 +9,26 @@
 .mng-header { position:sticky; top:0; z-index:20; height:var(--header-h); display:flex; align-items:center;
   gap:1.1rem; padding:0 clamp(1rem,3vw,2rem); background:var(--header-bg); color:var(--header-ink);
   border-bottom:1px solid rgba(0,0,0,.14); }
-.mng-header .brand { font-size:1.55rem; color:var(--header-ink); text-decoration:none; line-height:1; }
+.mng-header .brand { font-size:1.28rem; font-weight:800; letter-spacing:-.02em; color:var(--header-ink); text-decoration:none; line-height:1; }
 .mng-header .brand sup { font-size:.42em; letter-spacing:0; vertical-align:.95em; }
 .mng-tag { font-size:.7rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
   color:var(--header-ink-2); border-left:1px solid rgba(255,255,255,.24); padding-left:.9rem; }
 .mng-header .spacer { flex:1; }
+/* Conmutador de área del back-office (Gestión | CMS): dos cuadrados, activo en rojo de
+   marca. Vive en el hueco entre el logo y las acciones de la derecha. */
+.mng-switch { display:inline-flex; border:1px solid rgba(255,255,255,.28); }
+.mng-seg { padding:.42rem 1rem; font-size:.74rem; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--header-ink-2); text-decoration:none; line-height:1.25; transition:background .12s var(--ease), color .12s var(--ease); }
+.mng-seg + .mng-seg { border-left:1px solid rgba(255,255,255,.28); }
+.mng-seg:hover { background:rgba(255,255,255,.12); color:var(--header-ink); }
+.mng-seg.on, .mng-seg[aria-current="page"] { background:var(--blue); color:#fff; }
+.mng-seg.on:hover { background:var(--blue-deep); }
 .mng-header a.mng-portal { color:var(--header-ink-2); text-decoration:none; font-size:.82rem;
   display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .2rem; }
 .mng-header a.mng-portal:hover { color:var(--header-ink); }
 .mng-who { display:flex; align-items:center; gap:.6rem; }
-.mng-who .avatar { width:2rem; height:2rem; background:var(--blue); }
+.mng-who .avatar { width:2rem; height:2rem; background:var(--blue); color:#fff; display:grid; place-items:center;
+  font-weight:800; font-size:.85rem; }
 .mng-who .who { text-align:right; line-height:1.3; font-size:.78rem; }
 .mng-who .who .l1 { color:var(--header-ink); }
 .mng-who .who .l2 { color:var(--header-ink-2); }
@@ -204,8 +214,9 @@ a.btn-primary, a.btn-ghost, a.btn-danger { text-decoration:none; }
 
   /* Cabecera compacta: sin ella "Salir" se salía del viewport (A1) */
   .mng-header { gap:.55rem; padding:0 .9rem; }
-  .mng-header a.mng-portal { font-size:0; gap:0; }                         /* solo el icono (gana a la regla base) */
-  .mng-header a.mng-portal svg { width:20px; height:20px; }
+  .mng-header .brand { font-size:1.02rem; }
+  .mng-seg { padding:.34rem .55rem; font-size:.66rem; letter-spacing:.04em; }
+  .mng-header a.mng-portal { display:none; }                               /* enlace secundario: fuera en móvil (igual que el CMS) */
   .mng-who .who { display:none; }                                          /* rol/email fuera en móvil */
   .mng-out { padding:.4rem .7rem; }
 }
