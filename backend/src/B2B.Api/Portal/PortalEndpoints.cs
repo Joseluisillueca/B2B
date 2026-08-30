@@ -161,7 +161,7 @@ public static class PortalEndpoints
             .ToList();
 
         var number = ClientIdentity.Text(payload["externalReference"]);
-        var payMethodIds = Strings(payload["payMethods"]);
+        var payMethodIds = PayMethodCodes(payload["payMethods"]);
         return new ClientCard(
             id: clientId,
             number: number.Length > 0 ? number : null,
@@ -175,6 +175,14 @@ public static class PortalEndpoints
             creditInfo: Detach(payload["creditInfo"]),
             shippingAddresses: addresses);
     }
+
+    // Las formas de pago del cliente pueden llegar como códigos ("transf30") o como fichas
+    // {id,name} (las que crea el CMS autónomo). Se extrae el código en ambos casos; convertir
+    // el objeto a texto con Strings() metía el JSON entero como "código" y rompía el checkout.
+    private static string[] PayMethodCodes(JsonNode? node) =>
+        node is not JsonArray array ? [] :
+        [.. array.Select(e => e is JsonObject o ? ClientIdentity.Text(o["id"] ?? o["code"]) : ClientIdentity.Text(e))
+            .Where(code => code.Length > 0)];
 
     // M5. El cliente llega del sync con las formas de pago en códigos ("transf30") y el
     // nombre legible vive en el maestro que publica el conector aparte (payment-method,
