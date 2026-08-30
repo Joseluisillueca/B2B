@@ -27,13 +27,19 @@ export default async function modelSelectionDetail(host, route) {
     ? statusChip(t('selection.status.sent'), 'green')
     : statusChip(t('selection.status.draft'), 'none');
   const back = `<a class="btn-ghost ms-back" href="${href('agent/model-selection')}">${icons.left ? icons.left(15) : ''} ${esc(t('selection.crumb'))}</a>`;
+  // Un borrador con clientes se puede ENVIAR desde aquí (email a los clientes).
+  const canSend = sel.status !== 'sent' && (sel.clients?.length || 0) > 0;
+  const sendBtn = canSend
+    ? `<button type="button" class="btn-primary ms-send" id="msSend">${icons.send ? icons.send(15) : ''} ${esc(t('selection.send'))}</button>`
+    : '';
+  const aside = `<div class="ms-actions">${sendBtn}${back}</div>`;
   const chips = arr => arr.length
     ? arr.map(x => `<span class="ms-chip${x.missing ? ' miss' : ''}">${esc(x.name)}</span>`).join('')
     : `<span class="cl-no">—</span>`;
 
   host.innerHTML = `
     <div class="page cl ms-detail">
-      ${pageHead(sel.name || t('selection.crumb'), [t('clients.crumb'), t('selection.crumb')], back)}
+      ${pageHead(sel.name || t('selection.crumb'), [t('clients.crumb'), t('selection.crumb')], aside)}
       <div class="ms-facts">
         <div class="ms-fact"><span class="ms-fact-l">${esc(t('selection.col.status'))}</span><span>${chip}</span></div>
         <div class="ms-fact"><span class="ms-fact-l">${esc(t('selection.col.created'))}</span><span>${esc(date(sel.createdAt))}</span></div>
@@ -44,4 +50,12 @@ export default async function modelSelectionDetail(host, route) {
       <h2 class="ms-h">${esc(t('selection.col.clients'))} · ${sel.clients.length}</h2>
       <div class="ms-chips">${chips(sel.clients)}</div>
     </div>`;
+
+  const sendEl = host.querySelector('#msSend');
+  if (sendEl) sendEl.addEventListener('click', async () => {
+    if (!window.confirm(t('selection.sendText', { n: sel.clients.length }))) return;
+    sendEl.disabled = true;
+    try { await api.sendModelSelection(id); modelSelectionDetail(host, route); }   // re-render → "Enviada"
+    catch (e) { sendEl.disabled = false; window.alert((e.body && e.body.error) || t('selection.errorBody')); }
+  });
 }

@@ -82,6 +82,7 @@ export const api = {
   /** Pedidos de selección de modelos del agente */
   modelSelections: () => request('GET', '/api/agent/model-selections'),
   modelSelection: id => request('GET', '/api/agent/model-selections/' + encodeURIComponent(id)),
+  sendModelSelection: id => request('POST', '/api/agent/model-selections/' + encodeURIComponent(id) + '/send'),
   createModelSelection: body => request('POST', '/api/agent/model-selections', body),
 
   /** Pagos con tarjeta (Stripe/mock). Devuelven { paymentId, url } al que redirigir */

@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using B2B.Api.Auth;
 using B2B.Api.Data;
+using B2B.Api.Integration;
 using B2B.Api.Notifications;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -580,6 +581,50 @@ public static class AgentEndpoints
             return Results.Ok(new { sel.Id, sel.Name, sel.Status, sel.CreatedAt, sel.SentAt, models, clients });
         }).RequireAgent();
 
+        // Enviar por email una selección ya creada (borrador) a sus clientes.
+        app.MapPost("/api/agent/model-selections/{id:guid}/send", async (
+            Guid id, ClaimsPrincipal principal, AppDbContext db, IEmailSender email) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null)
+                return Results.Json(new { error = "Unknown user" }, statusCode: StatusCodes.Status401Unauthorized);
+            var isAdmin = string.Equals(actor.User.Role, AdminPolicy.Role, StringComparison.Ordinal);
+            var sel = await db.ModelSelections.FirstOrDefaultAsync(s => s.Id == id);
+            if (sel is null || (!isAdmin && sel.AgentExternalId != actor.User.AgentExternalId))
+                return Results.NotFound();
+
+            var modelIds = ParseIds(sel.ModelIdsJson);
+            var clientIds = ParseIds(sel.ClientIdsJson);
+            if (modelIds.Count == 0 || clientIds.Count == 0)
+                return Results.BadRequest(new { error = "La selección no tiene modelos o clientes." });
+
+            var modelNames = await ModelNamesAsync(db, modelIds, DocumentProjections.Locale(actor.User.Culture));
+            var layout = (await db.IntegrationSettings.FindAsync(1))?.EmailLayoutHtml;
+            var sentCount = 0;
+            foreach (var clientId in clientIds)
+            {
+                var payload = await PortalScope.ClientPayloadAsync(db, clientId);
+                var to = ClientIdentity.Text(payload?["email"]).Trim();
+                if (to.Length == 0) continue;
+                var message = SelectionEmail(to, sel.Name, modelNames, layout);
+                EmailResult result;
+                try { result = await email.SendAsync(message); }
+                catch (Exception ex) { result = new EmailResult(false, email.Transport, ex.Message); }
+                db.SentEmails.Add(new SentEmail
+                {
+                    Id = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, To = to,
+                    Subject = message.Subject, Body = message.TextBody,
+                    Transport = result.Transport, Error = result.Ok ? null : result.Error
+                });
+                sentCount++;
+            }
+            if (sentCount > 0) { sel.Status = "sent"; sel.SentAt = DateTime.UtcNow; }
+            await db.SaveChangesAsync();
+            return sentCount == 0
+                ? Results.BadRequest(new { error = "Ningún cliente de la selección tiene email." })
+                : Results.Ok(new { sel.Status, sel.SentAt, sent = sentCount });
+        }).RequireAgent();
+
         // Crear (guardar sin enviar) o crear+enviar el correo de selección a los clientes.
         app.MapPost("/api/agent/model-selections", async (
             ModelSelectionRequest body, ClaimsPrincipal principal, AppDbContext db, IEmailSender email) =>
@@ -634,12 +679,13 @@ public static class AgentEndpoints
             if (send)
             {
                 var modelNames = await ModelNamesAsync(db, modelIds, DocumentProjections.Locale(actor.User.Culture));
+                var layout = (await db.IntegrationSettings.FindAsync(1))?.EmailLayoutHtml;
                 foreach (var clientId in clientIds)
                 {
                     var payload = await PortalScope.ClientPayloadAsync(db, clientId);
                     var to = ClientIdentity.Text(payload?["email"]).Trim();
                     if (to.Length == 0) continue;
-                    var message = SelectionEmail(to, name, modelNames);
+                    var message = SelectionEmail(to, name, modelNames, layout);
                     EmailResult result;
                     try { result = await email.SendAsync(message); }
                     catch (Exception ex) { result = new EmailResult(false, email.Transport, ex.Message); }
@@ -714,21 +760,24 @@ public static class AgentEndpoints
         catch (System.Text.Json.JsonException) { return []; }
     }
 
-    private static EmailMessage SelectionEmail(string to, string name, List<string> modelNames)
+    private static EmailMessage SelectionEmail(string to, string name, List<string> modelNames, string? layout)
     {
+        var subject = $"Selección de modelos: {name}";
         var list = string.Join("\n", modelNames.Select(m => $" · {m}"));
         var text = $"Hola,\n\nTu comercial te ha preparado una selección de modelos «{name}» para tu pedido de temporada:\n\n{list}\n\nEntra en el portal B2B de Mito Projects para hacer tu pedido.\n\nEquipo Mito Projects B2B";
-        var items = string.Join("", modelNames.Select(m => $"<li>{System.Net.WebUtility.HtmlEncode(m)}</li>"));
-        var html = $"""
-            <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;color:#1a1a1a">
-              <p style="font-size:1.4rem;font-weight:700;color:#1f5c46">MITO PROJECTS<sup>™</sup></p>
-              <p>Tu comercial te ha preparado la selección <b>{System.Net.WebUtility.HtmlEncode(name)}</b> para tu pedido de temporada:</p>
-              <ul>{items}</ul>
-              <p>Entra en el portal B2B de Mito Projects para hacer tu pedido.</p>
-              <p style="font-size:.85rem;color:#666">Equipo Mito Projects B2B</p>
-            </div>
+        var items = string.Join("", modelNames.Select(m => $"<li style=\"margin:.25em 0\">{System.Net.WebUtility.HtmlEncode(m)}</li>"));
+        // Solo el cuerpo; la marca (cabecera/pie) la pone el layout global editable.
+        var body = $"""
+            <p style="margin:0 0 14px">Tu comercial te ha preparado la selección <b>{System.Net.WebUtility.HtmlEncode(name)}</b> para tu pedido de temporada:</p>
+            <ul style="margin:0 0 14px;padding-left:1.2em">{items}</ul>
+            <p style="margin:0">Entra en el portal B2B de Mito Projects para hacer tu pedido.</p>
             """;
-        return new EmailMessage(to, $"Selección de modelos: {name}", html, text);
+        var vars = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["subject"] = subject, ["year"] = DateTime.UtcNow.Year.ToString(),
+        };
+        var html = EmailTemplate.RenderHtml(layout, body, vars);
+        return new EmailMessage(to, subject, html, text);
     }
 
     public sealed record AppointmentRequest(
