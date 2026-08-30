@@ -5,13 +5,15 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { esc, date } from '../format.js';
-import { href } from '../router.js';
+import { href, go } from '../router.js';
 import { pageHead } from '../ui/chrome.js';
 import { gridTable } from '../ui/table.js';
 import { statusChip } from '../ui/status-rail.js';
 import { icons } from '../ui/icons.js';
 
-export default async function modelSelection(host) {
+export default async function modelSelection(host, route) {
+  // Con parámetro (id) → detalle de una selección; sin él → listado.
+  if (route?.param) return (await import('./model-selection-detail.js')).default(host, route);
   host.innerHTML = `
     <div class="page cl ms-list">
       ${pageHead(t('nav.model-selection'), [t('clients.crumb'), t('selection.crumb')])}
@@ -56,5 +58,11 @@ export default async function modelSelection(host) {
       ]
     })),
     empty: t('selection.none')
+  });
+
+  // Filas clicables → detalle de la selección.
+  list.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.style.cursor = 'pointer';
+    tr.addEventListener('click', () => go('agent/model-selection/' + tr.dataset.id));
   });
 }

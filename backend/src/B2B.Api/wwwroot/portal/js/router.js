@@ -88,7 +88,10 @@ export async function resolve() {
   // la vista pasa a ser el prefijo. "catalog/catalog" SÍ está en VIEWS, así que la
   // condición `!VIEWS[route.view]` lo deja intacto.
   if (route.view && !VIEWS[route.view] && route.view.includes('/')) {
-    const slash = route.view.indexOf('/');
+    // Se parte por la ÚLTIMA "/" para soportar prefijos multi-segmento
+    // (p. ej. "agent/model-selection/{id}" → prefijo "agent/model-selection", param id),
+    // además de los de un segmento ("product/2038").
+    const slash = route.view.lastIndexOf('/');
     const prefix = route.view.slice(0, slash);
     if (VIEWS[prefix]) {
       route.param = route.view.slice(slash + 1);

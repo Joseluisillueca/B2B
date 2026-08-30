@@ -547,6 +547,39 @@ public static class AgentEndpoints
             return Results.Ok(new { items });
         }).RequireAgent();
 
+        // Detalle de una selección (para poder VERLA tras crearla): nombre, estado, fechas,
+        // y sus modelos y clientes resueltos (nombre; marca los que ya no existen).
+        app.MapGet("/api/agent/model-selections/{id:guid}", async (Guid id, ClaimsPrincipal principal, AppDbContext db) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null)
+                return Results.Json(new { error = "Unknown user" }, statusCode: StatusCodes.Status401Unauthorized);
+            var isAdmin = string.Equals(actor.User.Role, AdminPolicy.Role, StringComparison.Ordinal);
+            var sel = await db.ModelSelections.FirstOrDefaultAsync(s => s.Id == id);
+            if (sel is null || (!isAdmin && sel.AgentExternalId != actor.User.AgentExternalId))
+                return Results.NotFound();
+
+            var locale = DocumentProjections.Locale(actor.User.Culture);
+            var modelIds = ParseIds(sel.ModelIdsJson);
+            var clientIds = ParseIds(sel.ClientIdsJson);
+
+            var modelRows = await db.CatalogModels.Where(m => modelIds.Contains(m.ExternalId)).ToListAsync();
+            var models = modelIds.Select(mid =>
+            {
+                var m = modelRows.Find(x => x.ExternalId == mid);
+                return new { id = mid, name = m is null ? mid : ModelName(m, locale), missing = m is null };
+            }).ToList();
+
+            var clients = new List<object>();
+            foreach (var cid in clientIds)
+            {
+                var payload = await PortalScope.ClientPayloadAsync(db, cid);
+                clients.Add(new { id = cid, name = payload is null ? cid : ClientIdentity.Text(payload["name"]), missing = payload is null });
+            }
+
+            return Results.Ok(new { sel.Id, sel.Name, sel.Status, sel.CreatedAt, sel.SentAt, models, clients });
+        }).RequireAgent();
+
         // Crear (guardar sin enviar) o crear+enviar el correo de selección a los clientes.
         app.MapPost("/api/agent/model-selections", async (
             ModelSelectionRequest body, ClaimsPrincipal principal, AppDbContext db, IEmailSender email) =>
@@ -668,6 +701,17 @@ public static class AgentEndpoints
     {
         try { return JsonNode.Parse(json) is JsonArray array ? array.Count : 0; }
         catch (System.Text.Json.JsonException) { return 0; }
+    }
+
+    private static List<string> ParseIds(string json)
+    {
+        try
+        {
+            return JsonNode.Parse(json) is JsonArray array
+                ? [.. array.Select(n => n?.GetValue<string>()).Where(s => !string.IsNullOrEmpty(s)).Select(s => s!)]
+                : [];
+        }
+        catch (System.Text.Json.JsonException) { return []; }
     }
 
     private static EmailMessage SelectionEmail(string to, string name, List<string> modelNames)
