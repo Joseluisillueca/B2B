@@ -37,6 +37,10 @@ export async function resolve() {
   if (!shellReady) { renderShell(); shellReady = true; loadCounts(); }
   const main = document.getElementById('main');
   markActive(view);
+  // Las vistas de TABLA ancha usan más ancho de ventana (no el max-width de lectura de los
+  // formularios), para que no salga barra horizontal habiendo hueco. Se limpia al navegar.
+  const wideTable = view === 'notifications-log' || view === 'received' || (view === 'orders' && !parts[1]);
+  main.classList.toggle('mng-wide', wideTable);
   main.focus({ preventScroll: true });
   main.innerHTML = '<div class="skeleton"></div><div class="skeleton short"></div>';
 

@@ -56,6 +56,9 @@
 .mng-link.on .mng-badge { color:#fff; background:rgba(255,255,255,.22); }
 
 .mng-main { min-width:0; padding:clamp(1.5rem,3vw,2.8rem) clamp(1.25rem,4vw,3.5rem) 4rem; max-width:72rem; }
+/* Vistas de tabla ancha (Notificaciones, Comunicación BC, Pedidos): más ancho para que la
+   tabla quepa sin barra horizontal cuando hay hueco de ventana. Los formularios siguen a 72rem. */
+.mng-main.mng-wide { max-width:96rem; }
 
 /* ── Cabecera de página ── */
 .mng-page-head { display:flex; align-items:flex-end; justify-content:space-between; gap:1.5rem;
