@@ -21,6 +21,12 @@ public class IntegrationSettings
     // {{subject}} y {{year}}. Editable desde /manage → Conexiones. Null = layout por defecto.
     public string? EmailLayoutHtml { get; set; }
 
+    // Modo de pedidos: "portal" = el portal es dueño del pedido y lo COMUNICA a Business
+    // Central (push al terminar el pedido); "erp" = los pedidos los gobierna BC (el portal no
+    // despacha). null = usar `Portal:OrdersMode` de configuración (compatibilidad hacia atrás).
+    // Editable desde /manage → Conexiones.
+    public string? OrdersMode { get; set; }
+
     public DateTime UpdatedAt { get; set; }
 
     public bool BcConfigured =>

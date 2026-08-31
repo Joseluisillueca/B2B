@@ -178,6 +178,17 @@ export async function connectionsView(main) {
         </div></div></section>
       <div class="acc-actions"><button type="submit" class="btn-primary">Guardar conexiones</button></div>
     </form>
+    <section class="biz-section"><header class="acc-head biz-head"><h2>${icons.layers(20)}Modo de pedidos <span class="grid-chip ${s.ordersMode === 'portal' ? 'ok' : 'off'}">${s.ordersMode === 'portal' ? 'Comunica a BC' : 'ERP'}</span></h2></header>
+      <div class="biz-card">
+        <p class="lead" style="margin:0 0 .8rem">Cómo se tratan los pedidos que se terminan en el portal.</p>
+        <label style="display:flex;gap:.55rem;align-items:flex-start;margin:.5rem 0;cursor:pointer">
+          <input type="radio" name="ordersMode" value="portal" ${s.ordersMode === 'portal' ? 'checked' : ''} style="margin-top:.25rem">
+          <span><b>Comunicar a Business Central</b> — el portal es dueño del pedido y lo <b>envía a BC</b> al terminarlo (asigna nº de pedido, dispara el email y despacha al canal Business Central).</span></label>
+        <label style="display:flex;gap:.55rem;align-items:flex-start;margin:.5rem 0;cursor:pointer">
+          <input type="radio" name="ordersMode" value="erp" ${s.ordersMode === 'erp' ? 'checked' : ''} style="margin-top:.25rem">
+          <span><b>Los gobierna el ERP</b> — el pedido queda a la espera; los maestros y pedidos los maneja Business Central.</span></label>
+        <div style="margin-top:.9rem"><button type="button" class="btn-primary" id="ordersModeSave">Guardar modo</button></div>
+      </div></section>
     <section class="biz-section"><header class="acc-head biz-head"><h2>${icons.send(20)}Diseño de email (marca)</h2></header>
       <div class="biz-card">
         <p class="lead" style="margin:0 0 .8rem">Envoltorio HTML común a TODOS los emails (cabecera y pie de marca). Debe contener <code>{{content}}</code> (donde entra el cuerpo de cada email) y admite <code>{{subject}}</code> <code>{{year}}</code>.</p>
@@ -198,6 +209,14 @@ export async function connectionsView(main) {
     const b = { bcBaseUrl: $('bcBaseUrl'), bcTokenUrl: $('bcTokenUrl'), bcClientId: $('bcClientId'), bcClientSecret: main.querySelector('#bcClientSecret').value, bcScope: $('bcScope'), apiRestBaseUrl: $('apiRestBaseUrl') };
     try { const r = await api.intSaveSettings(b); flash(r.bcConfigured ? 'Conexiones guardadas · BC configurado.' : 'Conexiones guardadas.'); connectionsView(main); }
     catch (err) { main.querySelector('#notice').innerHTML = `<div class="notice notice-error">${esc(err.body?.error || err.message)}</div>`; }
+  };
+
+  // Modo de pedidos — guardado por su propio endpoint (no toca la conexión BC).
+  main.querySelector('#ordersModeSave').onclick = async () => {
+    const mode = main.querySelector('input[name="ordersMode"]:checked')?.value;
+    if (!mode) return;
+    try { const r = await api.intSaveOrdersMode(mode); flash(`Modo de pedidos guardado: ${r.ordersMode === 'portal' ? 'Comunica a Business Central' : 'ERP'}.`); connectionsView(main); }
+    catch (e) { flash(e.body?.error || e.message, 'err'); }
   };
 
   // Diseño global del email (layout de marca) — guardado por su propio endpoint.

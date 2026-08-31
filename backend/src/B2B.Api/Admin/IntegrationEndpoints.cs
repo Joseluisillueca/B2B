@@ -12,15 +12,19 @@ public static class IntegrationEndpoints
     public static void MapIntegrationEndpoints(this IEndpointRouteBuilder app)
     {
         // ── Conexiones ──
-        app.MapGet("/api/admin/integration/settings", async (AppDbContext db) =>
+        app.MapGet("/api/admin/integration/settings", async (AppDbContext db, IConfiguration config) =>
         {
             var s = await db.IntegrationSettings.FindAsync(1) ?? new IntegrationSettings();
+            // Modo de pedidos efectivo: la BD manda; si está sin fijar, el env `Portal:OrdersMode`.
+            var ordersMode = !string.IsNullOrWhiteSpace(s.OrdersMode) ? s.OrdersMode.ToLowerInvariant()
+                : string.Equals(config["Portal:OrdersMode"], "portal", StringComparison.OrdinalIgnoreCase) ? "portal" : "erp";
             // El secreto NUNCA se devuelve en claro; solo si existe (hasSecret).
             return Results.Ok(new
             {
                 s.Id, s.BcBaseUrl, s.BcTokenUrl, s.BcClientId, s.BcScope,
                 s.ApiRestBaseUrl, s.ApiRestHeadersJson,
                 emailLayoutHtml = string.IsNullOrWhiteSpace(s.EmailLayoutHtml) ? EmailTemplate.DefaultLayout : s.EmailLayoutHtml,
+                ordersMode,
                 bcConfigured = s.BcConfigured, hasSecret = !string.IsNullOrEmpty(s.BcClientSecret),
             });
         }).RequireAdmin();
@@ -56,6 +60,20 @@ public static class IntegrationEndpoints
             s.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync();
             return Results.Ok(new { ok = true });
+        }).RequireAdmin();
+
+        // Modo de pedidos (portal = comunica a BC / erp = los gobierna BC). Endpoint dedicado
+        // para el conmutador de Conexiones, sin tocar la configuración de BC.
+        app.MapPut("/api/admin/integration/orders-mode", async (OrdersModeBody body, AppDbContext db) =>
+        {
+            var mode = (body.Mode ?? "").Trim().ToLowerInvariant();
+            if (mode != "portal" && mode != "erp") return Results.BadRequest(new { error = "Modo no válido (portal | erp)." });
+            var s = await db.IntegrationSettings.FindAsync(1);
+            if (s is null) { s = new IntegrationSettings { Id = 1 }; db.IntegrationSettings.Add(s); }
+            s.OrdersMode = mode;
+            s.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+            return Results.Ok(new { ok = true, ordersMode = mode });
         }).RequireAdmin();
 
         // ── Eventos + canales (Notificaciones → Configuración) ──
@@ -206,3 +224,4 @@ public static class IntegrationEndpoints
 public sealed record TransformTest(string? Transformer, string? Input);
 public sealed record EmailPreview(string? EventKey, string? Subject, string? BodyHtml, string? Layout);
 public sealed record EmailLayoutBody(string? Layout);
+public sealed record OrdersModeBody(string? Mode);

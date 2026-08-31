@@ -80,6 +80,7 @@ export const api = {
   intTestTransform: (transformer, input) => request('POST', '/api/admin/integration/test-transform', { transformer, input }),
   intPreviewEmail: b => request('POST', '/api/admin/integration/preview-email', b),
   intSaveEmailLayout: layout => request('PUT', '/api/admin/integration/email-layout', { layout }),
+  intSaveOrdersMode: mode => request('PUT', '/api/admin/integration/orders-mode', { mode }),
 
   // Imágenes de modelo (marketing): endpoints ya existentes
   modelImages: () => request('GET', '/api/admin/model-images'),

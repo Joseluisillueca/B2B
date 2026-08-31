@@ -213,7 +213,8 @@ public static class CartEndpoints
             if (actor is null) return Unknown();
             if (Invalid(body, requireName: false, out var lines, out var problem)) return problem;
 
-            var portalMode = PortalOrdersMode(config);
+            var settings = await db.IntegrationSettings.FindAsync(1) ?? new Data.IntegrationSettings();
+            var portalMode = PortalOrdersMode(settings, config);
             string? orderType = null;
             Data.ServiceWindow? window = null;
             JsonObject? address = null;
@@ -284,7 +285,6 @@ public static class CartEndpoints
 
                 // Despacho a los canales del evento "Orden de compra" (BC + email).
                 // Inerte si la conexión BC no está configurada (se registra "simulado").
-                var settings = await db.IntegrationSettings.FindAsync(1) ?? new Data.IntegrationSettings();
                 var vars = new Dictionary<string, string?>
                 {
                     ["clientEmail"] = actor.User.Email,
@@ -305,10 +305,13 @@ public static class CartEndpoints
         }).RequireAuthorization();
     }
 
-    // El modo de pedidos del despliegue: "portal" = autónomo (se guardan en el portal);
-    // cualquier otro valor = "erp" (comportamiento clásico, a la espera de BC).
-    private static bool PortalOrdersMode(IConfiguration config) =>
-        string.Equals(config["Portal:OrdersMode"], "portal", StringComparison.OrdinalIgnoreCase);
+    // El modo de pedidos: "portal" = autónomo (el portal comunica el pedido a BC);
+    // cualquier otro valor = "erp" (los pedidos los gobierna BC). Manda la configuración de BD
+    // (editable en /manage → Conexiones); si está sin fijar, se usa `Portal:OrdersMode` (env).
+    private static bool PortalOrdersMode(Data.IntegrationSettings settings, IConfiguration config) =>
+        !string.IsNullOrWhiteSpace(settings.OrdersMode)
+            ? string.Equals(settings.OrdersMode, "portal", StringComparison.OrdinalIgnoreCase)
+            : string.Equals(config["Portal:OrdersMode"], "portal", StringComparison.OrdinalIgnoreCase);
 
     // Tipo de pedido de la ventana de servicio elegida (SCHEDULED/REPLENISHMENT/...).
     private static async Task<string?> OrderTypeAsync(AppDbContext db, string? windowId)
