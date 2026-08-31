@@ -399,6 +399,7 @@
   "checkout.submitError": "We could not register the order.",
   "checkout.sentTitle": "Order registered: {n}",
   "checkout.sentBody": "It is pending delivery to Business Central; delivery goes live in the integration phase.",
+  "checkout.sentBodyBc": "Sent to Business Central. You can now see it in your orders.",
   "checkout.subtotal": "Subtotal",
   "checkout.totalNet": "Total (excl. tax)",
   "checkout.shipping": "Shipping",

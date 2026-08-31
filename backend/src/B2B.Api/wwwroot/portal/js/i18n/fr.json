@@ -399,6 +399,7 @@
   "checkout.submitError": "Impossible d'enregistrer la commande.",
   "checkout.sentTitle": "Commande enregistrée : {n}",
   "checkout.sentBody": "Elle reste en attente d'envoi vers Business Central ; l'envoi s'active à la phase d'intégration.",
+  "checkout.sentBodyBc": "Envoyée à Business Central. Vous pouvez la voir dans vos commandes.",
   "checkout.subtotal": "Sous-total",
   "checkout.totalNet": "Total (hors taxes)",
   "checkout.shipping": "Transport",

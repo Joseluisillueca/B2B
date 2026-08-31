@@ -152,7 +152,7 @@ export default function checkout(host) {
     <div class="notice notice-ok">
       ${icons.check(18)}
       <div><b>${esc(t('checkout.sentTitle', { n: sent.reference || sent.name }))}</b>
-        <span>${esc(t('checkout.sentBody'))}</span></div>
+        <span>${esc(t(sent.sentToBc ? 'checkout.sentBodyBc' : 'checkout.sentBody'))}</span></div>
     </div>`;
 
   // Los 7 campos de la ficha (16-checkout.png). Con EDITAR los cuatro que el cliente

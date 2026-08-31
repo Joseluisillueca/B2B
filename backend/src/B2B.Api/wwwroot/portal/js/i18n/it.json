@@ -399,6 +399,7 @@
   "checkout.submitError": "Non siamo riusciti a registrare l'ordine.",
   "checkout.sentTitle": "Ordine registrato: {n}",
   "checkout.sentBody": "Resta in attesa di invio a Business Central; l'invio si attiva nella fase di integrazione.",
+  "checkout.sentBodyBc": "Inviato a Business Central. Ora puoi vederlo nei tuoi ordini.",
   "checkout.subtotal": "Subtotale",
   "checkout.totalNet": "Totale (senza imposte)",
   "checkout.shipping": "Trasporto",

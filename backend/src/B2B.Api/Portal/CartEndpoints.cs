@@ -301,7 +301,7 @@ public static class CartEndpoints
                 await db.SaveChangesAsync();
             }
 
-            return Results.Created($"/api/portal/carts/{order.Id}", Detail(order, actor.User.Email));
+            return Results.Created($"/api/portal/carts/{order.Id}", Detail(order, actor.User.Email, portalMode));
         }).RequireAuthorization();
     }
 
@@ -466,7 +466,7 @@ public static class CartEndpoints
         updatedAt = cart.UpdatedAt
     };
 
-    private static object Detail(Cart cart, string? owner) => new
+    private static object Detail(Cart cart, string? owner, bool sentToBc = false) => new
     {
         id = cart.Id,
         name = cart.Name,
@@ -478,7 +478,9 @@ public static class CartEndpoints
         total = Total(cart),
         createdAt = cart.CreatedAt,
         updatedAt = cart.UpdatedAt,
-        lines = Lines(cart)
+        lines = Lines(cart),
+        // true cuando el pedido se ha COMUNICADO a BC (modo portal); el frontend elige el aviso.
+        sentToBc
     };
 
     private static CartLine[] Lines(Cart cart)
