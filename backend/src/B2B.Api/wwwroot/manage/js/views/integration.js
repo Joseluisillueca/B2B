@@ -2,7 +2,7 @@
 // Conexiones, Origen de documentos y Notificaciones realizadas. Reutiliza el diseño /manage.
 import { api } from '../api.js';
 import { icons } from '../icons.js';
-import { esc, flash } from '../util.js';
+import { esc, flash, showJson } from '../util.js';
 
 const SAMPLE = {
   salesOrders: '{"id":"<guid>","clientId":"<guid>","shippingAddressId":"<guid>","referenceOrder":"REF-1","payMethodId":"sepa30","incotermId":"","saleId":"","total":{"value":121},"totalTax":{"value":21},"totalDiscount":{"value":0},"totalCart":{"value":100},"totalTransport":{"value":0},"totalCartDiscount":{"value":0},"items":[{"id":"l1","productId":"<guid>","modelId":"<guid>","sku":"SKU1","quantity":5,"productName":{"es_ES":"Producto X"},"price":{"value":18},"priceOriginal":{"value":20},"amount":{"value":90},"totalDiscounts":{"value":10},"stockServiceId":"SS1"}],"stockServices":[{"stockServiceId":"SS1","from":"01/09/2026","to":"15/09/2026","baseFrom":"2026-09-01","baseTo":"2026-09-15"}]}',
@@ -250,11 +250,18 @@ export async function docSourcesView(main) {
 export async function logsView(main) {
   const data = await api.intLogs();
   const chip = s => ({ completed: 'ok', errors: 'danger', simulated: 'warn', skipped: 'off' }[s] || 'off');
+  const btnCss = 'font-size:.72rem;font-weight:600;padding:.28rem .6rem;border:1px solid var(--line,#d8d8d8);border-radius:.4rem;background:#fff;color:inherit;cursor:pointer;white-space:nowrap';
+  // Botones de acción bajo el chip (solo canal Business Central): reprocesar y ver el JSON enviado.
+  const acts = l => l.channelType !== 'business-central' ? '' :
+    `<span style="display:flex;flex-direction:column;gap:.35rem;margin-top:.45rem;align-items:flex-start">
+      ${l.canReprocess ? `<button type="button" class="log-retry" data-id="${esc(l.id)}" style="${btnCss}">↻ Reprocesar</button>` : ''}
+      ${l.payloadJson ? `<button type="button" class="log-json" data-id="${esc(l.id)}" style="${btnCss}">Ver JSON</button>` : ''}
+    </span>`;
   main.innerHTML = `
     <div class="mng-page-head"><div>
       <p class="crumbs">Integración · Notificaciones</p>
       <h1 class="title">Notificaciones realizadas</h1>
-      <p class="lead">Historial de envíos por canal y su estado.</p>
+      <p class="lead">Historial de envíos por canal y su estado. En los envíos a Business Central puedes ver el JSON que se manda y reprocesarlo.</p>
     </div></div>
     <div class="grid-scroll"><table class="grid">
       <thead><tr><th>Fecha</th><th>Evento</th><th>Entidad</th><th>Canal</th><th>Estado</th><th>Detalle</th></tr></thead>
@@ -263,10 +270,12 @@ export async function logsView(main) {
           <td>${esc(l.eventKey)}</td>
           <td>${esc(l.entityType)} <span class="grid-id">${esc(String(l.entityId).slice(0, 12))}</span></td>
           <td>${l.channelType === 'email' ? 'Email' : 'Business Central'}</td>
-          <td><span class="grid-chip ${chip(l.status)}">${esc(l.status)}</span>${l.canReprocess ? `<button type="button" class="log-retry" data-id="${esc(l.id)}" style="display:block;margin-top:.45rem;font-size:.72rem;font-weight:600;padding:.28rem .6rem;border:1px solid var(--line,#d8d8d8);border-radius:.4rem;background:#fff;color:inherit;cursor:pointer;white-space:nowrap">↻ Reprocesar</button>` : ''}</td>
+          <td><span class="grid-chip ${chip(l.status)}">${esc(l.status)}</span>${acts(l)}</td>
           <td class="muted" style="max-width:22rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.detail || '')}">${esc(l.detail || '')}</td></tr>`).join('')
         : '<tr class="grid-empty"><td colspan="6">Todavía no hay notificaciones.</td></tr>'}</tbody>
     </table></div>`;
+
+  const byId = id => (data.items || []).find(x => x.id === id);
 
   // Reprocesar un envío a BC: re-aplica el transformer ACTUAL y reenvía (útil tras corregir
   // un transformer o un fallo transitorio, sin repetir la operación de origen).
@@ -275,6 +284,12 @@ export async function logsView(main) {
     try { const r = await api.intReprocess(btn.dataset.id); flash(r.message || 'Reprocesado.'); }
     catch (e) { flash(e.body?.error || e.message, 'err'); }
     logsView(main);
+  }));
+
+  // Ver el JSON exacto que se envió (o se enviaría, en 'simulated') a Business Central.
+  main.querySelectorAll('.log-json').forEach(btn => btn.addEventListener('click', () => {
+    const l = byId(btn.dataset.id);
+    if (l) showJson(`JSON enviado a BC · ${l.eventKey}`, l.payloadJson, l.detail || '');
   }));
 }
 
