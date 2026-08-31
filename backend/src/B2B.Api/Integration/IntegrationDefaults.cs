@@ -70,6 +70,7 @@ public static class IntegrationDefaults
     public const string CustomerTransformer = """
     {
       "b2BSystemsId": "#valueof($.id)",
+      "preClientCreatedId": "#valueof($.id)",
       "name": "#valueof($.name)",
       "eMail": "#valueof($.email)",
       "homePage": "#valueof($.web)",
@@ -165,6 +166,9 @@ public static class IntegrationDefaults
             if (ch.Transformer is not { } t) continue;
             if (t.Contains("\"salesOrderLines\"")) ch.Transformer = OrderTransformer;         // líneas: salesOrderLines→items
             else if (t.Contains("shipToAddresss")) ch.Transformer = CustomerTransformer;       // embebido: →shipToAddress + shippingAddressId
+            // clientes sembrados SIN preClientCreatedId → Customer.SystemId no quedaba atado al
+            // clientId y el pedido no encontraba al cliente. Añade el campo al default sembrado.
+            else if (t.Contains("\"b2BSystemsId\"") && !t.Contains("preClientCreatedId")) ch.Transformer = CustomerTransformer;
         }
 
         // Orígenes de documentos (pedido/albarán/factura)

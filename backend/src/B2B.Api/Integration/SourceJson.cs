@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json.Nodes;
 using B2B.Api.Portal;
 
@@ -10,6 +12,12 @@ public static class SourceJson
 {
     private const decimal Iva = 0.21m;
     private static JsonObject Money(decimal v) => new() { ["value"] = v };
+
+    // El "Line ID" de BC es un Guid (Tab80118 field 2; la página lo bindea directo y lo
+    // valida como "B2B Id" de la línea de venta), así que el id de línea debe ser un GUID
+    // VÁLIDO. Lo derivamos de (pedido, índice) para que sea estable al recomunicar.
+    private static string LineGuid(string orderId, int index) =>
+        new Guid(MD5.HashData(Encoding.UTF8.GetBytes($"{orderId}:line:{index}"))).ToString();
 
     public static JsonObject Order(
         string orderId, string? clientId, string? shippingAddressId, string? reference,
@@ -26,7 +34,7 @@ public static class SourceJson
             var amount = l.Qty * l.Price;
             items.Add(new JsonObject
             {
-                ["id"] = $"{orderId}-{++i}",
+                ["id"] = LineGuid(orderId, ++i),
                 ["productId"] = l.ProductId,     // = SystemId de Item Variant en BC
                 ["modelId"] = l.ModelId,         // = SystemId de Item en BC
                 ["sku"] = (l.Reference ?? "") + (l.Size ?? ""),
