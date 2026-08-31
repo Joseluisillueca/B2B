@@ -270,12 +270,10 @@ export async function logsView(main) {
   const data = await api.intLogs();
   const chip = s => ({ completed: 'ok', errors: 'danger', simulated: 'warn', skipped: 'off' }[s] || 'off');
   const btnCss = 'font-size:.72rem;font-weight:600;padding:.28rem .6rem;border:1px solid var(--line,#d8d8d8);border-radius:.4rem;background:#fff;color:inherit;cursor:pointer;white-space:nowrap';
-  // Botones de acción bajo el chip (solo canal Business Central): reprocesar y ver el JSON enviado.
+  // Acciones (solo canal Business Central): reprocesar y ver el JSON enviado. En horizontal
+  // junto al chip, para que todas las filas midan lo mismo.
   const acts = l => l.channelType !== 'business-central' ? '' :
-    `<span style="display:flex;flex-direction:column;gap:.35rem;margin-top:.45rem;align-items:flex-start">
-      ${l.canReprocess ? `<button type="button" class="log-retry" data-id="${esc(l.id)}" style="${btnCss}">↻ Reprocesar</button>` : ''}
-      ${l.payloadJson ? `<button type="button" class="log-json" data-id="${esc(l.id)}" style="${btnCss}">Ver JSON</button>` : ''}
-    </span>`;
+    `${l.canReprocess ? `<button type="button" class="log-retry" data-id="${esc(l.id)}" style="${btnCss}">↻ Reprocesar</button>` : ''}${l.payloadJson ? `<button type="button" class="log-json" data-id="${esc(l.id)}" style="${btnCss}">Ver JSON</button>` : ''}`;
   main.innerHTML = `
     <div class="mng-page-head"><div>
       <p class="crumbs">Integración · Notificaciones</p>
@@ -289,7 +287,7 @@ export async function logsView(main) {
           <td>${esc(l.eventKey)}</td>
           <td>${esc(l.entityType)} <span class="grid-id">${esc(String(l.entityId).slice(0, 12))}</span></td>
           <td>${l.channelType === 'email' ? 'Email' : 'Business Central'}</td>
-          <td><span class="grid-chip ${chip(l.status)}">${esc(l.status)}</span>${acts(l)}</td>
+          <td><span style="display:inline-flex;gap:.5rem;align-items:center;white-space:nowrap"><span class="grid-chip ${chip(l.status)}">${esc(l.status)}</span>${acts(l)}</span></td>
           <td class="muted" style="max-width:22rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.detail || '')}">${esc(l.detail || '')}</td></tr>`).join('')
         : '<tr class="grid-empty"><td colspan="6">Todavía no hay notificaciones.</td></tr>'}</tbody>
     </table></div>`;
