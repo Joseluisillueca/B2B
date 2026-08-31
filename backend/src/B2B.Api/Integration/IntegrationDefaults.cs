@@ -40,7 +40,7 @@ public static class IntegrationDefaults
       "totalCart": "#valueof($.totalCart.value)",
       "totalTransport": "#valueof($.totalTransport.value)",
       "totalCartDiscount": "#valueof($.totalCartDiscount.value)",
-      "items": {
+      "salesOrderLines": {
         "#loop($.items)": {
           "lineId": "#currentvalueatpath($.id)",
           "productId": "#currentvalueatpath($.productId)",
@@ -84,7 +84,7 @@ public static class IntegrationDefaults
       "county": "#valueof($.fiscalInfo.address.province)",
       "city": "#valueof($.fiscalInfo.address.city)",
       "postCode": "#valueof($.fiscalInfo.address.zipCode)",
-      "shipToAddress": {
+      "shipToAddresss": {
         "#loop($.shippingAddresses)": {
           "shippingAddressId": "#currentvalueatpath($.shippingAddressId)",
           "addressShip": "#currentvalueatpath($.streetAddress)",
@@ -164,8 +164,12 @@ public static class IntegrationDefaults
         foreach (var ch in await db.NotificationChannels.Where(c => c.ChannelType == "business-central").ToListAsync())
         {
             if (ch.Transformer is not { } t) continue;
-            if (t.Contains("\"salesOrderLines\"")) ch.Transformer = OrderTransformer;         // líneas: salesOrderLines→items
-            else if (t.Contains("shipToAddresss")) ch.Transformer = CustomerTransformer;       // embebido: →shipToAddress + shippingAddressId
+            // La propiedad del deep-insert en BC = el EntitySetName del part (Pag80123/Pag80115),
+            // NO el nombre de control: pedido→"salesOrderLines" (no "items"), cliente→"shipToAddresss"
+            // (3 eses, no "shipToAddress"). Con la clave de control BC devolvía HTTP 400
+            // ("property does not exist on type"). Corrige la clave en canales ya sembrados.
+            if (t.Contains("\"items\"")) ch.Transformer = OrderTransformer;                  // items→salesOrderLines
+            else if (t.Contains("\"shipToAddress\"")) ch.Transformer = CustomerTransformer;   // shipToAddress→shipToAddresss (+ preClientCreatedId)
             // clientes sembrados SIN preClientCreatedId → Customer.SystemId no quedaba atado al
             // clientId y el pedido no encontraba al cliente. Añade el campo al default sembrado.
             else if (t.Contains("\"b2BSystemsId\"") && !t.Contains("preClientCreatedId")) ch.Transformer = CustomerTransformer;

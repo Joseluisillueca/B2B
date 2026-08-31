@@ -53,12 +53,12 @@ public static class NotificationDispatcher
         {
             // Pipeline inerte: se registra el JSON que SE ENVIARÍA, sin llamar a BC.
             Log(db, eventKey, entityType, entityId, "business-central", "simulated",
-                $"Conexión BC no configurada · endpoint {ch.Endpoint}", payload);
+                $"Conexión BC no configurada · endpoint {ch.Endpoint}", payload, inputJson, ch.Endpoint);
             return;
         }
         var res = await bc.PostAsync(settings, ch.Endpoint ?? "", payload);
         Log(db, eventKey, entityType, entityId, "business-central",
-            res.Ok ? "completed" : "errors", $"{ch.Endpoint} → HTTP {res.Status}" + (res.Ok ? "" : $": {Trim(res.Body)}"), payload);
+            res.Ok ? "completed" : "errors", $"{ch.Endpoint} → HTTP {res.Status}" + (res.Ok ? "" : $": {Trim(res.Body)}"), payload, inputJson, ch.Endpoint);
     }
 
     private static async Task DispatchEmailAsync(
@@ -96,6 +96,44 @@ public static class NotificationDispatcher
         Log(db, eventKey, entityType, entityId, "email", res.Ok ? "completed" : "errors", "To: " + string.Join(", ", to) + extra, null);
     }
 
+    // Reprocesa un envío a Business Central: re-aplica el transformer ACTUAL del canal (así
+    // recoge cualquier corrección) sobre el JSON de entrada guardado y reenvía. Registra el
+    // resultado como un envío NUEVO (el histórico se conserva). Devuelve (ok, mensaje).
+    public static async Task<(bool Ok, string Message)> ReprocessBcAsync(
+        AppDbContext db, BcClient bc, IntegrationSettings settings, Guid logId)
+    {
+        var log = await db.NotificationLogs.FindAsync(logId);
+        if (log is null) return (false, "No se encontró el envío.");
+        if (log.ChannelType != "business-central") return (false, "Solo se reprocesan envíos a Business Central.");
+        if (string.IsNullOrWhiteSpace(log.InputJson))
+            return (false, "Este envío es anterior a la mejora de reproceso; vuelve a lanzar la operación de origen para poder reprocesar.");
+        if (!settings.BcConfigured) return (false, "La conexión con Business Central no está configurada.");
+
+        var ch = await db.NotificationChannels.FirstOrDefaultAsync(c =>
+            c.EventKey == log.EventKey && c.ChannelType == "business-central"
+            && (log.Endpoint == null || c.Endpoint == log.Endpoint));
+        if (ch is null) return (false, "El canal de Business Central de este evento ya no existe.");
+
+        try
+        {
+            var payload = JsonTransformService.Transform(ch.Transformer ?? "{}", log.InputJson);
+            var res = await bc.PostAsync(settings, ch.Endpoint ?? "", payload);
+            Log(db, log.EventKey, log.EntityType, log.EntityId, "business-central",
+                res.Ok ? "completed" : "errors",
+                $"[reproceso] {ch.Endpoint} → HTTP {res.Status}" + (res.Ok ? "" : $": {Trim(res.Body)}"),
+                payload, log.InputJson, ch.Endpoint);
+            await db.SaveChangesAsync();
+            return (res.Ok, res.Ok ? $"Reprocesado correctamente (HTTP {res.Status})." : $"Business Central devolvió HTTP {res.Status}.");
+        }
+        catch (Exception ex)
+        {
+            Log(db, log.EventKey, log.EntityType, log.EntityId, "business-central", "errors",
+                $"[reproceso] {ex.Message}", null, log.InputJson, log.Endpoint);
+            await db.SaveChangesAsync();
+            return (false, ex.Message);
+        }
+    }
+
     private static List<string> ResolveRecipients(string? spec, IReadOnlyDictionary<string, string?>? vars)
     {
         var result = new List<string>();
@@ -113,11 +151,12 @@ public static class NotificationDispatcher
         return result;
     }
 
-    private static void Log(AppDbContext db, string ev, string type, string id, string channel, string status, string? detail, string? payload) =>
+    private static void Log(AppDbContext db, string ev, string type, string id, string channel, string status, string? detail, string? payload, string? input = null, string? endpoint = null) =>
         db.NotificationLogs.Add(new NotificationLog
         {
             Id = Guid.NewGuid(), EventKey = ev, EntityType = type, EntityId = id,
-            ChannelType = channel, Status = status, Detail = detail, PayloadJson = payload, CreatedAt = DateTime.UtcNow,
+            ChannelType = channel, Status = status, Detail = detail, PayloadJson = payload,
+            InputJson = input, Endpoint = endpoint, CreatedAt = DateTime.UtcNow,
         });
 
     private static string Trim(string s) => s.Length > 400 ? s[..400] : s;

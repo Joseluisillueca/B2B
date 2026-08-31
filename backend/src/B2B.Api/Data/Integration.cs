@@ -65,6 +65,11 @@ public class NotificationLog
     public string Status { get; set; } = "";       // completed | errors | simulated | skipped
     public string? Detail { get; set; }            // error o resumen
     public string? PayloadJson { get; set; }       // JSON transformado enviado (para depurar)
+    // Para "Reprocesar": guardamos el JSON de ENTRADA (source) y el endpoint BC, de modo que
+    // al reintentar se re-aplica el transformer ACTUAL (recogiendo cualquier arreglo) y se
+    // reenvía. Solo se rellenan en canales business-central.
+    public string? InputJson { get; set; }
+    public string? Endpoint { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 

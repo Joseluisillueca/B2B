@@ -141,8 +141,23 @@ public static class IntegrationEndpoints
         {
             var q = db.NotificationLogs.AsQueryable();
             if (!string.IsNullOrEmpty(eventKey)) q = q.Where(l => l.EventKey == eventKey);
-            var items = await q.OrderByDescending(l => l.CreatedAt).Take(Math.Clamp(take, 1, 500)).ToListAsync();
+            var items = await q.OrderByDescending(l => l.CreatedAt).Take(Math.Clamp(take, 1, 500))
+                .Select(l => new
+                {
+                    l.Id, l.EventKey, l.EntityType, l.EntityId, l.ChannelType, l.Status, l.Detail, l.PayloadJson, l.CreatedAt,
+                    // Se puede reprocesar un envío a BC del que guardamos el JSON de entrada.
+                    canReprocess = l.ChannelType == "business-central" && l.InputJson != null,
+                }).ToListAsync();
             return Results.Ok(new { items });
+        }).RequireAdmin();
+
+        // ── Reprocesar un envío a Business Central (re-transforma con el transformer actual) ──
+        app.MapPost("/api/admin/integration/logs/{id:guid}/reprocess",
+            async (Guid id, AppDbContext db, BcClient bc) =>
+        {
+            var settings = await db.IntegrationSettings.FindAsync(1) ?? new IntegrationSettings();
+            var (ok, message) = await NotificationDispatcher.ReprocessBcAsync(db, bc, settings, id);
+            return ok ? Results.Ok(new { ok, message }) : Results.BadRequest(new { ok, error = message });
         }).RequireAdmin();
 
         // ── Probar transformación (JUST.net) ──

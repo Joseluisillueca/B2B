@@ -249,7 +249,7 @@ public class PortalAutonomoTests : IClassFixture<PortalAutonomoTests.PortalFacto
         Assert.Equal("simulated", bc.GetProperty("status").GetString());
         var payload = bc.GetProperty("payloadJson").GetString() ?? "";
         Assert.Contains("orderId", payload);
-        Assert.Contains("\"items\"", payload);
+        Assert.Contains("\"salesOrderLines\"", payload);   // EntitySetName del part en BC (no "items")
     }
 
     [Fact]
