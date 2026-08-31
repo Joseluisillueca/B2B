@@ -82,6 +82,13 @@ export const api = {
   intSaveEmailLayout: layout => request('PUT', '/api/admin/integration/email-layout', { layout }),
   intSaveOrdersMode: mode => request('PUT', '/api/admin/integration/orders-mode', { mode }),
 
+  // Reglas de transporte (portes)
+  transportRules: () => request('GET', '/api/admin/transport-rules'),
+  createTransportRule: b => request('POST', '/api/admin/transport-rules', b),
+  saveTransportRule: (id, b) => request('PUT', `/api/admin/transport-rules/${encodeURIComponent(id)}`, b),
+  delTransportRule: id => request('DELETE', `/api/admin/transport-rules/${encodeURIComponent(id)}`),
+  previewTransport: b => request('POST', '/api/admin/transport-rules/preview', b),
+
   // Imágenes de modelo (marketing): endpoints ya existentes
   modelImages: () => request('GET', '/api/admin/model-images'),
   setModelImage: (modelId, uri) => request('PUT', `/api/admin/model-images/${encodeURIComponent(modelId)}`, { uri }),

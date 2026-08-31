@@ -52,6 +52,8 @@ export default function checkout(host) {
   let accepted = false;
   let sent = null;
   let error = '';   // fallo de la última acción, en línea junto a los totales
+  let transport = 0;      // porte calculado por las reglas para el carrito actual (0 = gratis)
+  let previewKey = '';    // evita re-pedir la preview si no cambian los datos relevantes
   const form = {
     reference: '',
     payMethod: payOptions(client)[0]?.value || '',
@@ -118,9 +120,9 @@ export default function checkout(host) {
               <div><dt>${esc(t('checkout.subtotal'))}</dt><dd>${esc(eur(subtotal))}</dd></div>
               <div><dt>${esc(t('checkout.totalNet'))}</dt><dd>${esc(eur(subtotal))}</dd></div>
               <div class="ck-ship"><dt>${esc(t('checkout.shipping'))} ${icons.truck(16)}</dt>
-                <dd>${esc(t('checkout.freeShipping'))}</dd></div>
+                <dd>${transport > 0 ? esc(eur(transport)) : esc(t('checkout.freeShipping'))}</dd></div>
               <div class="ck-grand"><dt>${esc(t('checkout.totalGross'))}</dt>
-                <dd>${esc(eur(subtotal + tax))}</dd></div>
+                <dd>${esc(eur(subtotal + tax + transport))}</dd></div>
             </dl>
 
             <label class="ck-terms">
@@ -136,6 +138,16 @@ export default function checkout(host) {
           </aside>
         </div>
       </div>`;
+
+    // Porte real del carrito: consulta la preview cuando cambian ventana/dirección/unidades/
+    // importe y re-pinta. Guardado por clave para no re-pedir sin cambios ni entrar en bucle.
+    const previewNow = `${state.window}|${form.shippingAddressId}|${units}|${subtotal}`;
+    if (units > 0 && previewNow !== previewKey) {
+      previewKey = previewNow;
+      api.transportPreview({ windowId: state.window, shippingAddressId: form.shippingAddressId || null, units, amount: subtotal })
+        .then(r => { const c = Number(r?.cost) || 0; if (c !== transport) { transport = c; render(); } })
+        .catch(() => {});
+    }
 
     bind();
   }
@@ -246,7 +258,7 @@ export default function checkout(host) {
     if (editing) {
       $('reference')?.addEventListener('input', e => { form.reference = e.target.value; });
       $('payMethod')?.addEventListener('change', e => { form.payMethod = e.target.value; });
-      $('shipTo')?.addEventListener('change', e => { form.shippingAddressId = e.target.value; });
+      $('shipTo')?.addEventListener('change', e => { form.shippingAddressId = e.target.value; render(); });
       $('notes')?.addEventListener('input', e => { form.notes = e.target.value; });
     }
 

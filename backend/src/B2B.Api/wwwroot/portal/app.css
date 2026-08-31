@@ -16,6 +16,10 @@
      monitores 4K. Las páginas de LECTURA siguen usando --maxw (1240). */
   --maxw-wide:2400px;
   --muted:#7d7979; --muted-2:#9b9797; --line-control:#bab6b6;
+  /* Texto de AYUDA (hints, crumbs, labels de simulador): --muted (#7d7979) se
+     queda en ~3,9:1 sobre el papel del back-office (<4,5 AA). --hint lo oscurece
+     a ~5,8:1 sin tocar el --muted global (muy transversal). */
+  --hint:#5f5b5b;
   /* --blue* = ahora el ROJO de marca (acento único). Rojo a tamaño de párrafo
      usa --accent-deep (#c94b39 ≈ accent-700), no el base, por contraste. */
   --blue:#ec3013; --blue-deep:#dd2b0f; --blue-soft:#ffe0d9;

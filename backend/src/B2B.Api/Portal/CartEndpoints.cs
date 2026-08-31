@@ -24,6 +24,10 @@ public sealed record CartRequest(
     string? Name, string? WindowId, string? Reference, CartLine[]? Lines,
     string? PayMethod = null, string? ShippingAddressId = null, string? Notes = null);
 
+// Petición de previsualización de transporte (checkout): el carrito actual del cliente.
+public sealed record TransportPreviewRequest(
+    string? WindowId, string? ShippingAddressId, int Units, decimal Amount);
+
 // Carritos favoritos (06-shopping-carts.png), corazones del catálogo y el cierre del
 // checkout. Todo se acota al cliente del token: el clientId nunca llega por parámetro.
 public static class CartEndpoints
@@ -265,9 +269,18 @@ public static class CartEndpoints
                 // + incoterm van al pedido nativo (lo ve el cliente) y al JSON de BC.
                 var units = lines.Sum(l => l.Qty);
                 var amount = lines.Sum(l => l.Qty * l.Price);
-                var country = Str(address?["countryIsoId"]) ?? await ClientCountryAsync(db, actor.ClientId);
-                var transport = Integration.TransportRules.Evaluate(
-                    await db.TransportRules.ToListAsync(), actor.ClientId, country, orderType, units, amount);
+                // País de envío: el de la dirección de envío; si viene vacío (p.ej. envío = fiscal),
+                // el de la dirección fiscal del cliente.
+                var shipCountry = Str(address?["countryIsoId"]);
+                var country = string.IsNullOrWhiteSpace(shipCountry) ? await ClientCountryAsync(db, actor.ClientId) : shipCountry;
+                // El cálculo de portes NUNCA debe romper el checkout (el pedido ya es válido).
+                Integration.TransportResult transport;
+                try
+                {
+                    transport = Integration.TransportRules.Evaluate(
+                        await db.TransportRules.ToListAsync(), actor.ClientId, country, orderType, units, amount);
+                }
+                catch { transport = Integration.TransportResult.None; }
 
                 // El cerrojo abarca leer el número + guardar: el siguiente pedido ya ve
                 // este número emitido y toma el siguiente (nunca dos iguales).
@@ -313,6 +326,34 @@ public static class CartEndpoints
             }
 
             return Results.Created($"/api/portal/carts/{order.Id}", Detail(order, actor.User.Email, portalMode));
+        }).RequireAuthorization();
+
+        // Previsualización del transporte para el CLIENTE: dado el carrito actual (ventana,
+        // dirección de envío, unidades e importe), evalúa las reglas de portes y devuelve el
+        // coste, para mostrarlo en el checkout antes de terminar el pedido. Solo informativo;
+        // el coste definitivo se recalcula al terminar (con las líneas re-tarifadas).
+        app.MapPost("/api/portal/transport-preview", async (
+            TransportPreviewRequest body, ClaimsPrincipal principal, AppDbContext db) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null) return Unknown();
+
+            var window = string.IsNullOrWhiteSpace(body.WindowId) ? null
+                : await db.ServiceWindows.SingleOrDefaultAsync(w => w.ExternalId == body.WindowId!.ToLowerInvariant());
+            var orderType = string.IsNullOrWhiteSpace(window?.OrderType) ? null : window!.OrderType;
+            var address = await ShippingAddressAsync(db, actor.ClientId, body.ShippingAddressId);
+            var shipCountry = Str(address?["countryIsoId"]);
+            var country = string.IsNullOrWhiteSpace(shipCountry) ? await ClientCountryAsync(db, actor.ClientId) : shipCountry;
+
+            Integration.TransportResult t;
+            try
+            {
+                t = Integration.TransportRules.Evaluate(
+                    await db.TransportRules.ToListAsync(), actor.ClientId, country, orderType,
+                    Math.Max(0, body.Units), Math.Max(0m, body.Amount));
+            }
+            catch { t = Integration.TransportResult.None; }
+            return Results.Ok(new { cost = t.Cost, matched = t.Matched });
         }).RequireAuthorization();
     }
 

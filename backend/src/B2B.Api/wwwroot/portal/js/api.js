@@ -85,6 +85,9 @@ export const api = {
   sendModelSelection: id => request('POST', '/api/agent/model-selections/' + encodeURIComponent(id) + '/send'),
   createModelSelection: body => request('POST', '/api/agent/model-selections', body),
 
+  /** Previsualiza el porte del carrito actual (informativo; el definitivo se calcula al terminar) */
+  transportPreview: body => request('POST', '/api/portal/transport-preview', body),
+
   /** Pagos con tarjeta (Stripe/mock). Devuelven { paymentId, url } al que redirigir */
   payInvoice: (invoiceId, locale) => request('POST', `/api/portal/payments/invoice/${encodeURIComponent(invoiceId)}?locale=${locale || ''}`),
   payOrder: (orderId, locale) => request('POST', `/api/portal/payments/order/${orderId}?locale=${locale || ''}`),

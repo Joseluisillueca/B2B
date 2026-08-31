@@ -221,7 +221,13 @@ public static class DocumentEndpoints
         amount = DocumentProjections.Money(payload["totals"]?["totalAmount"]),
         discount = DocumentProjections.Money(payload["totals"]?["totalDiscount"]),
         tax = DocumentProjections.Money(payload["totals"]?["totalTax"]),
-        total = DocumentProjections.Money(payload["totals"]?["total"])
+        total = DocumentProjections.Money(payload["totals"]?["total"]),
+        // Transporte (portes): coste y total con portes. Los emite NativeOrder y también los
+        // pedidos de BC; el cliente los ve en la ficha del pedido y en el checkout.
+        transport = DocumentProjections.Money(payload["transportTotals"]?["total"]),
+        totalWithTransport = payload["totalWithTransport"] is not null
+            ? DocumentProjections.Money(payload["totalWithTransport"])
+            : DocumentProjections.Money(payload["totals"]?["total"]),
     };
 
     private static IResult NotFound() =>

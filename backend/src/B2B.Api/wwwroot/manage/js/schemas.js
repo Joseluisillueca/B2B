@@ -226,7 +226,9 @@ export const NAV = [
     ['clients', 'Clientes', 'building'], ['client-groups', 'Grupos', 'users'],
     ['agents', 'Agentes', 'user'], ['users', 'Accesos', 'key'],
   ] },
-  { title: 'Ventas', items: [['orders', 'Pedidos', 'cart']] },
+  { title: 'Ventas', items: [
+    ['orders', 'Pedidos', 'cart'], ['transport', 'Transporte', 'truck'],
+  ] },
   { title: 'Contenido', items: [
     ['content', 'Portada', 'layout'], ['lookbook', 'Lookbook', 'book'],
   ] },

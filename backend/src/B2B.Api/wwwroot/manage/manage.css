@@ -108,8 +108,10 @@ table.grid tbody tr.row-link { cursor:pointer; }
   border-bottom:2px solid #fff; rotate:-45deg; translate:0 -1px; }
 /* .acc-field .acc-hint (0,2,0) gana a la regla del portal `.acc-field span` (0,1,1),
    que forzaba MAYÚSCULAS también en las ayudas. */
-.acc-field .acc-hint, .acc-hint { display:block; font-size:.76rem; color:var(--muted); margin:.3rem 0 0;
+.acc-field .acc-hint, .acc-hint { display:block; font-size:.76rem; color:var(--hint); margin:.3rem 0 0;
   font-weight:400; text-transform:none; letter-spacing:0; }
+/* A1: crumbs del back-office al token de ayuda (AA) sin afectar al portal de cliente. */
+.mng-page-head .crumbs { color:var(--hint); }
 /* Los CTA que son enlaces (<a class="btn-*">) no deben ir subrayados como un link */
 a.btn-primary, a.btn-ghost, a.btn-danger { text-decoration:none; }
 .acc-field label > span { font-weight:700; }
@@ -182,6 +184,40 @@ a.btn-primary, a.btn-ghost, a.btn-danger { text-decoration:none; }
   font-size:.8rem; font-weight:600; color:var(--ink-2); background:#fff; transition:all .12s var(--ease); }
 .mng-status-pills button:hover { border-color:var(--ink); }
 .mng-status-pills button.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+
+/* ── Simulador de transporte ── */
+.tr-sim { display:flex; align-items:stretch; gap:1.4rem; border:1px solid var(--line); border-radius:var(--r-sm);
+  padding:1.2rem 1.3rem; background:var(--paper); }
+.tr-sim-ok { border-left:3px solid var(--blue); }
+.tr-sim-none { align-items:center; gap:1rem; color:var(--ink-2); }
+.tr-sim-none .tr-sim-ic { display:grid; place-items:center; width:2.8rem; height:2.8rem; flex:none;
+  color:var(--muted); background:var(--surface); }
+.tr-sim-none b { display:block; color:var(--ink); font-size:1rem; margin-bottom:.15rem; }
+.tr-sim-none span { font-size:.86rem; }
+.tr-sim-cost { display:flex; flex-direction:column; gap:.25rem; padding-right:1.4rem; border-right:1px solid var(--line);
+  justify-content:center; min-width:9rem; }
+.tr-sim-label { font-size:.68rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--hint); }
+.tr-sim-value { font-family:var(--display); font-size:2.1rem; font-weight:500; letter-spacing:-.02em; color:var(--blue); line-height:1; }
+/* M2: "Gratis" (coste 0) en verde, coherente con el chip "Portes gratis" del listado. */
+.tr-sim-value.tr-sim-free { color:var(--ok); }
+.tr-sim-meta { display:flex; flex-direction:column; justify-content:center; gap:.7rem; }
+.tr-sim-meta p { margin:0; display:flex; flex-direction:column; gap:.1rem; }
+.tr-sim-meta b { font-size:1rem; color:var(--ink); font-weight:700; }
+@media (max-width:40rem) {
+  .tr-sim-ok { flex-direction:column; gap:1rem; }
+  .tr-sim-cost { border-right:none; border-bottom:1px solid var(--line); padding:0 0 1rem; }
+}
+/* B1: feedback de "Simulando…" — el icono gira mientras se consulta el preview. */
+.tr-simbtn.is-busy svg { animation:tr-spin .7s linear infinite; }
+@keyframes tr-spin { to { rotate:360deg; } }
+@media (prefers-reduced-motion:reduce) { .tr-simbtn.is-busy svg { animation:none; } }
+/* M3: sin flechas nativas en los number del back-office (como .sz-qty del catálogo);
+   se mantiene el teclado numérico vía inputmode en el marcado. */
+.mng-form input[type=number], .acc-field input[type=number] { -moz-appearance:textfield; }
+.mng-form input[type=number]::-webkit-outer-spin-button,
+.mng-form input[type=number]::-webkit-inner-spin-button,
+.acc-field input[type=number]::-webkit-outer-spin-button,
+.acc-field input[type=number]::-webkit-inner-spin-button { appearance:none; -webkit-appearance:none; margin:0; }
 
 /* ── Toasts (reutiliza colores de .notice) ── */
 #mng-flash { position:fixed; left:50%; bottom:1.5rem; translate:-50% 0; z-index:60; min-width:16rem;

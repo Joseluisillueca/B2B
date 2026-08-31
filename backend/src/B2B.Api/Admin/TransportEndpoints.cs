@@ -74,11 +74,19 @@ public static class TransportEndpoints
     private static string? Validate(TransportRuleBody b)
     {
         if (string.IsNullOrWhiteSpace(b.Name)) return "El nombre es obligatorio.";
+        if (b.Name!.Trim().Length > 120) return "El nombre es demasiado largo (máx. 120 caracteres).";
         if (b.Cost < 0) return "El coste no puede ser negativo.";
+        if (b.Cost > 1_000_000m) return "El coste es demasiado alto.";
         if (b.MinUnits is < 0) return "El mínimo de unidades no puede ser negativo.";
         if (b.MinAmount is < 0) return "El mínimo de importe no puede ser negativo.";
-        if (!string.IsNullOrWhiteSpace(b.OrderType) && b.OrderType is not ("REPLENISHMENT" or "SCHEDULED"))
+        var orderType = b.OrderType?.Trim().ToUpperInvariant();
+        if (!string.IsNullOrWhiteSpace(orderType) && orderType is not ("REPLENISHMENT" or "SCHEDULED"))
             return "Tipo de pedido no válido (REPLENISHMENT | SCHEDULED).";
+        // Business Central solo reconoce fob/usa como servicio (GetServiceType); el resto lo
+        // descartaría en silencio, así que lo rechazamos aquí para no engañar.
+        var incoterm = b.IncotermId?.Trim().ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(incoterm) && incoterm is not ("fob" or "usa"))
+            return "Incoterm no válido: Business Central solo reconoce FOB o USA.";
         return null;
     }
 
@@ -94,7 +102,8 @@ public static class TransportEndpoints
         r.MinAmount = b.MinAmount;
         r.Cost = b.Cost;
         r.PerUnit = b.PerUnit ?? false;
-        r.IncotermId = Clean(b.IncotermId);
+        // fob/usa en minúsculas: así el conector (GetServiceType) lo reconoce.
+        r.IncotermId = Clean(b.IncotermId)?.ToLowerInvariant();
         r.UpdatedAt = DateTime.UtcNow;
     }
 
