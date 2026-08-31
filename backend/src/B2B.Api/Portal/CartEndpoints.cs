@@ -260,6 +260,15 @@ public static class CartEndpoints
             var orderNumber = "";
             if (portalMode)
             {
+                // Transporte (portes) según las reglas configuradas (/manage → Transporte):
+                // se evalúan contra cliente, país de envío, tipo de pedido y mínimos. El coste
+                // + incoterm van al pedido nativo (lo ve el cliente) y al JSON de BC.
+                var units = lines.Sum(l => l.Qty);
+                var amount = lines.Sum(l => l.Qty * l.Price);
+                var country = Str(address?["countryIsoId"]) ?? await ClientCountryAsync(db, actor.ClientId);
+                var transport = Integration.TransportRules.Evaluate(
+                    await db.TransportRules.ToListAsync(), actor.ClientId, country, orderType, units, amount);
+
                 // El cerrojo abarca leer el número + guardar: el siguiente pedido ya ve
                 // este número emitido y toma el siguiente (nunca dos iguales).
                 await OrderNumberLock.WaitAsync();
@@ -270,13 +279,15 @@ public static class CartEndpoints
                         orderId: order.Id.ToString(), number: orderNumber,
                         clientId: actor.ClientId, orderType: orderType, reference: body.Reference,
                         payMethodId: body.PayMethod, notes: body.Notes,
-                        shippingAddress: address, lines: lines, now: DateTime.UtcNow);
+                        shippingAddress: address, lines: lines, now: DateTime.UtcNow,
+                        transportCost: transport.Cost);
                     await SyncEndpoints.IngestDocumentAsync(db, "order", order.Id.ToString(), actor.ClientId, doc);
 
                     // JSON de origen (forma "cart" de la referencia) para el transformer a BC
                     sourceJson = Integration.SourceJson.Order(
                         order.Id.ToString(), actor.ClientId, body.ShippingAddressId, body.Reference,
-                        body.PayMethod, incotermId: "", saleId: "", lines: lines, window: window);
+                        body.PayMethod, incotermId: transport.IncotermId ?? "", saleId: "",
+                        lines: lines, window: window, transportCost: transport.Cost);
                     order.SourceJson = sourceJson.ToJsonString();
 
                     await db.SaveChangesAsync();
@@ -399,6 +410,21 @@ public static class CartEndpoints
         if (doc is null) return null;
         return ClientIdentity.Parse(doc.Payload)?["address"] as JsonObject;
     }
+
+    // País (ISO) de la dirección FISCAL del cliente. Se usa como respaldo del país de envío
+    // cuando el pedido no lleva dirección de envío propia (envío = fiscal), para las reglas de
+    // transporte por país.
+    private static async Task<string?> ClientCountryAsync(AppDbContext db, string? clientId)
+    {
+        if (string.IsNullOrEmpty(clientId)) return null;
+        var doc = await db.SyncDocuments.SingleOrDefaultAsync(d => d.EntityType == "client" && d.ExternalId == clientId);
+        if (doc is null) return null;
+        return Str(ClientIdentity.Parse(doc.Payload)?["fiscalInfo"]?["address"]?["countryIsoId"]);
+    }
+
+    // Lee un nodo JSON como string (o null si no es un string). Evita excepciones de GetValue.
+    private static string? Str(JsonNode? node) =>
+        node is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
 
     // ── Ámbito y validación ───────────────────────────────────────────────────
 

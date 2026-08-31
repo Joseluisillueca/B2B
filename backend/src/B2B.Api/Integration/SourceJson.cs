@@ -22,7 +22,7 @@ public static class SourceJson
     public static JsonObject Order(
         string orderId, string? clientId, string? shippingAddressId, string? reference,
         string? payMethodId, string? incotermId, string? saleId,
-        IReadOnlyList<CartLine> lines, Data.ServiceWindow? window)
+        IReadOnlyList<CartLine> lines, Data.ServiceWindow? window, decimal transportCost = 0)
     {
         decimal subtotal = lines.Sum(l => l.Qty * l.Price);
         decimal tax = Math.Round(subtotal * Iva, 2);
@@ -72,7 +72,7 @@ public static class SourceJson
             ["totalTax"] = Money(tax),
             ["totalDiscount"] = Money(0),
             ["totalCart"] = Money(subtotal),
-            ["totalTransport"] = Money(0),
+            ["totalTransport"] = Money(transportCost),
             ["totalCartDiscount"] = Money(0),
             ["items"] = items,
             ["stockServices"] = stockServices,

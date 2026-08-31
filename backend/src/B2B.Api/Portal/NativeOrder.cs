@@ -15,7 +15,8 @@ public static class NativeOrder
     public static JsonObject Build(
         string orderId, string number, string? clientId, string? orderType,
         string? reference, string? payMethodId, string? notes,
-        JsonObject? shippingAddress, IReadOnlyList<CartLine> lines, DateTime now)
+        JsonObject? shippingAddress, IReadOnlyList<CartLine> lines, DateTime now,
+        decimal transportCost = 0)
     {
         decimal subtotal = lines.Sum(l => l.Qty * l.Price);
         decimal tax = Math.Round(subtotal * Iva, 2);
@@ -78,6 +79,16 @@ public static class NativeOrder
                 ["totalTax"] = Money(tax),
                 ["total"] = Money(subtotal + tax),
             },
+            // Transporte (portes) calculado por las reglas de transporte; misma forma que un
+            // pedido de BC para que el cliente lo vea igual en su ficha de pedido.
+            ["transportTotals"] = new JsonObject
+            {
+                ["totalAmount"] = Money(transportCost),
+                ["totalDiscount"] = Money(0),
+                ["totalTax"] = Money(0),
+                ["total"] = Money(transportCost),
+            },
+            ["totalWithTransport"] = Money(subtotal + tax + transportCost),
             ["items"] = items,
         };
 

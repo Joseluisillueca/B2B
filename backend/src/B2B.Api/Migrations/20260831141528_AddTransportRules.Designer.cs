@@ -3,6 +3,7 @@ using System;
 using B2B.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace B2B.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260831141528_AddTransportRules")]
+    partial class AddTransportRules
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -173,7 +176,7 @@ namespace B2B.Api.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("B2B.Api.Data.BusinessChangeRequest", b =>
@@ -313,7 +316,7 @@ namespace B2B.Api.Migrations
 
                     b.HasIndex("FamilyId");
 
-                    b.ToTable("CatalogModels", (string)null);
+                    b.ToTable("CatalogModels");
                 });
 
             modelBuilder.Entity("B2B.Api.Data.CatalogProduct", b =>
@@ -367,7 +370,7 @@ namespace B2B.Api.Migrations
 
                     b.HasIndex("Sku");
 
-                    b.ToTable("CatalogProducts", (string)null);
+                    b.ToTable("CatalogProducts");
                 });
 
             modelBuilder.Entity("B2B.Api.Data.ClientRegistrationRequest", b =>
@@ -569,7 +572,7 @@ namespace B2B.Api.Migrations
 
                     b.HasKey("ExternalId");
 
-                    b.ToTable("MediaAssets", (string)null);
+                    b.ToTable("MediaAssets");
                 });
 
             modelBuilder.Entity("B2B.Api.Data.ModelSelection", b =>
@@ -790,7 +793,7 @@ namespace B2B.Api.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("Offers", (string)null);
+                    b.ToTable("Offers");
                 });
 
             modelBuilder.Entity("B2B.Api.Data.Payment", b =>
@@ -1082,7 +1085,7 @@ namespace B2B.Api.Migrations
 
                     b.HasKey("ExternalId");
 
-                    b.ToTable("ServiceWindows", (string)null);
+                    b.ToTable("ServiceWindows");
                 });
 
             modelBuilder.Entity("B2B.Api.Data.StockLevel", b =>
@@ -1125,7 +1128,7 @@ namespace B2B.Api.Migrations
                     b.HasIndex("ProductExternalId", "ServiceWindowKey")
                         .IsUnique();
 
-                    b.ToTable("StockLevels", (string)null);
+                    b.ToTable("StockLevels");
                 });
 
             modelBuilder.Entity("B2B.Api.Data.SyncDocument", b =>
@@ -1163,7 +1166,7 @@ namespace B2B.Api.Migrations
                     b.HasIndex("EntityType", "ExternalId")
                         .IsUnique();
 
-                    b.ToTable("SyncDocuments", (string)null);
+                    b.ToTable("SyncDocuments");
                 });
 
             modelBuilder.Entity("B2B.Api.Data.TransportRule", b =>

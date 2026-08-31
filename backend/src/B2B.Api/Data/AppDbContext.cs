@@ -28,6 +28,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<IntegrationSettings> IntegrationSettings => Set<IntegrationSettings>();
     public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
+    public DbSet<TransportRule> TransportRules => Set<TransportRule>();
     public DbSet<DocumentSource> DocumentSources => Set<DocumentSource>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -295,6 +296,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             l.Property(x => x.PayloadJson).HasColumnType("jsonb");
             l.HasIndex(x => x.CreatedAt);
             l.HasIndex(x => x.EventKey);
+        });
+
+        modelBuilder.Entity<TransportRule>(r =>
+        {
+            r.ToTable("transport_rules");
+            r.HasKey(x => x.Id);
+            r.Property(x => x.Name).HasMaxLength(120);
+            r.Property(x => x.ClientExternalId).HasMaxLength(120);
+            r.Property(x => x.CountryIsoId).HasMaxLength(10);
+            r.Property(x => x.OrderType).HasMaxLength(30);
+            r.Property(x => x.IncotermId).HasMaxLength(30);
+            r.Property(x => x.Cost).HasColumnType("numeric(18,2)");
+            r.Property(x => x.MinAmount).HasColumnType("numeric(18,2)");
+            r.HasIndex(x => x.Priority);
         });
 
         modelBuilder.Entity<DocumentSource>(d =>
