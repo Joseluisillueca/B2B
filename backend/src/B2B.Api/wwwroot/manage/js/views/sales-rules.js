@@ -49,10 +49,12 @@ function chipMulti(host, opt) {
   host.innerHTML = `<div class="tr-chips" role="list" aria-label="${esc(opt.aria || 'Valores')}"></div>
     <input class="tr-country-input" autocomplete="off" spellcheck="false" role="combobox"
            aria-expanded="false" list="${dlId}" placeholder="${esc(opt.placeholder || 'Escribe y pulsa Intro')}">
-    <datalist id="${dlId}"></datalist>`;
+    <datalist id="${dlId}"></datalist>
+    <span class="sr-chip-alert" role="status" aria-live="polite" hidden></span>`;
   const chipsEl = host.querySelector('.tr-chips');
   const input = host.querySelector('input');
   const datalist = host.querySelector('datalist');
+  const alertEl = host.querySelector('.sr-chip-alert');
 
   function labelFor(v) {
     if (opt.mode === 'country') return countryName(v);
@@ -73,7 +75,18 @@ function chipMulti(host, opt) {
     input.value = '';
     return true;
   }
-  function reject() { input.classList.add('is-invalid'); setTimeout(() => input.classList.remove('is-invalid'), 800); }
+  let alertTimer = 0;
+  function reject(raw) {
+    input.classList.add('is-invalid');
+    setTimeout(() => input.classList.remove('is-invalid'), 800);
+    // Aviso accesible además del parpadeo del borde (M3).
+    const what = String(raw || '').trim();
+    alertEl.textContent = what ? `No reconocido: "${what}". Elige uno de la lista.` : 'No reconocido: elige uno de la lista.';
+    alertEl.hidden = false;
+    clearTimeout(alertTimer);
+    alertTimer = setTimeout(() => { alertEl.hidden = true; alertEl.textContent = ''; }, 4000);
+  }
+  function clearAlert() { clearTimeout(alertTimer); alertEl.hidden = true; alertEl.textContent = ''; }
   function resolve(raw) {
     const t = String(raw || '').trim();
     if (!t) return null;
@@ -90,11 +103,15 @@ function chipMulti(host, opt) {
     if (e.key === 'Enter') {
       e.preventDefault();
       const v = resolve(input.value);
-      if (v) add(v); else if (input.value.trim()) reject();
+      if (v) { clearAlert(); add(v); } else if (input.value.trim()) reject(input.value);
     } else if (e.key === 'Backspace' && !input.value && values.length) { values.pop(); render(); }
   });
-  input.addEventListener('change', () => { const v = resolve(input.value); if (v) add(v); });
+  input.addEventListener('change', () => { const v = resolve(input.value); if (v) { clearAlert(); add(v); } });
+  // N2: refleja el estado del combobox de sugerencias.
+  input.addEventListener('focus', () => input.setAttribute('aria-expanded', 'true'));
+  input.addEventListener('blur', () => input.setAttribute('aria-expanded', 'false'));
   input.addEventListener('input', e => {
+    if (alertEl.textContent) clearAlert();
     if (e.inputType === 'insertReplacementText' || e.inputType == null) { const v = resolve(input.value); if (v) add(v); }
   });
   chipsEl.addEventListener('click', e => {
@@ -281,9 +298,11 @@ function openItemDialog(kind, initial) {
     const fieldsHost = overlay.querySelector('#srFields');
     const errBox = overlay.querySelector('#srErr');
     let ctrl = null;
-    function build(type, data) { errBox.innerHTML = ''; fieldsHost.innerHTML = ''; ctrl = descOf(kind, type).build(fieldsHost, data || {}); const first = fieldsHost.querySelector('input,select'); if (first) setTimeout(() => first.focus(), 30); }
+    // autoFocus: al ABRIR el diálogo enfocamos el selector de Tipo (primera decisión),
+    // no el primer parámetro. Al CAMBIAR de tipo sí saltamos al primer campo nuevo.
+    function build(type, data, autoFocus = true) { errBox.innerHTML = ''; fieldsHost.innerHTML = ''; ctrl = descOf(kind, type).build(fieldsHost, data || {}); if (autoFocus) { const first = fieldsHost.querySelector('input,select'); if (first) setTimeout(() => first.focus(), 30); } }
     if (editing) typeSel.value = initial.type;
-    build(typeSel.value, initial);
+    build(typeSel.value, initial, false);
     typeSel.onchange = () => build(typeSel.value, null);
 
     const opener = document.activeElement;
@@ -401,10 +420,12 @@ export async function salesRulesView(main) {
 const addOpts = (sel, opts) => { if (sel && opts.length) sel.insertAdjacentHTML('beforeend', opts.map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('')); };
 
 const MAX_ROW_CHIPS = 4;
+// Verde (ok) solo para acciones favorables; "Denegar" es restrictivo → danger (M1).
+const actionChipVariant = o => (o && o.type === 'deny') ? ' danger' : ' ok';
 function chipCells(kind, arr) {
   arr = arr || [];
   if (!arr.length) return kind === 'condition' ? '<span class="muted">—</span>' : '<span class="muted">—</span>';
-  const shown = arr.slice(0, MAX_ROW_CHIPS).map(o => `<span class="grid-chip${kind === 'action' ? ' ok' : ''}">${esc(summaryOf(kind, o))}</span>`);
+  const shown = arr.slice(0, MAX_ROW_CHIPS).map(o => `<span class="grid-chip${kind === 'action' ? actionChipVariant(o) : ''}">${esc(summaryOf(kind, o))}</span>`);
   if (arr.length > MAX_ROW_CHIPS) {
     const rest = arr.slice(MAX_ROW_CHIPS).map(o => summaryOf(kind, o)).join(' · ');
     shown.push(`<span class="grid-chip off" title="${esc(rest)}">+${arr.length - MAX_ROW_CHIPS}</span>`);
@@ -440,6 +461,10 @@ function paintList(host, items) {
   host.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => go(`#/sales-rules/edit/${encodeURIComponent(tr.dataset.id)}`));
 }
 
+// Icono neutro (info) para estados sin resultado, coherente con el trazo del set
+// (24×24, currentColor, stroke 2). Evita el check verde de éxito en un estado neutro.
+const infoIcon = (size = 22) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11.5v4.5"/><path d="M12 8h.01"/></svg>`;
+
 function simResultHtml(r, items) {
   const nameById = new Map(items.map(i => [String(i.id), i.name]));
   const matched = (r.matched || []).map(id => nameById.get(String(id)) || id);
@@ -452,7 +477,7 @@ function simResultHtml(r, items) {
   }
   if (!matched.length) {
     return `<div class="sr-sim sr-sim-none">
-      <div class="sr-sim-ic">${icons.check(22)}</div>
+      <div class="sr-sim-ic">${infoIcon(22)}</div>
       <div><b>Ninguna regla casa</b><span>El carrito seguiría con sus condiciones por defecto.</span></div>
     </div>`;
   }

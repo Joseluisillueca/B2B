@@ -9,7 +9,7 @@ namespace B2B.Api.Integration;
 public sealed class SalesContext
 {
     public string? ClientId { get; init; }
-    public string? GroupId { get; init; }            // grupo del cliente
+    public IReadOnlyCollection<string> GroupIds { get; init; } = [];   // grupos del cliente (puede ser varios)
     public string? Market { get; init; }             // mercado (es, fr…)
     public string? CountryIsoId { get; init; }       // país de la dirección de envío
     public string? OrderType { get; init; }          // REPLENISHMENT | SCHEDULED
@@ -70,7 +70,7 @@ public static class SalesRules
             "market"        => InList(c["values"], ctx.Market),
             "country"       => InList(c["values"], ctx.CountryIsoId),
             "client"        => InList(c["values"], ctx.ClientId),
-            "client_group"  => InList(c["values"], ctx.GroupId),
+            "client_group"  => Intersects(c["values"], ctx.GroupIds),   // el cliente puede estar en varios grupos
             "rate"          => InList(c["values"], ctx.RateId),
             "order_type"    => Eq(Str(c["value"]), ctx.OrderType),
             "models"        => Intersects(c["values"], ctx.ModelIds),
@@ -163,21 +163,24 @@ public static class SalesRules
     private static bool CompareNum(decimal actual, string? op, decimal? threshold)
     {
         if (threshold is not { } t) return false;
-        return (op?.ToLowerInvariant()) switch
+        var o = op?.Trim().ToLowerInvariant();
+        return o switch
         {
             "lt" => actual < t,
             "lte" => actual <= t,
             "gt" => actual > t,
             "gte" => actual >= t,
             "eq" => actual == t,
-            _ => actual >= t,     // por defecto, "a partir de" (>=)
+            null or "" => actual >= t,   // sin operador → "a partir de" (>=)
+            _ => false,                   // operador desconocido → NO casa (no un >= silencioso)
         };
     }
 
     private static bool DateBetween(DateOnly date, string? from, string? to)
     {
-        var okFrom = !DateOnly.TryParse(from, System.Globalization.CultureInfo.InvariantCulture, out var f) || date >= f;
-        var okTo = !DateOnly.TryParse(to, System.Globalization.CultureInfo.InvariantCulture, out var t) || date <= t;
-        return okFrom && okTo;
+        var hasFrom = DateOnly.TryParse(from, System.Globalization.CultureInfo.InvariantCulture, out var f);
+        var hasTo = DateOnly.TryParse(to, System.Globalization.CultureInfo.InvariantCulture, out var t);
+        if (!hasFrom && !hasTo) return false;         // sin ningún límite válido, no casa (evita "siempre")
+        return (!hasFrom || date >= f) && (!hasTo || date <= t);
     }
 }

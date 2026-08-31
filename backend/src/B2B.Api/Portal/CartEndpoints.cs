@@ -281,16 +281,21 @@ public static class CartEndpoints
                 }
                 catch { transport = Integration.TransportResult.None; }
 
-                // "Condiciones de venta / promos" (motor rico): puede DENEGAR el carrito y/o fijar el
-                // transporte (portes gratis / importe fijo), con prioridad sobre las reglas simples.
+                // "Condiciones de venta / promos" (motor rico): puede DENEGAR el carrito, fijar el
+                // transporte (con prioridad sobre las reglas simples) y aplicar DESCUENTOS por línea.
+                var cartModelIds = lines.Select(l => l.ModelId ?? "").Where(s => s.Length > 0).Distinct().ToArray();
+                var cartFamilyIds = await FamilyIdsAsync(db, cartModelIds);
                 Integration.SalesResult sales;
                 try
                 {
                     sales = Integration.SalesRules.Evaluate(await db.SalesRules.ToListAsync(), new Integration.SalesContext
                     {
-                        ClientId = actor.ClientId, CountryIsoId = country, OrderType = orderType,
-                        Units = units, Amount = amount, Date = DateOnly.FromDateTime(DateTime.UtcNow),
-                        ModelIds = [.. lines.Select(l => l.ModelId ?? "").Where(s => s.Length > 0).Distinct()],
+                        ClientId = actor.ClientId, GroupIds = actor.GroupIds, Market = config["Portal:Market"],
+                        CountryIsoId = country, OrderType = orderType, Units = units, Amount = amount,
+                        Date = DateOnly.FromDateTime(DateTime.UtcNow),
+                        // el carrito es "de agente" si el usuario es un comercial (suplantación).
+                        CreatedByAgent = !string.IsNullOrEmpty(actor.User.AgentExternalId),
+                        ModelIds = cartModelIds, FamilyIds = cartFamilyIds,
                         ProductIds = [.. lines.Select(l => l.ProductId ?? "").Where(s => s.Length > 0).Distinct()],
                     });
                 }
@@ -300,6 +305,11 @@ public static class CartEndpoints
                 if (sales.Denied)
                     return Results.BadRequest(new { error = string.IsNullOrWhiteSpace(sales.DeniedReason)
                         ? "Este pedido no cumple las condiciones de venta." : sales.DeniedReason });
+
+                // Descuentos por línea (promos): rebajan el precio de cada línea → se reflejan en el
+                // pedido nativo (lo ve el cliente) y en el JSON a BC.
+                if (sales.LineDiscountPercent > 0 || sales.LineDiscountFixed > 0)
+                    lines = ApplyLineDiscounts(lines, sales.LineDiscountPercent, sales.LineDiscountFixed);
 
                 // Transporte efectivo: manda "Condiciones de venta" si toca el transporte; si no, las simples.
                 var transportCost = sales.TransportCost ?? transport.Cost;
@@ -509,6 +519,29 @@ public static class CartEndpoints
     // Lee un nodo JSON como string (o null si no es un string). Evita excepciones de GetValue.
     private static string? Str(JsonNode? node) =>
         node is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
+
+    // Familias de los modelos del carrito (para las "Condiciones de venta" por familia).
+    private static async Task<string[]> FamilyIdsAsync(AppDbContext db, IReadOnlyCollection<string> modelIds)
+    {
+        if (modelIds.Count == 0) return [];
+        var docs = await db.SyncDocuments
+            .Where(d => d.EntityType == "model" && modelIds.Contains(d.ExternalId)).ToListAsync();
+        var families = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var doc in docs)
+            if (Str(ClientIdentity.Parse(doc.Payload)?["familyId"]) is { Length: > 0 } fam) families.Add(fam);
+        return [.. families];
+    }
+
+    // Aplica los descuentos por línea (promos): primero el % y luego el importe fijo (repartido
+    // por unidad). El precio unitario nunca baja de 0.
+    private static CartLine[] ApplyLineDiscounts(CartLine[] lines, decimal percent, decimal fixedPerLine) =>
+        [.. lines.Select(l =>
+        {
+            var price = l.Price;
+            if (percent > 0) price *= 1 - percent / 100m;
+            if (fixedPerLine > 0 && l.Qty > 0) price -= fixedPerLine / l.Qty;
+            return l with { Price = Math.Max(0m, Math.Round(price, 2, MidpointRounding.AwayFromZero)) };
+        })];
 
     // ── Ámbito y validación ───────────────────────────────────────────────────
 

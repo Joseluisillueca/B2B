@@ -55,7 +55,9 @@ public static class SalesRulesEndpoints
             var rules = await db.SalesRules.ToListAsync();
             var ctx = new SalesContext
             {
-                ClientId = body.ClientId, GroupId = body.GroupId, Market = body.Market,
+                ClientId = body.ClientId,
+                GroupIds = string.IsNullOrWhiteSpace(body.GroupId) ? [] : [body.GroupId],
+                Market = body.Market,
                 CountryIsoId = body.CountryIsoId, OrderType = body.OrderType,
                 Units = Math.Max(0, body.Units), Amount = Math.Max(0m, body.Amount),
                 CreatedByAgent = body.CreatedByAgent,
@@ -89,17 +91,43 @@ public static class SalesRulesEndpoints
         catch { return new JsonArray(); }
     }
 
+    private static readonly HashSet<string> ConditionTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "market", "country", "client", "client_group", "rate", "order_type",
+        "models", "products", "families", "brands", "agent_cart",
+        "units_lt", "min_units", "cart_total", "date_between",
+    };
+    private static readonly HashSet<string> ActionTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "deny", "free_shipping", "fixed_transport", "line_discount_percent", "line_discount_fixed",
+    };
+
     private static string? Validate(SalesRuleBody b)
     {
         if (string.IsNullOrWhiteSpace(b.Name)) return "El nombre es obligatorio.";
         if (b.Name!.Trim().Length > 160) return "El nombre es demasiado largo (máx. 160).";
         if (!IsNonEmptyArray(b.Conditions)) return "Debe haber al menos una condición.";
         if (!IsNonEmptyArray(b.Actions)) return "Debe haber al menos una acción.";
+        // Cada elemento debe ser un objeto {type} con un tipo conocido (evita reglas inertes).
+        if (BadTypes(b.Conditions!.Value, ConditionTypes)) return "Hay una condición con un tipo no válido.";
+        if (BadTypes(b.Actions!.Value, ActionTypes)) return "Hay una acción con un tipo no válido.";
         return null;
     }
 
     private static bool IsNonEmptyArray(JsonElement? el) =>
         el is { ValueKind: JsonValueKind.Array } arr && arr.GetArrayLength() > 0;
+
+    private static bool BadTypes(JsonElement arr, HashSet<string> allowed)
+    {
+        foreach (var item in arr.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object
+                || !item.TryGetProperty("type", out var t) || t.ValueKind != JsonValueKind.String
+                || !allowed.Contains(t.GetString() ?? ""))
+                return true;
+        }
+        return false;
+    }
 
     private static void Apply(SalesRule r, SalesRuleBody b)
     {

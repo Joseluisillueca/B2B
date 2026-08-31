@@ -239,6 +239,12 @@ a.btn-primary, a.btn-ghost, a.btn-danger { text-decoration:none; }
   padding:.6rem .7rem; background:#fff; font:inherit; color:var(--ink); }
 .tr-country-input:focus { border-color:var(--blue); outline:none; }
 .tr-country-input.is-invalid { border-color:var(--blue); box-shadow:0 0 0 2px var(--blue-soft); }
+/* Aviso accesible al rechazar un valor no reconocido en el input de chips.
+   Especificidad (0,2,0) para ganar a `.acc-field span` (0,1,1) de app.css, que si
+   no forzaba MAYÚSCULAS y un tamaño de etiqueta sobre este texto de frase. */
+.acc-field .sr-chip-alert { display:block; margin:.35rem 0 0; font-size:.76rem; font-weight:600; color:var(--out);
+  text-transform:none; letter-spacing:0; }
+.acc-field .sr-chip-alert[hidden] { display:none; }
 /* Chips de país en el listado: se agrupan para envolver con orden. */
 .tr-country-cells { display:inline-flex; flex-wrap:wrap; gap:.3rem; vertical-align:middle; }
 
@@ -298,16 +304,18 @@ a.btn-primary, a.btn-ghost, a.btn-danger { text-decoration:none; }
 .sr-sim b { display:block; color:var(--ink); font-size:1rem; margin-bottom:.15rem; }
 .sr-sim span { font-size:.88rem; color:var(--ink-2); }
 .sr-sim-ok { flex-direction:column; gap:1.1rem; border-left:3px solid var(--blue); }
-.sr-sim-none { align-items:center; gap:1rem; }
-.sr-sim-none .sr-sim-ic { background:#f0f8f3; color:var(--ok); }
+.sr-sim-none { align-items:center; gap:1rem; border-left:3px solid var(--line-control); }
+.sr-sim-none .sr-sim-ic { background:#f1eeee; color:var(--muted); }
 .sr-sim-deny { align-items:flex-start; gap:1rem; border-left:3px solid var(--out); }
 .sr-sim-deny .sr-sim-ic { background:#fdf1f0; color:var(--out); }
 .sr-sim-tiles { display:flex; flex-wrap:wrap; gap:1rem; }
 .sr-tile { display:flex; flex-direction:column; gap:.25rem; min-width:8rem; padding:.2rem 1.2rem .2rem 0; border-right:1px solid var(--line); }
 .sr-tile:last-child { border-right:none; }
-.sr-tile-l { font-size:.66rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--hint); }
-.sr-tile-v { font-family:var(--display); font-size:1.8rem; font-weight:500; letter-spacing:-.02em; color:var(--blue); line-height:1; }
-.sr-tile-v.is-free { color:var(--ok); }
+/* Especificidad (0,2,0)/(0,2,1) para ganar a `.sr-sim span` (0,1,1), que si no
+   aplanaba el número-héroe a ~14px gris y anulaba el verde de "Gratis". */
+.sr-sim .sr-tile-l { font-size:.66rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--hint); }
+.sr-sim .sr-tile-v { font-family:var(--display); font-size:1.8rem; font-weight:500; letter-spacing:-.02em; color:var(--blue); line-height:1; }
+.sr-sim .sr-tile-v.is-free { color:var(--ok); }
 .sr-sim-meta { display:flex; flex-direction:column; gap:.4rem; }
 .sr-sim-rules { display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.3rem; }
 .sr-sim-rules .grid-chip { text-transform:none; letter-spacing:0; font-weight:600; }
@@ -316,6 +324,11 @@ a.btn-primary, a.btn-ghost, a.btn-danger { text-decoration:none; }
   .sr-cols { grid-template-columns:1fr; gap:1.9rem; }
   .sr-sim-tiles { gap:.6rem 1rem; }
   .sr-tile { border-right:none; padding-right:0; }
+}
+/* En pantallas muy estrechas, el formulario del simulador colapsa a 1 columna
+   para no dejar los campos demasiado angostos. */
+@media (max-width:26rem) {
+  #simForm .biz-grid.cols-2 { grid-template-columns:1fr; }
 }
 
 /* ── Login (reutiliza login-split del portal) ── */

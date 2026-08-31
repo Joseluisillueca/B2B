@@ -17,7 +17,7 @@ public class SalesRulesEngineTests
         string[]? models = null, string[]? products = null, string[]? families = null, string[]? brands = null)
         => new()
         {
-            ClientId = client, GroupId = group, Market = market, CountryIsoId = country,
+            ClientId = client, GroupIds = group is null ? [] : [group], Market = market, CountryIsoId = country,
             OrderType = orderType, Units = units, Amount = amount, CreatedByAgent = agent,
             Date = date ?? new DateOnly(2026, 6, 15), RateId = rate,
             ModelIds = models ?? [], ProductIds = products ?? [], FamilyIds = families ?? [], BrandIds = brands ?? [],
@@ -137,6 +137,20 @@ public class SalesRulesEngineTests
         Assert.False(res.FreeShipping);
         Assert.Null(res.TransportCost);
         Assert.Empty(res.MatchedRuleIds);
+    }
+
+    [Fact]
+    public void CartTotal_OperadorDesconocido_NoCasa()
+    {
+        var r = Rule("[{\"type\":\"cart_total\",\"op\":\"between\",\"value\":100}]", Free);
+        Assert.False(SalesRules.Evaluate([r], Ctx(amount: 150)).FreeShipping);   // op inválido → no casa (no >=)
+    }
+
+    [Fact]
+    public void DateBetween_SinLimitesValidos_NoCasa()
+    {
+        var r = Rule("[{\"type\":\"date_between\",\"from\":\"basura\",\"to\":\"\"}]", Free);
+        Assert.False(SalesRules.Evaluate([r], Ctx()).FreeShipping);   // sin límites válidos → no casa (no "siempre")
     }
 
     // Condición "siempre cierta" para tests de acciones (unidades >= 0) y acción portes gratis.
