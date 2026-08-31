@@ -211,6 +211,34 @@ a.btn-primary, a.btn-ghost, a.btn-danger { text-decoration:none; }
 .tr-simbtn.is-busy svg { animation:tr-spin .7s linear infinite; }
 @keyframes tr-spin { to { rotate:360deg; } }
 @media (prefers-reduced-motion:reduce) { .tr-simbtn.is-busy svg { animation:none; } }
+/* ── País de envío multi-país (editor de transporte): chips + buscador ── */
+/* Ocupa toda la fila de la rejilla para dejar respirar a los chips. */
+.tr-country-field { grid-column:1 / -1; margin:0 0 1rem; }
+.tr-country-field .tr-country-lbl { display:block; margin:0; }
+/* El propio label ya recibe el estilo de etiqueta (.acc-field span → mayúsculas). */
+.tr-chips { display:flex; flex-wrap:wrap; gap:.4rem; margin:0 0 .5rem; }
+.tr-chips:empty { display:none; }
+/* Chip de país seleccionado. Reset explícito para no heredar el .acc-field span
+   (bloque/mayúsculas) del formulario del portal. */
+.tr-chips .tr-chip { display:inline-flex; align-items:center; gap:.4rem; border:1px solid var(--line-control);
+  background:#fff; padding:.26rem .3rem .26rem .55rem; border-radius:0; max-width:100%; }
+.tr-chips .tr-chip .tr-chip-name { display:inline; margin:0; font-size:.82rem; font-weight:600; letter-spacing:0;
+  text-transform:none; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tr-chips .tr-chip code { font-family:var(--display); font-size:.66rem; font-weight:700; letter-spacing:.05em;
+  color:var(--hint); background:var(--surface); padding:.08rem .3rem; }
+.tr-chip-x { display:grid; place-items:center; width:1.2rem; height:1.2rem; flex:none; padding:0; border:0;
+  background:transparent; color:var(--hint); cursor:pointer; line-height:0; border-radius:0;
+  transition:color .12s var(--ease), background .12s var(--ease); }
+.tr-chip-x:hover { color:var(--blue); background:var(--blue-soft); }
+.tr-chip-x:focus-visible { outline:2px solid var(--blue); outline-offset:1px; }
+/* Buscador de país: mismo estilo que un input de formulario; feedback de entrada inválida. */
+.tr-country-input { width:100%; border:1px solid var(--line-control); border-radius:var(--r-sm);
+  padding:.6rem .7rem; background:#fff; font:inherit; color:var(--ink); }
+.tr-country-input:focus { border-color:var(--blue); outline:none; }
+.tr-country-input.is-invalid { border-color:var(--blue); box-shadow:0 0 0 2px var(--blue-soft); }
+/* Chips de país en el listado: se agrupan para envolver con orden. */
+.tr-country-cells { display:inline-flex; flex-wrap:wrap; gap:.3rem; vertical-align:middle; }
+
 /* M3: sin flechas nativas en los number del back-office (como .sz-qty del catálogo);
    se mantiene el teclado numérico vía inputmode en el marcado. */
 .mng-form input[type=number], .acc-field input[type=number] { -moz-appearance:textfield; }

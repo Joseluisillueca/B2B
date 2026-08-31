@@ -96,7 +96,7 @@ public static class TransportEndpoints
         r.Active = b.Active ?? true;
         r.Priority = b.Priority ?? 0;
         r.ClientExternalId = Clean(b.ClientExternalId);
-        r.CountryIsoId = Clean(b.CountryIsoId)?.ToUpperInvariant();
+        r.CountryIsoId = CleanList(b.CountryIsoId);   // lista de países "ES,FR,PT" (o null = cualquiera)
         r.OrderType = Clean(b.OrderType)?.ToUpperInvariant();
         r.MinUnits = b.MinUnits;
         r.MinAmount = b.MinAmount;
@@ -108,6 +108,18 @@ public static class TransportEndpoints
     }
 
     private static string? Clean(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    // Normaliza una lista de códigos separados por comas: trim, mayúsculas, sin vacíos ni
+    // duplicados, conservando el orden. Ej.: " es, fr ,ES " → "ES,FR". Vacío → null.
+    private static string? CleanList(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return null;
+        var parts = s.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(x => x.ToUpperInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        return parts.Count == 0 ? null : string.Join(",", parts);
+    }
 }
 
 public sealed record TransportRuleBody(

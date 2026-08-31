@@ -288,7 +288,7 @@ export async function logsView(main) {
           <td>${esc(l.entityType)} <span class="grid-id">${esc(String(l.entityId).slice(0, 12))}</span></td>
           <td>${l.channelType === 'email' ? 'Email' : 'Business Central'}</td>
           <td><span style="display:inline-flex;gap:.5rem;align-items:center;white-space:nowrap"><span class="grid-chip ${chip(l.status)}">${esc(l.status)}</span>${acts(l)}</span></td>
-          <td class="muted" style="max-width:22rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.detail || '')}">${esc(l.detail || '')}</td></tr>`).join('')
+          <td class="muted"><div style="max-width:22rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.detail || '')}">${esc(l.detail || '')}</div></td></tr>`).join('')
         : '<tr class="grid-empty"><td colspan="6">Todavía no hay notificaciones.</td></tr>'}</tbody>
     </table></div>`;
 

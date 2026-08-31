@@ -304,7 +304,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             r.HasKey(x => x.Id);
             r.Property(x => x.Name).HasMaxLength(120);
             r.Property(x => x.ClientExternalId).HasMaxLength(120);
-            r.Property(x => x.CountryIsoId).HasMaxLength(10);
+            r.Property(x => x.CountryIsoId).HasMaxLength(512);   // lista de países separada por comas
             r.Property(x => x.OrderType).HasMaxLength(30);
             r.Property(x => x.IncotermId).HasMaxLength(30);
             r.Property(x => x.Cost).HasColumnType("numeric(18,2)");

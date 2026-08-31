@@ -44,6 +44,18 @@ public class TransportRulesEngineTests
         Assert.Equal(9m, res.Cost);
     }
 
+    // ── País como LISTA (varios países en una misma regla) ────────────────────────
+    [Fact]
+    public void Pais_ListaSeparadaPorComas_CasaSiEstaEnLaLista()
+    {
+        var rule = Rule(cost: 12, country: "ES,FR,PT");
+        Assert.True(Eval([rule], country: "FR").Matched);    // FR está en la lista
+        Assert.True(Eval([rule], country: "es").Matched);     // case-insensitive
+        Assert.Equal(12m, Eval([rule], country: " PT ").Cost); // con espacios
+        Assert.False(Eval([rule], country: "GB").Matched);    // GB no está en la lista
+        Assert.False(Eval([rule], country: null).Matched);    // sin país no casa una regla con país
+    }
+
     [Fact]
     public void ReglaConCondicionVacia_NoRestringe()
     {
