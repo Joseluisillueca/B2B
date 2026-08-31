@@ -19,4 +19,5 @@ export const icons = {
   layout: size => svg('<rect x="3" y="4" width="18" height="16"/><path d="M3 9h18M9 9v11"/>', size),
   book: size => svg('<path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2Z"/><path d="M18 6H8"/>', size),
   activity: size => svg('<path d="M3 12h4l2.5 7 4-14 2.5 7H21"/>', size),
+  percent: size => svg('<path d="M19 5 5 19"/><circle cx="7.5" cy="7.5" r="2.2"/><circle cx="16.5" cy="16.5" r="2.2"/>', size),
 };

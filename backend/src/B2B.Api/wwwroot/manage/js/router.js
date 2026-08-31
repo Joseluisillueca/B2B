@@ -13,6 +13,7 @@ import imagesView from './views/images.js';
 import { ordersView, orderView } from './views/orders.js';
 import { configView, connectionsView, docSourcesView, logsView } from './views/integration.js';
 import { transportView, transportEditView } from './views/transport.js';
+import { salesRulesView, salesRuleEditView } from './views/sales-rules.js';
 
 let shellReady = false;
 
@@ -39,7 +40,7 @@ export async function resolve() {
   markActive(view);
   // Las vistas de TABLA ancha usan más ancho de ventana (no el max-width de lectura de los
   // formularios), para que no salga barra horizontal habiendo hueco. Se limpia al navegar.
-  const wideTable = view === 'notifications-log' || view === 'received' || (view === 'orders' && !parts[1]);
+  const wideTable = view === 'notifications-log' || view === 'received' || (view === 'orders' && !parts[1]) || (view === 'sales-rules' && !parts[1]);
   main.classList.toggle('mng-wide', wideTable);
   main.focus({ preventScroll: true });
   main.innerHTML = '<div class="skeleton"></div><div class="skeleton short"></div>';
@@ -57,6 +58,11 @@ export async function resolve() {
       if (parts[1] === 'new') return await transportEditView(main, null);
       if (parts[1] === 'edit') return await transportEditView(main, parts[2]);
       return await transportView(main);
+    }
+    if (view === 'sales-rules') {
+      if (parts[1] === 'new') return await salesRuleEditView(main, null);
+      if (parts[1] === 'edit') return await salesRuleEditView(main, parts[2]);
+      return await salesRulesView(main);
     }
     // Contenido web + comunicación (vistas nativas portadas del antiguo CMS). Import
     // dinámico: si un módulo aún no existe, solo falla su ruta, no todo el back-office.

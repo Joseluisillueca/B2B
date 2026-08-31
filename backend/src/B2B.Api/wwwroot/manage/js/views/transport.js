@@ -8,7 +8,7 @@ import { go } from '../router.js';
 
 // Lista COMPLETA de países (ISO 3166-1 alpha-2) con su nombre en español. Se usa en
 // el editor (multi-país por chips) y en el simulador (país único). Vacío = cualquiera.
-const COUNTRIES = [
+export const COUNTRIES = [
   ['AD', 'Andorra'], ['AE', 'Emiratos Árabes Unidos'], ['AF', 'Afganistán'], ['AG', 'Antigua y Barbuda'],
   ['AI', 'Anguila'], ['AL', 'Albania'], ['AM', 'Armenia'], ['AO', 'Angola'], ['AQ', 'Antártida'],
   ['AR', 'Argentina'], ['AS', 'Samoa Americana'], ['AT', 'Austria'], ['AU', 'Australia'], ['AW', 'Aruba'],
@@ -73,7 +73,7 @@ const stripAccents = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '');
 const normName = s => stripAccents(s).trim().toLowerCase();
 const NAME_TO_CODE = new Map(COUNTRIES.map(([c, n]) => [normName(n), c]));
 const CODE_SET = new Set(COUNTRIES.map(([c]) => c));
-function resolveCountry(raw) {
+export function resolveCountry(raw) {
   const t = String(raw || '').trim();
   if (!t) return null;
   const up = t.toUpperCase();
@@ -84,7 +84,7 @@ function resolveCountry(raw) {
   return null;
 }
 // Parsea el string coma-separado del backend a una lista de códigos únicos en mayúsculas.
-const parseCountries = csv => {
+export const parseCountries = csv => {
   const out = [];
   String(csv || '').split(',').forEach(p => {
     const c = p.trim().toUpperCase();
@@ -93,7 +93,7 @@ const parseCountries = csv => {
   return out;
 };
 // Nombre legible de un código para las fichas/chips (cae al propio código si no está).
-const countryName = code => COUNTRY_ES[code] || code;
+export const countryName = code => COUNTRY_ES[code] || code;
 const ORDER_TYPES = [['REPLENISHMENT', 'Reposición'], ['SCHEDULED', 'Programación']];
 const ORDER_ES = { REPLENISHMENT: 'Reposición', SCHEDULED: 'Programación' };
 

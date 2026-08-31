@@ -264,9 +264,8 @@ public static class CartEndpoints
             var orderNumber = "";
             if (portalMode)
             {
-                // Transporte (portes) según las reglas configuradas (/manage → Transporte):
-                // se evalúan contra cliente, país de envío, tipo de pedido y mínimos. El coste
-                // + incoterm van al pedido nativo (lo ve el cliente) y al JSON de BC.
+                // Transporte (portes) según las reglas configuradas: cliente, país de envío, tipo
+                // de pedido y mínimos. El coste + incoterm van al pedido nativo y al JSON de BC.
                 var units = lines.Sum(l => l.Qty);
                 var amount = lines.Sum(l => l.Qty * l.Price);
                 // País de envío: el de la dirección de envío; si viene vacío (p.ej. envío = fiscal),
@@ -282,6 +281,29 @@ public static class CartEndpoints
                 }
                 catch { transport = Integration.TransportResult.None; }
 
+                // "Condiciones de venta / promos" (motor rico): puede DENEGAR el carrito y/o fijar el
+                // transporte (portes gratis / importe fijo), con prioridad sobre las reglas simples.
+                Integration.SalesResult sales;
+                try
+                {
+                    sales = Integration.SalesRules.Evaluate(await db.SalesRules.ToListAsync(), new Integration.SalesContext
+                    {
+                        ClientId = actor.ClientId, CountryIsoId = country, OrderType = orderType,
+                        Units = units, Amount = amount, Date = DateOnly.FromDateTime(DateTime.UtcNow),
+                        ModelIds = [.. lines.Select(l => l.ModelId ?? "").Where(s => s.Length > 0).Distinct()],
+                        ProductIds = [.. lines.Select(l => l.ProductId ?? "").Where(s => s.Length > 0).Distinct()],
+                    });
+                }
+                catch { sales = new Integration.SalesResult(); }
+
+                // Una regla puede bloquear el pedido (el carrito no se guarda: aún no hay SaveChanges).
+                if (sales.Denied)
+                    return Results.BadRequest(new { error = string.IsNullOrWhiteSpace(sales.DeniedReason)
+                        ? "Este pedido no cumple las condiciones de venta." : sales.DeniedReason });
+
+                // Transporte efectivo: manda "Condiciones de venta" si toca el transporte; si no, las simples.
+                var transportCost = sales.TransportCost ?? transport.Cost;
+
                 // El cerrojo abarca leer el número + guardar: el siguiente pedido ya ve
                 // este número emitido y toma el siguiente (nunca dos iguales).
                 await OrderNumberLock.WaitAsync();
@@ -293,14 +315,14 @@ public static class CartEndpoints
                         clientId: actor.ClientId, orderType: orderType, reference: body.Reference,
                         payMethodId: body.PayMethod, notes: body.Notes,
                         shippingAddress: address, lines: lines, now: DateTime.UtcNow,
-                        transportCost: transport.Cost);
+                        transportCost: transportCost);
                     await SyncEndpoints.IngestDocumentAsync(db, "order", order.Id.ToString(), actor.ClientId, doc);
 
                     // JSON de origen (forma "cart" de la referencia) para el transformer a BC
                     sourceJson = Integration.SourceJson.Order(
                         order.Id.ToString(), actor.ClientId, body.ShippingAddressId, body.Reference,
                         body.PayMethod, incotermId: transport.IncotermId ?? "", saleId: "",
-                        lines: lines, window: window, transportCost: transport.Cost);
+                        lines: lines, window: window, transportCost: transportCost);
                     order.SourceJson = sourceJson.ToJsonString();
 
                     await db.SaveChangesAsync();
@@ -345,15 +367,36 @@ public static class CartEndpoints
             var shipCountry = Str(address?["countryIsoId"]);
             var country = string.IsNullOrWhiteSpace(shipCountry) ? await ClientCountryAsync(db, actor.ClientId) : shipCountry;
 
+            var units = Math.Max(0, body.Units);
+            var amount = Math.Max(0m, body.Amount);
             Integration.TransportResult t;
             try
             {
                 t = Integration.TransportRules.Evaluate(
-                    await db.TransportRules.ToListAsync(), actor.ClientId, country, orderType,
-                    Math.Max(0, body.Units), Math.Max(0m, body.Amount));
+                    await db.TransportRules.ToListAsync(), actor.ClientId, country, orderType, units, amount);
             }
             catch { t = Integration.TransportResult.None; }
-            return Results.Ok(new { cost = t.Cost, matched = t.Matched });
+
+            // "Condiciones de venta / promos" puede fijar el transporte (o denegar) con prioridad.
+            Integration.SalesResult sales;
+            try
+            {
+                sales = Integration.SalesRules.Evaluate(await db.SalesRules.ToListAsync(), new Integration.SalesContext
+                {
+                    ClientId = actor.ClientId, CountryIsoId = country, OrderType = orderType,
+                    Units = units, Amount = amount, Date = DateOnly.FromDateTime(DateTime.UtcNow),
+                });
+            }
+            catch { sales = new Integration.SalesResult(); }
+
+            var cost = sales.TransportCost ?? t.Cost;
+            return Results.Ok(new
+            {
+                cost,
+                matched = t.Matched || sales.TransportCost is not null,
+                denied = sales.Denied,
+                deniedReason = sales.DeniedReason,
+            });
         }).RequireAuthorization();
     }
 

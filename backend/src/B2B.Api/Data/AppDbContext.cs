@@ -29,6 +29,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
     public DbSet<TransportRule> TransportRules => Set<TransportRule>();
+    public DbSet<SalesRule> SalesRules => Set<SalesRule>();
     public DbSet<DocumentSource> DocumentSources => Set<DocumentSource>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -309,6 +310,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             r.Property(x => x.IncotermId).HasMaxLength(30);
             r.Property(x => x.Cost).HasColumnType("numeric(18,2)");
             r.Property(x => x.MinAmount).HasColumnType("numeric(18,2)");
+            r.HasIndex(x => x.Priority);
+        });
+
+        modelBuilder.Entity<SalesRule>(r =>
+        {
+            r.ToTable("sales_rules");
+            r.HasKey(x => x.Id);
+            r.Property(x => x.Name).HasMaxLength(160);
+            r.Property(x => x.ConditionsJson).HasColumnType("jsonb");
+            r.Property(x => x.ActionsJson).HasColumnType("jsonb");
             r.HasIndex(x => x.Priority);
         });
 

@@ -89,6 +89,13 @@ export const api = {
   delTransportRule: id => request('DELETE', `/api/admin/transport-rules/${encodeURIComponent(id)}`),
   previewTransport: b => request('POST', '/api/admin/transport-rules/preview', b),
 
+  // Condiciones de venta / promos (reglas con condiciones AND + acciones)
+  salesRules: () => request('GET', '/api/admin/sales-rules'),
+  createSalesRule: b => request('POST', '/api/admin/sales-rules', b),
+  saveSalesRule: (id, b) => request('PUT', `/api/admin/sales-rules/${encodeURIComponent(id)}`, b),
+  delSalesRule: id => request('DELETE', `/api/admin/sales-rules/${encodeURIComponent(id)}`),
+  previewSalesRules: b => request('POST', '/api/admin/sales-rules/preview', b),
+
   // Imágenes de modelo (marketing): endpoints ya existentes
   modelImages: () => request('GET', '/api/admin/model-images'),
   setModelImage: (modelId, uri) => request('PUT', `/api/admin/model-images/${encodeURIComponent(modelId)}`, { uri }),

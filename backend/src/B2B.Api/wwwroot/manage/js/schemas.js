@@ -228,6 +228,7 @@ export const NAV = [
   ] },
   { title: 'Ventas', items: [
     ['orders', 'Pedidos', 'cart'], ['transport', 'Transporte', 'truck'],
+    ['sales-rules', 'Condiciones de venta', 'percent'],
   ] },
   { title: 'Contenido', items: [
     ['content', 'Portada', 'layout'], ['lookbook', 'Lookbook', 'book'],
