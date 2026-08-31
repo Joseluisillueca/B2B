@@ -257,16 +257,15 @@ export async function logsView(main) {
       <p class="lead">Historial de envíos por canal y su estado.</p>
     </div></div>
     <div class="grid-scroll"><table class="grid">
-      <thead><tr><th>Fecha</th><th>Evento</th><th>Entidad</th><th>Canal</th><th>Estado</th><th>Detalle</th><th></th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Evento</th><th>Entidad</th><th>Canal</th><th>Estado</th><th>Detalle</th></tr></thead>
       <tbody>${(data.items || []).length ? data.items.map(l => `
         <tr><td>${esc(new Date(l.createdAt).toLocaleString('es-ES'))}</td>
           <td>${esc(l.eventKey)}</td>
           <td>${esc(l.entityType)} <span class="grid-id">${esc(String(l.entityId).slice(0, 12))}</span></td>
           <td>${l.channelType === 'email' ? 'Email' : 'Business Central'}</td>
-          <td><span class="grid-chip ${chip(l.status)}">${esc(l.status)}</span></td>
-          <td class="muted" style="max-width:22rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.detail || '')}">${esc(l.detail || '')}</td>
-          <td>${l.canReprocess ? `<button type="button" class="btn-ghost log-retry" data-id="${esc(l.id)}">Reprocesar</button>` : ''}</td></tr>`).join('')
-        : '<tr class="grid-empty"><td colspan="7">Todavía no hay notificaciones.</td></tr>'}</tbody>
+          <td><span class="grid-chip ${chip(l.status)}">${esc(l.status)}</span>${l.canReprocess ? `<button type="button" class="log-retry" data-id="${esc(l.id)}" style="display:block;margin-top:.45rem;font-size:.72rem;font-weight:600;padding:.28rem .6rem;border:1px solid var(--line,#d8d8d8);border-radius:.4rem;background:#fff;color:inherit;cursor:pointer;white-space:nowrap">↻ Reprocesar</button>` : ''}</td>
+          <td class="muted" style="max-width:22rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.detail || '')}">${esc(l.detail || '')}</td></tr>`).join('')
+        : '<tr class="grid-empty"><td colspan="6">Todavía no hay notificaciones.</td></tr>'}</tbody>
     </table></div>`;
 
   // Reprocesar un envío a BC: re-aplica el transformer ACTUAL y reenvía (útil tras corregir
