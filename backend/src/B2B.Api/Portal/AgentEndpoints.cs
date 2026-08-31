@@ -128,7 +128,8 @@ public static class AgentEndpoints
         // valide, y de inmediato provisiona el usuario del contacto y le manda el correo
         // de activación (72h) para que fije su acceso sin esperar.
         app.MapPost("/api/agent/clients", async (
-            JsonObject? body, ClaimsPrincipal principal, AppDbContext db, ActivationService activation) =>
+            JsonObject? body, ClaimsPrincipal principal, AppDbContext db, ActivationService activation,
+            BcClient bc, IEmailSender emailSender) =>
         {
             var actor = await PortalScope.ActorAsync(principal, db);
             if (actor is null)
@@ -195,6 +196,26 @@ public static class AgentEndpoints
                 await activation.SendAsync(user, ActivationPurpose.Activation);
                 activationSent = true;
             }
+
+            // Empuja el cliente creado por el AGENTE a Business Central (evento
+            // "agent.registration" → customers). request.Id es el GUID que BC fija como
+            // SystemId. Inerte si BC no está configurado (se registra "simulated").
+            try
+            {
+                var src = body.DeepClone()!.AsObject();
+                src["id"] = request.Id.ToString();
+                // Cada dirección de envío del formulario (plana) recibe su GUID → BC lo fija
+                // como SystemId de la Ship-to Address.
+                if (src["shippingAddresses"] is JsonArray sa)
+                    foreach (var node in sa)
+                        if (node is JsonObject o && string.IsNullOrEmpty(o["shippingAddressId"]?.GetValue<string>()))
+                            o["shippingAddressId"] = Guid.NewGuid().ToString();
+                var settings = await db.IntegrationSettings.FindAsync(1) ?? new IntegrationSettings();
+                var vars = new Dictionary<string, string?> { ["clientEmail"] = email };
+                await NotificationDispatcher.DispatchAsync(
+                    db, bc, emailSender, settings, "agent.registration", "Customer", request.Id.ToString(), src, vars);
+            }
+            catch { /* el despacho a BC nunca debe romper el alta del agente */ }
 
             return Results.Created($"/api/agent/clients/requests/{request.Id}", new
             {
