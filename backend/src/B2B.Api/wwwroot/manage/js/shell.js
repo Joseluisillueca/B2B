@@ -4,6 +4,7 @@ import { NAV } from './schemas.js';
 import { icons } from './icons.js';
 import { auth } from './api.js';
 import { esc } from './util.js';
+import { brandMark } from '/portal/js/branding.js';
 
 let counts = {};
 export function setCounts(map) { counts = map || {}; refreshBadges(); }
@@ -13,7 +14,7 @@ export function renderShell() {
   app.removeAttribute('aria-busy');
   app.innerHTML = `
     <header class="mng-header">
-      <a class="brand" href="#/dashboard">MITO PROJECTS<sup>™</sup></a>
+      <a class="brand" href="#/dashboard">${brandMark()}</a>
       <span class="mng-tag">Back-office</span>
       <span class="spacer"></span>
       <a class="mng-portal" href="/es/es/dashboard" target="_blank" rel="noopener">Ver el portal ↗</a>

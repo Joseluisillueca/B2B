@@ -81,6 +81,8 @@ export const api = {
   intPreviewEmail: b => request('POST', '/api/admin/integration/preview-email', b),
   intSaveEmailLayout: layout => request('PUT', '/api/admin/integration/email-layout', { layout }),
   intSaveOrdersMode: mode => request('PUT', '/api/admin/integration/orders-mode', { mode }),
+  // Marca del portal (nombre + color + logo). Vacíos = volver a la marca por defecto.
+  intSaveBranding: b => request('PUT', '/api/admin/integration/branding', b),
 
   // Reglas de transporte (portes)
   transportRules: () => request('GET', '/api/admin/transport-rules'),

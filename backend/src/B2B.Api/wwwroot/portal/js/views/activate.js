@@ -7,6 +7,7 @@ import { api, ApiError } from '../api.js';
 import { t } from '../i18n.js';
 import { esc } from '../format.js';
 import { go } from '../router.js';
+import { brandMark } from '../branding.js';
 
 const MIN = 8;
 
@@ -16,7 +17,7 @@ export default async function activate(host) {
   host.innerHTML = `
     <div class="sheet">
       <div class="card login-card activate-card">
-        <span class="brand">MITO PROJECTS<sup>™</sup></span>
+        <span class="brand">${brandMark()}</span>
         <div id="actBody"><div class="skeleton short"></div></div>
       </div>
     </div>`;

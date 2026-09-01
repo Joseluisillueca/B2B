@@ -25,6 +25,8 @@ public static class IntegrationEndpoints
                 s.ApiRestBaseUrl, s.ApiRestHeadersJson,
                 emailLayoutHtml = string.IsNullOrWhiteSpace(s.EmailLayoutHtml) ? EmailTemplate.DefaultLayout : s.EmailLayoutHtml,
                 ordersMode,
+                // Marca del despliegue (multi-cliente): nombre/color efectivos + logo (o null).
+                brandName = s.BrandNameOrDefault, brandColor = s.BrandColorOrDefault, brandLogoUrl = s.BrandLogoUrl,
                 bcConfigured = s.BcConfigured, hasSecret = !string.IsNullOrEmpty(s.BcClientSecret),
             });
         }).RequireAdmin();
@@ -189,11 +191,44 @@ public static class IntegrationEndpoints
         app.MapPost("/api/admin/integration/preview-email", async (EmailPreview body, AppDbContext db) =>
         {
             var s = await db.IntegrationSettings.FindAsync(1);
-            var vars = SampleEmailVars(body.EventKey);
+            var vars = EmailTemplate.WithBrand(s, SampleEmailVars(body.EventKey));
             var subject = System.Net.WebUtility.HtmlDecode(EmailTemplate.Fill(body.Subject ?? "", vars));
             var html = EmailTemplate.RenderHtml(body.Layout ?? s?.EmailLayoutHtml, body.BodyHtml ?? "", vars);
             return Results.Ok(new { subject, html });
         }).RequireAdmin();
+
+        // ── Marca del portal (multi-cliente): nombre, color de acento y logo ──
+        // Endpoint dedicado para el bloque "Marca" de Conexiones, sin tocar la config de BC.
+        app.MapPut("/api/admin/integration/branding", async (BrandingBody body, AppDbContext db) =>
+        {
+            var color = body.Color?.Trim();
+            if (!string.IsNullOrEmpty(color) && !System.Text.RegularExpressions.Regex.IsMatch(color, "^#[0-9a-fA-F]{6}$"))
+                return Results.BadRequest(new { error = "El color debe ser hexadecimal (#rrggbb)." });
+            var name = body.Name?.Trim();
+            if (name?.Length > 60) return Results.BadRequest(new { error = "El nombre de marca es demasiado largo (máx. 60)." });
+
+            var s = await db.IntegrationSettings.FindAsync(1);
+            if (s is null) { s = new IntegrationSettings { Id = 1 }; db.IntegrationSettings.Add(s); }
+            s.BrandName = string.IsNullOrWhiteSpace(name) ? null : name;
+            s.BrandColor = string.IsNullOrWhiteSpace(color) ? null : color.ToLowerInvariant();
+            s.BrandLogoUrl = string.IsNullOrWhiteSpace(body.LogoUrl) ? null : body.LogoUrl.Trim();
+            s.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+            return Results.Ok(new { ok = true, name = s.BrandNameOrDefault, color = s.BrandColorOrDefault, logoUrl = s.BrandLogoUrl });
+        }).RequireAdmin();
+
+        // Marca PÚBLICA: la leen el portal y el back-office ANTES del login (cabecera, título,
+        // color de acento). Solo expone la marca, nada sensible.
+        app.MapGet("/api/portal/branding", async (AppDbContext db) =>
+        {
+            var s = await db.IntegrationSettings.FindAsync(1);
+            return Results.Ok(new
+            {
+                name = s?.BrandNameOrDefault ?? "MITO PROJECTS",
+                color = s?.BrandColorOrDefault ?? "#ec3013",
+                logoUrl = s?.BrandLogoUrl,
+            });
+        }).AllowAnonymous();
     }
 
     private static object Project(NotificationChannel c) => new
@@ -225,3 +260,4 @@ public sealed record TransformTest(string? Transformer, string? Input);
 public sealed record EmailPreview(string? EventKey, string? Subject, string? BodyHtml, string? Layout);
 public sealed record EmailLayoutBody(string? Layout);
 public sealed record OrdersModeBody(string? Mode);
+public sealed record BrandingBody(string? Name, string? Color, string? LogoUrl);

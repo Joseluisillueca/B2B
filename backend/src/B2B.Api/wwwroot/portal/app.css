@@ -54,6 +54,10 @@ main { flex:1; outline:none; }
 
 .brand { font-family:var(--display); font-weight:800; letter-spacing:-.03em; text-transform:none; }
 .brand sup { font-size:.42em; letter-spacing:0; vertical-align:.95em; }
+/* Marca configurable: si el despliegue sube logo, sustituye al texto en .brand */
+.brand img { display:block; height:28px; width:auto; max-width:220px; object-fit:contain; }
+.sheet .card .brand img { margin:0 auto; height:34px; }
+.login-hero .brand img, .cred-hero .brand img { height:34px; }
 
 /* ══════════════ Header verde de marca ══════════════ */
 #chrome-header { position:sticky; top:0; z-index:20; background:var(--header-bg); color:var(--header-ink);

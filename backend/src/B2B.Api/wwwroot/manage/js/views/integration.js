@@ -3,6 +3,7 @@
 import { api } from '../api.js';
 import { icons } from '../icons.js';
 import { esc, flash, showJson } from '../util.js';
+import { setBrand } from '/portal/js/branding.js';
 
 const SAMPLE = {
   salesOrders: '{"id":"<guid>","clientId":"<guid>","shippingAddressId":"<guid>","referenceOrder":"REF-1","payMethodId":"sepa30","incotermId":"","saleId":"","total":{"value":121},"totalTax":{"value":21},"totalDiscount":{"value":0},"totalCart":{"value":100},"totalTransport":{"value":0},"totalCartDiscount":{"value":0},"items":[{"id":"l1","productId":"<guid>","modelId":"<guid>","sku":"SKU1","quantity":5,"productName":{"es_ES":"Producto X"},"price":{"value":18},"priceOriginal":{"value":20},"amount":{"value":90},"totalDiscounts":{"value":10},"stockServiceId":"SS1"}],"stockServices":[{"stockServiceId":"SS1","from":"01/09/2026","to":"15/09/2026","baseFrom":"2026-09-01","baseTo":"2026-09-15"}]}',
@@ -189,6 +190,27 @@ export async function connectionsView(main) {
           <span><b>Los gobierna el ERP</b> — el pedido queda a la espera; los maestros y pedidos los maneja Business Central.</span></label>
         <div style="margin-top:.9rem"><button type="button" class="btn-primary" id="ordersModeSave">Guardar modo</button></div>
       </div></section>
+    <section class="biz-section"><header class="acc-head biz-head"><h2>${icons.image(20)}Marca del portal</h2></header>
+      <div class="biz-card">
+        <p class="lead" style="margin:0 0 .8rem">El nombre, el color y el logo se aplican al portal, al back-office, a los emails y a los PDFs. Vacío = marca por defecto (MITO PROJECTS, rojo).</p>
+        <div class="biz-grid">
+          <p class="acc-field"><label><span>Nombre</span>
+            <input id="brName" value="${esc(s.brandName === 'MITO PROJECTS' ? '' : (s.brandName || ''))}" placeholder="MITO PROJECTS"></label></p>
+          <p class="acc-field"><label for="brColor"><span>Color de acento</span></label>
+            <span style="display:flex;gap:.6rem;align-items:center">
+              <input type="color" id="brColorPick" value="${esc(/^#[0-9a-f]{6}$/i.test(s.brandColor || '') ? s.brandColor : '#ec3013')}"
+                aria-label="Elegir color de acento" style="width:2.6rem;height:2.2rem;padding:.15rem;border:1px solid var(--line-control);background:#fff;cursor:pointer">
+              <input id="brColor" value="${esc((s.brandColor || '').toLowerCase() === '#ec3013' ? '' : (s.brandColor || ''))}"
+                placeholder="#ec3013" style="flex:1" spellcheck="false"></span></p>
+          <p class="acc-field wide"><span style="display:block;font-size:.78rem;font-weight:600;color:var(--hint);margin:0 0 .35rem">Logo</span>
+            <span id="brLogoBox" style="display:flex;gap:.8rem;align-items:center;min-height:2.4rem"></span>
+            <input type="file" id="brLogoFile" accept="image/*" hidden>
+            <span class="acc-hint" style="display:block;margin-top:.4rem">PNG o SVG con fondo transparente (se muestra a ~28 px de alto sobre la cabecera negra). Sin logo, se muestra el nombre en texto.</span></p>
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.4rem">
+          <button type="button" class="btn-primary" id="brandSave">Guardar marca</button>
+        </div>
+      </div></section>
     <section class="biz-section"><header class="acc-head biz-head"><h2>${icons.send(20)}Diseño de email (marca)</h2></header>
       <div class="biz-card">
         <p class="lead" style="margin:0 0 .8rem">Envoltorio HTML común a TODOS los emails (cabecera y pie de marca). Debe contener <code>{{content}}</code> (donde entra el cuerpo de cada email) y admite <code>{{subject}}</code> <code>{{year}}</code>.</p>
@@ -217,6 +239,45 @@ export async function connectionsView(main) {
     if (!mode) return;
     try { const r = await api.intSaveOrdersMode(mode); flash(`Modo de pedidos guardado: ${r.ordersMode === 'portal' ? 'Comunica a Business Central' : 'ERP'}.`); connectionsView(main); }
     catch (e) { flash(e.body?.error || e.message, 'err'); }
+  };
+
+  // ── Marca del portal (nombre + color + logo) ────────────────────────────────
+  let brandLogo = s.brandLogoUrl || '';
+  const paintLogo = () => {
+    const box = main.querySelector('#brLogoBox');
+    box.innerHTML = brandLogo
+      ? `<img src="${esc(brandLogo)}" alt="Logo actual de la marca"
+           style="height:34px;max-width:220px;object-fit:contain;display:block;background:var(--header-bg);padding:.3rem .6rem">
+         <button type="button" class="btn-ghost" id="brLogoUp">Cambiar</button>
+         <button type="button" class="btn-ghost" id="brLogoOff">Quitar</button>`
+      : `<button type="button" class="btn-ghost" id="brLogoUp">${icons.upload(15)} Subir logo</button>`;
+    box.querySelector('#brLogoUp').onclick = () => main.querySelector('#brLogoFile').click();
+    const off = box.querySelector('#brLogoOff');
+    if (off) off.onclick = () => { brandLogo = ''; paintLogo(); };
+  };
+  paintLogo();
+  main.querySelector('#brLogoFile').onchange = async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try { const r = await api.uploadMedia(file); brandLogo = r.url; paintLogo(); flash('Logo subido. Pulsa «Guardar marca» para aplicarlo.'); }
+    catch (err) { flash(err.body?.error || err.message, 'err'); }
+  };
+  // El selector de color y el hex visible van de la mano en ambos sentidos.
+  const brPick = main.querySelector('#brColorPick'), brHex = main.querySelector('#brColor');
+  brPick.oninput = () => { brHex.value = brPick.value; };
+  brHex.oninput = () => { const v = brHex.value.trim(); if (/^#[0-9a-f]{6}$/i.test(v)) brPick.value = v; };
+  main.querySelector('#brandSave').onclick = async () => {
+    const name = main.querySelector('#brName').value.trim();
+    const color = brHex.value.trim();
+    if (color && !/^#[0-9a-f]{6}$/i.test(color)) { flash('El color debe ser hexadecimal #rrggbb, p. ej. #ec3013.', 'err'); return; }
+    try {
+      await api.intSaveBranding({ name, color, logoUrl: brandLogo });
+      // Aplica la marca en vivo (título, cabecera, acento) leyendo el efectivo público.
+      try { setBrand(await (await fetch('/api/portal/branding')).json()); } catch { /* se aplicará al recargar */ }
+      flash('Marca guardada y aplicada. El portal la mostrará al recargar.');
+      connectionsView(main);
+    } catch (err) { flash(err.body?.error || err.message, 'err'); }
   };
 
   // Diseño global del email (layout de marca) — guardado por su propio endpoint.

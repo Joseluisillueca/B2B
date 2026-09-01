@@ -43,7 +43,7 @@ public static class PdfEndpoints
             var clientName = await ClientNameAsync(db, actor);
             var image = await LoadImageAsync(row.ImageUri, env, httpFactory);
 
-            var pdf = new TechSheetDocument(row, clientName, image).GeneratePdf();
+            var pdf = new TechSheetDocument(row, clientName, image, await BrandAsync(db)).GeneratePdf();
             var safeRef = string.Concat((row.Model.ExternalReference ?? "producto")
                 .Where(c => char.IsLetterOrDigit(c) || c is '-' or '_'));
             return Results.File(pdf, "application/pdf", $"ficha-{safeRef}.pdf");
@@ -78,7 +78,7 @@ public static class PdfEndpoints
                 images[r.Model.ExternalReference ?? ""] = await LoadImageAsync(r.ImageUri, env, httpFactory);
 
             var heading = clientName.Length > 0 ? $"Selección para {clientName}" : "Selección de productos";
-            var pdf = new LineSheetDocument(rows, images, clientName, heading, "LINE-SHEET").GeneratePdf();
+            var pdf = new LineSheetDocument(rows, images, clientName, heading, "LINE-SHEET", await BrandAsync(db)).GeneratePdf();
             return Results.File(pdf, "application/pdf", "line-sheet-lejan.pdf");
         }).RequireAuthorization();
 
@@ -101,7 +101,7 @@ public static class PdfEndpoints
                 images[r.Model.ExternalReference ?? ""] = await LoadImageAsync(r.ImageUri, env, httpFactory);
 
             var heading = clientName.Length > 0 ? $"Catálogo · tarifa de {clientName}" : "Catálogo";
-            var pdf = new LineSheetDocument(rows, images, clientName, heading, "CATÁLOGO").GeneratePdf();
+            var pdf = new LineSheetDocument(rows, images, clientName, heading, "CATÁLOGO", await BrandAsync(db)).GeneratePdf();
             return Results.File(pdf, "application/pdf", "catalogo-lejan.pdf");
         }).RequireAuthorization();
     }
@@ -110,6 +110,10 @@ public static class PdfEndpoints
         actor is null ? PortalActorPrices.Anonymous : new PortalActorPrices(actor.ClientId, actor.GroupIds);
 
     // Nombre del cliente para el pie "Precios para: …" (o del suplantado por el agente)
+    // Marca del despliegue para la cabecera de los PDF (multi-cliente).
+    private static async Task<string> BrandAsync(AppDbContext db) =>
+        (await db.IntegrationSettings.FindAsync(1))?.BrandNameOrDefault ?? "MITO PROJECTS";
+
     private static async Task<string> ClientNameAsync(AppDbContext db, PortalActor? actor)
     {
         if (actor?.ClientId is not { Length: > 0 } clientId) return "";
@@ -147,7 +151,7 @@ public static class PdfEndpoints
     }
 
     // ── Documento: ficha técnica ────────────────────────────────────────────────
-    private sealed class TechSheetDocument(CatalogRow row, string clientName, byte[]? image) : IDocument
+    private sealed class TechSheetDocument(CatalogRow row, string clientName, byte[]? image, string brand) : IDocument
     {
         public void Compose(IDocumentContainer container) => container.Page(page =>
         {
@@ -162,7 +166,7 @@ public static class PdfEndpoints
 
         private void Header(IContainer c) => c.BorderBottom(1.5f).BorderColor(Green).PaddingBottom(8).Row(row =>
         {
-            row.RelativeItem().Text("MITO PROJECTS™").FontSize(22).Bold().FontColor(Green);
+            row.RelativeItem().Text($"{brand}™").FontSize(22).Bold().FontColor(Green);
             row.RelativeItem().AlignRight().AlignBottom().Text("FICHA TÉCNICA")
                 .FontSize(10).FontColor(Muted).LetterSpacing(0.1f);
         });
@@ -264,7 +268,7 @@ public static class PdfEndpoints
     // ── Documento: line-sheet (varios productos) ────────────────────────────────
     private sealed class LineSheetDocument(
         IReadOnlyList<CatalogRow> rows, Dictionary<string, byte[]?> images,
-        string clientName, string heading, string label) : IDocument
+        string clientName, string heading, string label, string brand) : IDocument
     {
         public void Compose(IDocumentContainer container) => container.Page(page =>
         {
@@ -281,7 +285,7 @@ public static class PdfEndpoints
         {
             row.RelativeItem().Column(col =>
             {
-                col.Item().Text("MITO PROJECTS™").FontSize(20).Bold().FontColor(Green);
+                col.Item().Text($"{brand}™").FontSize(20).Bold().FontColor(Green);
                 col.Item().Text(heading).FontSize(9).FontColor(Muted);
             });
             row.RelativeItem().AlignRight().AlignBottom().Text($"{label} · {rows.Count} modelos")

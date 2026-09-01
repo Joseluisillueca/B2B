@@ -27,6 +27,18 @@ public class IntegrationSettings
     // Editable desde /manage → Conexiones.
     public string? OrdersMode { get; set; }
 
+    // ── Marca del portal (multi-cliente): cada despliegue lleva su nombre, color y logo ──
+    // null = los valores por defecto del producto (MITO PROJECTS). Editable desde /manage →
+    // Conexiones → Marca. El color es el acento principal (#rrggbb) del portal, back-office,
+    // emails y PDFs. El logo (URL de /media, opcional) sustituye al nombre en las cabeceras.
+    public string? BrandName { get; set; }
+    public string? BrandColor { get; set; }
+    public string? BrandLogoUrl { get; set; }
+
+    // Valores efectivos (no mapeados por EF): con respaldo a la marca por defecto.
+    public string BrandNameOrDefault => string.IsNullOrWhiteSpace(BrandName) ? "MITO PROJECTS" : BrandName!.Trim();
+    public string BrandColorOrDefault => string.IsNullOrWhiteSpace(BrandColor) ? "#ec3013" : BrandColor!.Trim();
+
     public DateTime UpdatedAt { get; set; }
 
     public bool BcConfigured =>

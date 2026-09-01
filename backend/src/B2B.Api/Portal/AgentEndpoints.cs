@@ -620,14 +620,14 @@ public static class AgentEndpoints
                 return Results.BadRequest(new { error = "La selección no tiene modelos o clientes." });
 
             var modelNames = await ModelNamesAsync(db, modelIds, DocumentProjections.Locale(actor.User.Culture));
-            var layout = (await db.IntegrationSettings.FindAsync(1))?.EmailLayoutHtml;
+            var mailSettings = await db.IntegrationSettings.FindAsync(1);
             var sentCount = 0;
             foreach (var clientId in clientIds)
             {
                 var payload = await PortalScope.ClientPayloadAsync(db, clientId);
                 var to = ClientIdentity.Text(payload?["email"]).Trim();
                 if (to.Length == 0) continue;
-                var message = SelectionEmail(to, sel.Name, modelNames, layout);
+                var message = SelectionEmail(to, sel.Name, modelNames, mailSettings);
                 EmailResult result;
                 try { result = await email.SendAsync(message); }
                 catch (Exception ex) { result = new EmailResult(false, email.Transport, ex.Message); }
@@ -700,13 +700,13 @@ public static class AgentEndpoints
             if (send)
             {
                 var modelNames = await ModelNamesAsync(db, modelIds, DocumentProjections.Locale(actor.User.Culture));
-                var layout = (await db.IntegrationSettings.FindAsync(1))?.EmailLayoutHtml;
+                var mailSettings = await db.IntegrationSettings.FindAsync(1);
                 foreach (var clientId in clientIds)
                 {
                     var payload = await PortalScope.ClientPayloadAsync(db, clientId);
                     var to = ClientIdentity.Text(payload?["email"]).Trim();
                     if (to.Length == 0) continue;
-                    var message = SelectionEmail(to, name, modelNames, layout);
+                    var message = SelectionEmail(to, name, modelNames, mailSettings);
                     EmailResult result;
                     try { result = await email.SendAsync(message); }
                     catch (Exception ex) { result = new EmailResult(false, email.Transport, ex.Message); }
@@ -781,23 +781,24 @@ public static class AgentEndpoints
         catch (System.Text.Json.JsonException) { return []; }
     }
 
-    private static EmailMessage SelectionEmail(string to, string name, List<string> modelNames, string? layout)
+    private static EmailMessage SelectionEmail(string to, string name, List<string> modelNames, Data.IntegrationSettings? settings)
     {
+        var brand = settings?.BrandNameOrDefault ?? "MITO PROJECTS";
         var subject = $"Selección de modelos: {name}";
         var list = string.Join("\n", modelNames.Select(m => $" · {m}"));
-        var text = $"Hola,\n\nTu comercial te ha preparado una selección de modelos «{name}» para tu pedido de temporada:\n\n{list}\n\nEntra en el portal B2B de Mito Projects para hacer tu pedido.\n\nEquipo Mito Projects B2B";
+        var text = $"Hola,\n\nTu comercial te ha preparado una selección de modelos «{name}» para tu pedido de temporada:\n\n{list}\n\nEntra en el portal B2B de {brand} para hacer tu pedido.\n\nEquipo {brand} B2B";
         var items = string.Join("", modelNames.Select(m => $"<li style=\"margin:.25em 0\">{System.Net.WebUtility.HtmlEncode(m)}</li>"));
         // Solo el cuerpo; la marca (cabecera/pie) la pone el layout global editable.
         var body = $"""
             <p style="margin:0 0 14px">Tu comercial te ha preparado la selección <b>{System.Net.WebUtility.HtmlEncode(name)}</b> para tu pedido de temporada:</p>
             <ul style="margin:0 0 14px;padding-left:1.2em">{items}</ul>
-            <p style="margin:0">Entra en el portal B2B de Mito Projects para hacer tu pedido.</p>
+            <p style="margin:0">Entra en el portal B2B de {System.Net.WebUtility.HtmlEncode(brand)} para hacer tu pedido.</p>
             """;
         var vars = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
         {
             ["subject"] = subject, ["year"] = DateTime.UtcNow.Year.ToString(),
         };
-        var html = EmailTemplate.RenderHtml(layout, body, vars);
+        var html = EmailTemplate.RenderHtml(settings?.EmailLayoutHtml, body, EmailTemplate.WithBrand(settings, vars));
         return new EmailMessage(to, subject, html, text);
     }
 

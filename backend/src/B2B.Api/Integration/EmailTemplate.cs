@@ -7,17 +7,18 @@ namespace B2B.Api.Integration;
 // aporta la cabecera/pie de marca y expone {{content}} donde entra el cuerpo.
 public static partial class EmailTemplate
 {
-    // Layout por defecto (marca MITO PROJECTS, rojo #ec3013). HTML "email-safe": estilos
-    // en línea, sin dependencias externas. Editable desde Conexiones (IntegrationSettings).
+    // Layout por defecto. La marca NO va clavada: {{brandName}} y {{brandColor}} se rellenan
+    // con la marca configurada del despliegue (Conexiones → Marca), así el MISMO producto
+    // sirve a varios clientes. HTML "email-safe": estilos en línea, sin dependencias externas.
     public const string DefaultLayout = """
         <div style="background:#f3f2f2;padding:24px 12px;font-family:Archivo,Arial,Helvetica,sans-serif;color:#201e1d">
           <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2dede">
-            <div style="background:#ec3013;padding:18px 28px">
-              <span style="color:#ffffff;font-weight:800;font-size:20px;letter-spacing:-.5px">MITO PROJECTS&#8482;</span>
+            <div style="background:{{brandColor}};padding:18px 28px">
+              <span style="color:#ffffff;font-weight:800;font-size:20px;letter-spacing:-.5px">{{brandName}}&#8482;</span>
             </div>
             <div style="padding:28px 28px 24px;font-size:15px;line-height:1.55">{{content}}</div>
             <div style="padding:14px 28px;border-top:1px solid #eeeaea;color:#8a8785;font-size:12px">
-              &#169; {{year}} MITO PROJECTS &#183; Portal B2B
+              &#169; {{year}} {{brandName}} &#183; Portal B2B
             </div>
           </div>
         </div>
@@ -36,7 +37,7 @@ public static partial class EmailTemplate
         <p style="margin:0 0 14px">{{greeting}} <b>{{name}}</b>,</p>
         <p style="margin:0 0 14px">{{intro}}</p>
         <p style="margin:24px 0">
-          <a href="{{link}}" style="background:#ec3013;color:#ffffff;text-decoration:none;padding:12px 22px;font-weight:700;display:inline-block">{{button}}</a>
+          <a href="{{link}}" style="background:{{brandColor}};color:#ffffff;text-decoration:none;padding:12px 22px;font-weight:700;display:inline-block">{{button}}</a>
         </p>
         <p style="margin:0 0 6px;font-size:13px;color:#8a8785">{{expiry}}</p>
         <p style="margin:0 0 14px;font-size:12px;color:#a8a4a2;word-break:break-all">{{link}}</p>
@@ -88,6 +89,20 @@ public static partial class EmailTemplate
         var body = Fill(bodyHtml, vars);
         var lay = string.IsNullOrWhiteSpace(layout) ? DefaultLayout : layout!;
         return Fill(lay.Replace("{{content}}", body), vars);
+    }
+
+    // Variables de MARCA del despliegue ({{brandName}}, {{brandColor}}) fusionadas con las del
+    // evento. Todo render de email debe pasar por aquí para que el layout/cuerpo por defecto
+    // luzca la marca configurada (multi-cliente) y no la de fábrica.
+    public static IReadOnlyDictionary<string, string?> WithBrand(
+        Data.IntegrationSettings? settings, IReadOnlyDictionary<string, string?>? vars)
+    {
+        var merged = vars is null
+            ? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, string?>(vars, StringComparer.OrdinalIgnoreCase);
+        merged.TryAdd("brandName", settings?.BrandNameOrDefault ?? "MITO PROJECTS");
+        merged.TryAdd("brandColor", settings?.BrandColorOrDefault ?? "#ec3013");
+        return merged;
     }
 
     // Respaldo en texto plano a partir del HTML (para clientes que no pintan HTML).

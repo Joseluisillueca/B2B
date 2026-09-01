@@ -1,13 +1,14 @@
 // Entrada al back-office — mismo "login split" del portal. Solo rol admin: tras el
 // login se comprueba el acceso a /api/admin/* antes de dejar pasar.
 import { api, auth } from '../api.js';
+import { brandMark } from '/portal/js/branding.js';
 
 export default function login(app) {
   app.setAttribute('aria-busy', 'false');
   app.innerHTML = `
     <div class="login-split">
       <div class="login-hero">
-        <a class="brand" href="#/login" style="text-decoration:none">MITO PROJECTS<sup>™</sup></a>
+        <a class="brand" href="#/login" style="text-decoration:none">${brandMark()}</a>
         <div>
           <p class="hero-kicker">Back-office</p>
           <h1 class="login-display">Gestión<br>de maestros</h1>

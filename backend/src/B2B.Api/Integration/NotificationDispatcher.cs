@@ -84,8 +84,9 @@ public static class NotificationDispatcher
         // Asunto y cuerpo editables por canal (o los por defecto), dentro del layout de marca.
         var subjTpl = string.IsNullOrWhiteSpace(ch.Subject) ? EmailTemplate.DefaultSubjectFor(eventKey) : ch.Subject;
         var bodyTpl = string.IsNullOrWhiteSpace(ch.BodyHtml) ? EmailTemplate.DefaultBodyFor(eventKey) : ch.BodyHtml;
-        var subject = System.Net.WebUtility.HtmlDecode(EmailTemplate.Fill(subjTpl, content));
-        var html = EmailTemplate.RenderHtml(settings.EmailLayoutHtml, bodyTpl, content);
+        var branded = EmailTemplate.WithBrand(settings, content);
+        var subject = System.Net.WebUtility.HtmlDecode(EmailTemplate.Fill(subjTpl, branded));
+        var html = EmailTemplate.RenderHtml(settings.EmailLayoutHtml, bodyTpl, branded);
         var text = EmailTemplate.ToText(html);
 
         var cc = ResolveRecipients(ch.CcVars, vars);

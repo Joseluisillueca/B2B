@@ -54,9 +54,9 @@ public sealed class ActivationService(
         var raw = await IssueAsync(user, purpose, lifetime);
         var lang = Lang(user.Culture);
         var link = BuildLink(raw, lang);
-        // Layout de marca compartido (editable en /manage → Conexiones). Null → por defecto.
-        var layout = (await db.IntegrationSettings.FindAsync(1))?.EmailLayoutHtml;
-        var message = Compose(user, purpose, link, lang, layout);
+        // Configuración (layout de marca + nombre/color de marca del despliegue).
+        var settings = await db.IntegrationSettings.FindAsync(1);
+        var message = Compose(user, purpose, link, lang, settings);
 
         EmailResult result;
         try
@@ -127,8 +127,9 @@ public sealed class ActivationService(
         return $"{baseUrl}/{market}/{lang}/activate?token={Uri.EscapeDataString(rawToken)}";
     }
 
-    private EmailMessage Compose(AppUser user, string purpose, string link, string lang, string? layout)
+    private EmailMessage Compose(AppUser user, string purpose, string link, string lang, Data.IntegrationSettings? settings)
     {
+        var layout = settings?.EmailLayoutHtml;
         var name = string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name!;
         var t = Templates.TryGetValue(lang, out var found) ? found : Templates["es"];
         var reset = purpose == ActivationPurpose.Reset;
@@ -145,7 +146,7 @@ public sealed class ActivationService(
             ["signature"] = Esc(t.Signature), ["subject"] = Esc(subject),
             ["year"] = DateTime.UtcNow.Year.ToString(),
         };
-        var html = EmailTemplate.RenderHtml(layout, EmailTemplate.ActivationBody, vars);
+        var html = EmailTemplate.RenderHtml(layout, EmailTemplate.ActivationBody, EmailTemplate.WithBrand(settings, vars));
         var text = $"{t.Hello} {name},\n\n{intro}\n\n{link}\n\n{t.Expiry}\n\n{t.Signature}";
         return new EmailMessage(user.Email, subject, html, text);
     }

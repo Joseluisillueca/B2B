@@ -14,6 +14,7 @@ import { esc, initial, roleLabel, typeLabel } from '../format.js';
 import { state } from '../state.js';
 import { go } from '../router.js';
 import { icons } from '../ui/icons.js';
+import { brandMark } from '../branding.js';
 
 const isAgent = credential => !!(credential && (credential.agent || credential.type === 'agent'));
 
@@ -29,7 +30,7 @@ export default function credentials(host) {
   host.innerHTML = `
     <div class="cred-split">
       <aside class="cred-hero">
-        <span class="brand">MITO PROJECTS<sup>™</sup></span>
+        <span class="brand">${brandMark()}</span>
         <div class="cred-hero-mid">
           <p class="hero-kicker">${esc(t('credentials.greeting'))}</p>
           <h1 class="cred-hero-name">${esc(displayName || t('credentials.choose'))}</h1>

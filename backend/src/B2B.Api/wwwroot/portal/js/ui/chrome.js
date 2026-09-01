@@ -10,6 +10,7 @@ import { href, go, current } from '../router.js';
 import { icons } from './icons.js';
 import { paintCartBody } from './cart.js';
 import { mountAssistant } from './assistant.js';
+import { brandMark, brandText, getBrand } from '../branding.js';
 
 const header = () => document.getElementById('chrome-header');
 const nav = () => document.getElementById('chrome-nav');
@@ -106,7 +107,7 @@ function paintHeader() {
   const isAgentMenu = isAgent;
 
   header().innerHTML = `
-    <a class="brand" href="${href(isAgent && !acting ? 'clients' : 'dashboard')}" aria-label="Mito Projects">MITO PROJECTS<sup>™</sup></a>
+    <a class="brand" href="${href(isAgent && !acting ? 'clients' : 'dashboard')}" aria-label="${esc(getBrand().name)}">${brandMark()}</a>
 
     ${showShop ? `
     <form class="h-search" role="search">
@@ -282,7 +283,7 @@ function paintNav(route) {
 
 function paintFooter() {
   footer().innerHTML = `
-    <span>${esc(t('footer.copyright'))}</span>
+    <span>${esc(brandText(t('footer.copyright')))}</span>
     <span class="social">${SOCIAL.map(([name, url]) =>
       `<a href="${url}" target="_blank" rel="noopener" aria-label="${name}">${icons[name](18)}</a>`).join('')}</span>`;
 }
