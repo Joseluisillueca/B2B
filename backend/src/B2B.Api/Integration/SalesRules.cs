@@ -33,6 +33,7 @@ public sealed class SalesResult
     public decimal? FixedTransport { get; set; }     // "Importe fijo transporte" (la 1ª que casa gana)
     public decimal LineDiscountPercent { get; set; } // "Descuento porcentual por línea" (acumulado, cap 100)
     public decimal LineDiscountFixed { get; set; }   // "Descuento fijo por línea" (acumulado)
+    public string? Incoterm { get; set; }            // "Incoterm/servicio" (fob/usa, lo único que mapea BC)
     public List<Guid> MatchedRuleIds { get; } = [];
 
     // Coste de transporte resultante: 0 si portes gratis; el importe fijo si aplica; null si
@@ -106,6 +107,11 @@ public static class SalesRules
                 break;
             case "line_discount_fixed":
                 r.LineDiscountFixed += Money(Num(a["amount"]));
+                break;
+            case "set_incoterm":
+                // BC solo reconoce fob/usa (GetServiceType); el resto lo descarta.
+                var inc = Str(a["value"])?.ToLowerInvariant();
+                if (inc is "fob" or "usa") r.Incoterm ??= inc;
                 break;
         }
     }

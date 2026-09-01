@@ -186,7 +186,6 @@ app.MapMediaEndpoints();
 app.MapModelImageEndpoints();
 app.MapEntityCrudEndpoints();
 app.MapIntegrationEndpoints();
-app.MapTransportEndpoints();
 app.MapSalesRulesEndpoints();
 app.MapDocumentDownloadEndpoints();
 app.MapUserAdminEndpoints();

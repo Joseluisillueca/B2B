@@ -264,6 +264,10 @@ const ACTION_TYPES = [
   { type: 'line_discount_fixed', label: 'Descuento fijo por línea',
     build(host, d) { host.innerHTML = F('Descuento (€)', numInput('a', d.amount, 'min="0"'), 'Importe descontado en cada línea del carrito.'); return { read() { const n = parseNum(host.querySelector('#a').value); if (n == null || n < 0) throw new Error('Indica un importe válido.'); return { amount: n }; } }; },
     summary(o) { return `Dto. fijo línea: ${moneyShort(o.amount)}`; } },
+
+  { type: 'set_incoterm', label: 'Incoterm / servicio (FOB/USA)',
+    build(host, d) { const v = (d.value || '').toLowerCase(); host.innerHTML = F('Incoterm', `<select id="v"><option value="fob"${v === 'usa' ? '' : ' selected'}>FOB</option><option value="usa"${v === 'usa' ? ' selected' : ''}>USA</option></select>`, 'Viaja al pedido de Business Central (solo reconoce FOB o USA).'); return { read() { return { value: host.querySelector('#v').value }; } }; },
+    summary(o) { return `Incoterm: ${(o.value || 'fob').toUpperCase()}`; } },
 ];
 
 const REG = { condition: COND_TYPES, action: ACTION_TYPES };

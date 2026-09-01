@@ -99,7 +99,7 @@ public static class SalesRulesEndpoints
     };
     private static readonly HashSet<string> ActionTypes = new(StringComparer.OrdinalIgnoreCase)
     {
-        "deny", "free_shipping", "fixed_transport", "line_discount_percent", "line_discount_fixed",
+        "deny", "free_shipping", "fixed_transport", "line_discount_percent", "line_discount_fixed", "set_incoterm",
     };
 
     private static string? Validate(SalesRuleBody b)

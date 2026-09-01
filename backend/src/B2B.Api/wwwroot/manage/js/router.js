@@ -12,7 +12,6 @@ import usersView from './views/users.js';
 import imagesView from './views/images.js';
 import { ordersView, orderView } from './views/orders.js';
 import { configView, connectionsView, docSourcesView, logsView } from './views/integration.js';
-import { transportView, transportEditView } from './views/transport.js';
 import { salesRulesView, salesRuleEditView } from './views/sales-rules.js';
 
 let shellReady = false;
@@ -54,11 +53,6 @@ export async function resolve() {
     if (view === 'connections') return await connectionsView(main);
     if (view === 'doc-sources') return await docSourcesView(main);
     if (view === 'orders') return parts[1] ? await orderView(main, parts[1]) : await ordersView(main);
-    if (view === 'transport') {
-      if (parts[1] === 'new') return await transportEditView(main, null);
-      if (parts[1] === 'edit') return await transportEditView(main, parts[2]);
-      return await transportView(main);
-    }
     if (view === 'sales-rules') {
       if (parts[1] === 'new') return await salesRuleEditView(main, null);
       if (parts[1] === 'edit') return await salesRuleEditView(main, parts[2]);

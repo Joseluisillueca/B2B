@@ -227,7 +227,7 @@ export const NAV = [
     ['agents', 'Agentes', 'user'], ['users', 'Accesos', 'key'],
   ] },
   { title: 'Ventas', items: [
-    ['orders', 'Pedidos', 'cart'], ['transport', 'Transporte', 'truck'],
+    ['orders', 'Pedidos', 'cart'],
     ['sales-rules', 'Condiciones de venta', 'percent'],
   ] },
   { title: 'Contenido', items: [
