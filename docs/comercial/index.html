@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Portal B2B — MitoProjects × Lejan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#faf6ef; --paper:#fffdf8; --green:#1f5c46; --green-deep:#173f30;
+    --terra:#c4633a; --terra-deep:#a4502c; --mustard:#c98a1e;
+    --ink:#221d17; --ink-2:#453d33; --muted:#7a7266; --line:#e7ded1;
+    --display:'Fraunces',Georgia,'Times New Roman',serif;
+    --body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  }
+  @page{ size:A4; margin:0; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ font-family:var(--body); color:var(--ink); background:#fff; font-size:10.2pt; line-height:1.5; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+
+  .page{ width:210mm; min-height:297mm; padding:20mm 18mm; position:relative; page-break-after:always; overflow:hidden; }
+  .page:last-child{ page-break-after:auto; }
+  .bg-cream{ background:var(--cream); }
+  .bg-paper{ background:var(--paper); }
+
+  /* running foot */
+  .foot{ position:absolute; left:18mm; right:18mm; bottom:11mm; display:flex; justify-content:space-between;
+    font-size:7.4pt; color:var(--muted); letter-spacing:.03em; border-top:1px solid var(--line); padding-top:5px; }
+  .foot b{ color:var(--green); font-weight:600; }
+
+  h1,h2,h3,h4{ font-family:var(--display); font-weight:600; color:var(--ink); margin:0; letter-spacing:-.01em; }
+  .kicker{ font-family:var(--body); font-weight:700; font-size:8pt; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--terra-deep); margin:0 0 6px; }
+  p{ margin:0 0 8px; color:var(--ink-2); }
+  a{ color:var(--green); text-decoration:none; }
+  .lead{ font-size:11.5pt; line-height:1.55; color:var(--ink-2); }
+  strong{ color:var(--ink); font-weight:600; }
+
+  /* ---------- Cover ---------- */
+  .cover{ display:flex; flex-direction:column; justify-content:space-between; padding:22mm 20mm; }
+  .cover-top{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .mito{ font-family:var(--display); font-weight:700; font-size:15pt; color:var(--ink); letter-spacing:-.02em; }
+  .mito span{ color:var(--terra); }
+  .cover-tag{ font-size:8pt; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); text-align:right; }
+  .cover-mid h1{ font-size:44pt; line-height:1.02; letter-spacing:-.02em; margin:0 0 10px; }
+  .cover-mid .sub{ font-size:14pt; color:var(--green); font-family:var(--display); }
+  .cover-mid .desc{ max-width:150mm; margin-top:14px; font-size:11pt; color:var(--ink-2); }
+  .cover-hero{ margin-top:16px; border-radius:10px; overflow:hidden; border:1px solid var(--line); box-shadow:0 14px 40px -20px rgba(23,20,16,.5); }
+  .cover-hero img{ width:100%; display:block; }
+  .cover-foot{ display:flex; justify-content:space-between; align-items:flex-end; font-size:8.5pt; color:var(--muted); }
+  .cover-foot .pill{ background:var(--green); color:#fff; border-radius:999px; padding:5px 14px; font-weight:600; letter-spacing:.02em; }
+  .rule-green{ height:5px; width:64px; background:var(--green); border-radius:3px; margin:0 0 18px; }
+
+  /* ---------- Índice ---------- */
+  .toc{ columns:2; column-gap:16mm; margin-top:10px; }
+  .toc-item{ break-inside:avoid; display:flex; gap:10px; align-items:baseline; padding:7px 0; border-bottom:1px dotted var(--line); }
+  .toc-num{ font-family:var(--display); color:var(--terra); font-weight:600; width:26px; }
+  .toc-txt{ flex:1; color:var(--ink-2); }
+
+  /* ---------- Sección ---------- */
+  .sec-head{ margin-bottom:12px; }
+  .sec-head h2{ font-size:24pt; line-height:1.05; }
+  .shot{ border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--cream);
+    box-shadow:0 8px 26px -18px rgba(23,20,16,.45); margin:2px 0 6px; }
+  .shot img{ width:100%; display:block; }
+  .shot.tall img{ max-height:150mm; width:auto; margin:0 auto; }
+  .cap{ font-size:8pt; color:var(--muted); margin:0 0 14px; }
+  .cols{ display:flex; gap:14px; margin-top:6px; }
+  .card{ flex:1; background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
+  .card.value{ border-left:3px solid var(--terra); }
+  .card.how{ border-left:3px solid var(--green); }
+  .card h4{ font-size:10.5pt; margin:0 0 6px; }
+  .card .lab{ font-size:7.5pt; letter-spacing:.1em; text-transform:uppercase; font-weight:700; }
+  .card.value .lab{ color:var(--terra-deep); } .card.how .lab{ color:var(--green); }
+  ul.tick{ list-style:none; margin:6px 0 0; padding:0; }
+  ul.tick li{ position:relative; padding:3px 0 3px 16px; font-size:9.4pt; color:var(--ink-2); }
+  ul.tick li::before{ content:""; position:absolute; left:0; top:9px; width:7px; height:7px; border-radius:2px; background:var(--green); }
+  .card.value ul.tick li::before{ background:var(--terra); }
+  ol.steps{ margin:6px 0 0; padding-left:18px; font-size:9.4pt; color:var(--ink-2); }
+  ol.steps li{ padding:2px 0; }
+
+  .tagrow{ display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 14px; }
+  .tag{ font-size:7.6pt; font-weight:600; color:var(--green); background:#eaf1ec; border:1px solid #d5e4da;
+    border-radius:999px; padding:3px 10px; letter-spacing:.02em; }
+  .tag.t{ color:var(--terra-deep); background:#f7ece4; border-color:#ead6c8; }
+
+  .two-shot{ display:flex; gap:12px; }
+  .two-shot .shot{ flex:1; margin:0; }
+  .two-shot .shot:not(.tall) img{ height:58mm; object-fit:cover; object-position:top center; }
+  .shot img{ max-height:118mm; }
+  .shot.tall img{ max-height:150mm !important; }
+
+  /* KPI / stat band */
+  .band{ display:flex; gap:12px; margin:6px 0 16px; }
+  .stat{ flex:1; background:var(--green); color:#fff; border-radius:8px; padding:12px 14px; }
+  .stat.alt{ background:var(--ink); } .stat.terra{ background:var(--terra); }
+  .stat b{ font-family:var(--display); font-size:20pt; display:block; line-height:1; }
+  .stat span{ font-size:8pt; opacity:.85; letter-spacing:.04em; text-transform:uppercase; }
+
+  .report-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+  .rep{ background:var(--paper); border:1px solid var(--line); border-left:3px solid var(--mustard); border-radius:6px; padding:8px 11px; }
+  .rep b{ font-family:var(--display); color:var(--ink); font-size:10pt; }
+  .rep span{ display:block; font-size:8.4pt; color:var(--muted); }
+
+  .callout{ background:var(--green); color:#fff; border-radius:10px; padding:16px 18px; margin-top:8px; }
+  .callout h3{ color:#fff; font-size:14pt; margin:0 0 6px; }
+  .callout p{ color:#eaf1ec; margin:0; font-size:9.6pt; }
+
+  .arch{ display:flex; gap:10px; align-items:stretch; margin:8px 0 14px; }
+  .arch .box{ flex:1; background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .arch .box b{ font-family:var(--display); color:var(--green); font-size:10pt; }
+  .arch .box p{ font-size:8.6pt; margin:4px 0 0; }
+  .arch .arrow{ align-self:center; color:var(--terra); font-size:16pt; }
+</style>
+</head>
+<body>
+
+<!-- ============ PORTADA ============ -->
+<section class="page cover bg-cream">
+  <div class="cover-top">
+    <div class="mito">mito<span>projects</span></div>
+    <div class="cover-tag">Documento comercial<br>&amp; manual de producto</div>
+  </div>
+  <div class="cover-mid">
+    <div class="rule-green"></div>
+    <div class="kicker">Portal B2B mayorista a medida</div>
+    <h1>El portal de pedidos<br>que tu marca merece.</h1>
+    <div class="sub">Caso real: Lejan — calzado barefoot</div>
+    <p class="desc">Una plataforma B2B completa —catálogo, pedidos por matriz de tallas, reposición y programación,
+      lookbook comprable, pago con tarjeta, analítica y conexión con Business Central— diseñada, construida y
+      puesta en marcha por MitoProjects. Este documento la recorre pantalla a pantalla: qué aporta a tu negocio
+      y cómo funciona cada pieza.</p>
+    <div class="cover-hero"><img src="img/01-dashboard.png" alt="Portada del portal Lejan"></div>
+  </div>
+  <div class="cover-foot">
+    <div><span class="pill">Hecho por MitoProjects</span></div>
+    <div>Portal B2B · v2026 · Confidencial</div>
+  </div>
+</section>
+
+<!-- ============ ÍNDICE + RESUMEN ============ -->
+<section class="page bg-paper">
+  <div class="kicker">Índice</div>
+  <h2 style="font-size:26pt; margin-bottom:6px;">Todo lo que hace la plataforma</h2>
+  <p class="lead" style="margin-bottom:14px;">Cada sección muestra una pantalla real del portal en funcionamiento,
+    con su valor comercial y su manual de uso.</p>
+  <div class="toc">
+    <div class="toc-item"><span class="toc-num">01</span><span class="toc-txt">Portada configurable desde el CMS</span></div>
+    <div class="toc-item"><span class="toc-num">02</span><span class="toc-txt">Catálogo y pedido por matriz de tallas</span></div>
+    <div class="toc-item"><span class="toc-num">03</span><span class="toc-txt">Reposición y Programación (pre-order)</span></div>
+    <div class="toc-item"><span class="toc-num">04</span><span class="toc-txt">Ficha de producto con visor multi-ángulo</span></div>
+    <div class="toc-item"><span class="toc-num">05</span><span class="toc-txt">Lookbook editorial &amp; «Compra el look»</span></div>
+    <div class="toc-item"><span class="toc-num">06</span><span class="toc-txt">Checkout y pago con tarjeta (Stripe)</span></div>
+    <div class="toc-item"><span class="toc-num">07</span><span class="toc-txt">Facturas, pedidos y albaranes</span></div>
+    <div class="toc-item"><span class="toc-num">08</span><span class="toc-txt">Modelo de agente comercial</span></div>
+    <div class="toc-item"><span class="toc-num">09</span><span class="toc-txt">Cuadros de mando (analítica)</span></div>
+    <div class="toc-item"><span class="toc-num">10</span><span class="toc-txt">Feed Power BI / Microsoft Fabric</span></div>
+    <div class="toc-item"><span class="toc-num">11</span><span class="toc-txt">Documentos PDF comerciales</span></div>
+    <div class="toc-item"><span class="toc-num">12</span><span class="toc-txt">CMS: marketing autónomo</span></div>
+    <div class="toc-item"><span class="toc-num">13</span><span class="toc-txt">Conexión con Business Central</span></div>
+    <div class="toc-item"><span class="toc-num">14</span><span class="toc-txt">Multiidioma, seguridad y arquitectura</span></div>
+  </div>
+
+  <div class="kicker" style="margin-top:22px;">Resumen ejecutivo</div>
+  <h3 style="font-size:15pt; margin-bottom:6px;">Un canal de venta mayorista propio, sin depender de plataformas de terceros</h3>
+  <p>El portal permite a tus clientes (tiendas) y a tus agentes comerciales <strong>hacer pedidos por tallas,
+    reponer stock, programar temporada, pagar y consultar su cuenta</strong> las 24 horas, con tu marca y tu tarifa.
+    Se integra con <strong>Business Central</strong> para que el catálogo, los precios y los documentos fluyan solos,
+    y da a marketing el control total del escaparate sin llamar a desarrollo.</p>
+  <div class="band" style="margin-top:12px;">
+    <div class="stat"><b>4</b><span>idiomas (ES · EN · FR · IT)</span></div>
+    <div class="stat terra"><b>3</b><span>roles: cliente · agente · admin</span></div>
+    <div class="stat alt"><b>100%</b><span>tu marca y tu tarifa</span></div>
+    <div class="stat"><b>BC</b><span>integrado con tu ERP</span></div>
+  </div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>Resumen</span></div>
+</section>
+
+<!-- ============ 01 PORTADA ============ -->
+<section class="page bg-paper">
+  <div class="sec-head"><div class="kicker">01 · Escaparate</div><h2>Una portada que vende, editable por marketing</h2></div>
+  <p class="lead">Lo primero que ve el cliente al entrar: un carrusel a toda pantalla y accesos directos a
+    <strong>Reposición</strong> y <strong>Programación</strong>. Todo el contenido se gestiona desde el CMS, sin tocar código.</p>
+  <div class="tagrow"><span class="tag">Carrusel configurable</span><span class="tag">Accesos a ventana de servicio</span><span class="tag t">Multiidioma</span></div>
+  <div class="shot"><img src="img/01-dashboard.png" alt="Portada"></div>
+  <p class="cap">Portada del portal de Lejan — saludo personalizado, carrusel de campaña y tarjetas de acceso.</p>
+  <div class="cols">
+    <div class="card value"><span class="lab">Qué aporta</span>
+      <ul class="tick"><li>Primera impresión de marca, cuidada y propia.</li><li>Dirige al cliente a la acción correcta (reponer o programar).</li><li>Marketing cambia campañas en minutos.</li></ul></div>
+    <div class="card how"><span class="lab">Cómo funciona</span>
+      <ol class="steps"><li>El cliente entra con su usuario y ve su portada en su idioma.</li><li>Las imágenes y textos salen del CMS (sección «Portada»).</li><li>Las tarjetas fijan la ventana de servicio del carrito.</li></ol></div>
+  </div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>01 · Portada</span></div>
+</section>
+
+<!-- ============ 02 CATÁLOGO ============ -->
+<section class="page bg-paper">
+  <div class="sec-head"><div class="kicker">02 · Pedido</div><h2>Catálogo y pedido por matriz de tallas</h2></div>
+  <p class="lead">El corazón del portal: el cliente filtra el catálogo y hace el pedido <strong>escribiendo cantidades
+    por talla</strong>, viendo su precio y el stock disponible en cada una. Precio por talla incluido (curvas de kids).</p>
+  <div class="tagrow"><span class="tag">Matriz de tallas</span><span class="tag">Precio por talla</span><span class="tag">Stock por talla</span><span class="tag t">Filtros y facetas</span></div>
+  <div class="shot"><img src="img/02-catalog.png" alt="Catálogo"></div>
+  <p class="cap">Catálogo con filtros; el pedido se hace en la propia lista, talla a talla, con la tarifa del cliente.</p>
+  <div class="cols">
+    <div class="card value"><span class="lab">Qué aporta</span>
+      <ul class="tick"><li>Pedidos rápidos y sin errores de talla.</li><li>Cada cliente ve su tarifa (PVD/PVP) y su stock.</li><li>Exportación del stock a Excel de un clic.</li></ul></div>
+    <div class="card how"><span class="lab">Cómo funciona</span>
+      <ol class="steps"><li>El cliente teclea cantidades en la matriz de tallas.</li><li>El total se calcula al vuelo y entra en el carrito.</li><li>La ventana activa (reposición/programación) decide stock y fechas.</li></ol></div>
+  </div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>02 · Catálogo</span></div>
+</section>
+
+<!-- ============ 03 REPO/PROG ============ -->
+<section class="page bg-cream">
+  <div class="sec-head"><div class="kicker">03 · Ventanas de servicio</div><h2>Reposición y Programación, en el mismo portal</h2></div>
+  <p class="lead">Dos formas de comprar conviven sin confundir al cliente: <strong>Reposición</strong> (stock disponible
+    para servir ya) y <strong>Programación</strong> (pre-order de la próxima temporada, con sus fechas y su límite).</p>
+  <div class="arch">
+    <div class="box"><b>Reposición</b><p>Stock real disponible. El cliente repone lo que se le agota y se sirve de inmediato.</p></div>
+    <div class="arrow">→</div>
+    <div class="box"><b>Programación</b><p>Campaña de temporada. El cliente reserva por adelantado dentro de la ventana y su límite de fecha.</p></div>
+    <div class="arrow">→</div>
+    <div class="box"><b>Carrito único</b><p>El carrito conoce su ventana; cada pedido sale con su tipo, listo para Business Central.</p></div>
+  </div>
+  <div class="callout"><h3>Por qué importa</h3><p>Es exactamente cómo trabaja el sector del calzado: reponer lo que se
+    vende y programar la colección. El portal lo modela nativo, sin hojas de Excel ni correos.</p></div>
+  <div class="cols" style="margin-top:14px;">
+    <div class="card value"><span class="lab">Qué aporta</span>
+      <ul class="tick"><li>Anticipa producción con la programación.</li><li>Fideliza con reposición ágil.</li><li>Menos errores y menos trabajo administrativo.</li></ul></div>
+    <div class="card how"><span class="lab">Cómo funciona</span>
+      <ol class="steps"><li>Las tarjetas de portada fijan la ventana activa.</li><li>El catálogo muestra stock y fechas de esa ventana.</li><li>Cada pedido viaja a BC con su tipo (reposición/programación).</li></ol></div>
+  </div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>03 · Ventanas</span></div>
+</section>
+
+<!-- ============ 04 FICHA + VISOR ============ -->
+<section class="page bg-paper">
+  <div class="sec-head"><div class="kicker">04 · Producto</div><h2>Ficha de producto con visor multi-ángulo</h2></div>
+  <p class="lead">Una ficha a la altura de un e-commerce premium: el comprador <strong>gira el zapato arrastrando</strong>
+    (varias fotos reales), lo amplía con zoom, ve sus atributos y descarga la ficha técnica en PDF. La matriz de tallas
+    vive aquí también.</p>
+  <div class="tagrow"><span class="tag">Visor 360° multi-ángulo</span><span class="tag">Zoom</span><span class="tag t">Ficha técnica PDF</span><span class="tag">Favoritos</span></div>
+  <div class="shot"><img src="img/03-product.png" alt="Ficha de producto"></div>
+  <p class="cap">Ficha con visor multi-ángulo (arrastrar para girar + miniaturas + zoom) y matriz de tallas.</p>
+  <div class="cols">
+    <div class="card value"><span class="lab">Qué aporta</span>
+      <ul class="tick"><li>El comprador inspecciona el producto como en tienda.</li><li>Reduce dudas y devoluciones.</li><li>Descarga de ficha técnica lista para comercial.</li></ul></div>
+    <div class="card how"><span class="lab">Cómo funciona</span>
+      <ol class="steps"><li>La galería de cada modelo se gestiona desde el CMS.</li><li>El visor gira con ratón o dedo; miniaturas para saltar.</li><li>«Descargar ficha técnica» genera un PDF con tu marca y su tarifa.</li></ol></div>
+  </div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>04 · Producto</span></div>
+</section>
+
+<!-- ============ 05 LOOKBOOK ============ -->
+<section class="page bg-cream">
+  <div class="sec-head"><div class="kicker">05 · Editorial</div><h2>Lookbook comprable: la marca y la venta, juntas</h2></div>
+  <p class="lead">Un entorno editorial donde conviven <strong>historia de marca, contenido y producto</strong>. Cada historia
+    termina en un raíl «Compra el look»; el comprador marca favoritos y crea una <strong>preselección</strong> que luego
+    convierte en pedido poniendo tallas.</p>
+  <div class="tagrow"><span class="tag">Historias editoriales</span><span class="tag">Compra el look</span><span class="tag t">Preselección → pedido</span><span class="tag">Line-sheet PDF</span></div>
+  <div class="two-shot">
+    <div class="shot"><img src="img/04-lookbook.png" alt="Lookbook"></div>
+    <div class="shot"><img src="img/05-lookbook-seleccion.png" alt="Selección del lookbook"></div>
+  </div>
+  <p class="cap">Izq.: lookbook con historias y raíles comprables. Dcha.: panel «Tu selección» con descarga de line-sheet.</p>
+  <div class="cols">
+    <div class="card value"><span class="lab">Qué aporta</span>
+      <ul class="tick"><li>Cuenta tu marca y vende en la misma página.</li><li>El comprador arma su surtido de forma visual.</li><li>Editable al 100% por marketing.</li></ul></div>
+    <div class="card how"><span class="lab">Cómo funciona</span>
+      <ol class="steps"><li>Marketing crea historias en el CMS (foto, texto, color, productos).</li><li>El comprador añade a «Tu selección» sin cantidades.</li><li>«Poner tallas» lleva a la ficha; o descarga la selección en PDF.</li></ol></div>
+  </div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>05 · Lookbook</span></div>
+</section>
+
+<!-- ============ 06 CHECKOUT / STRIPE ============ -->
+<section class="page bg-paper">
+  <div class="sec-head"><div class="kicker">06 · Pago</div><h2>Checkout con pago por tarjeta (Stripe)</h2></div>
+  <p class="lead">El pedido se confirma con dirección, forma de envío y <strong>pago con tarjeta vía Stripe</strong>
+    (ideal para prepagos), además de las condiciones habituales del mayorista. El importe se calcula en el servidor;
+    el cobro es seguro y conciliado por webhook.</p>
+  <div class="tagrow"><span class="tag">Stripe Checkout</span><span class="tag">Prepago de pedidos</span><span class="tag t">Pago de facturas</span><span class="tag">Modo simulado + real</span></div>
+  <div class="shot"><img src="img/09-checkout.png" alt="Checkout"></div>
+  <p class="cap">Resumen del pedido con opción de pago con tarjeta; el importe se valida en servidor.</p>
+  <div class="cols">
+    <div class="card value"><span class="lab">Qué aporta</span>
+      <ul class="tick"><li>Cobra prepagos al instante, sin fricción.</li><li>Menos impagos y menos gestión de cobro.</li><li>Pasarela líder, segura y certificada (PCI).</li></ul></div>
+    <div class="card how"><span class="lab">Cómo funciona</span>
+      <ol class="steps"><li>El cliente elige «Tarjeta» y va a la página segura de Stripe.</li><li>El webhook confirma el pago y actualiza el estado.</li><li>Modo «simulado» para pruebas y «real» con tus claves.</li></ol></div>
+  </div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>06 · Checkout</span></div>
+</section>
+
+<!-- ============ 07 DOCUMENTOS ============ -->
+<section class="page bg-paper">
+  <div class="sec-head"><div class="kicker">07 · Cuenta</div><h2>Facturas, pedidos y albaranes — con pago de deuda</h2></div>
+  <p class="lead">El cliente consulta toda su relación comercial: <strong>pedidos, albaranes y facturas</strong>, con estados,
+    seguimiento de transporte y <strong>pago de facturas pendientes con tarjeta</strong>. Todo llega sincronizado desde
+    Business Central.</p>
+  <div class="two-shot">
+    <div class="shot"><img src="img/07-invoices.png" alt="Facturas"></div>
+    <div class="shot"><img src="img/08-orders.png" alt="Pedidos"></div>
+  </div>
+  <p class="cap">Izq.: facturas con estado y botón de pago. Dcha.: histórico de pedidos con sus estados.</p>
+  <div class="cols">
+    <div class="card value"><span class="lab">Qué aporta</span>
+      <ul class="tick"><li>Autoservicio: menos llamadas a administración.</li><li>Cobro de deuda vencida con un clic.</li><li>Transparencia total con el cliente.</li></ul></div>
+    <div class="card how"><span class="lab">Cómo funciona</span>
+      <ol class="steps"><li>BC sincroniza pedidos, albaranes y facturas.</li><li>El portal los muestra filtrables y con su estado real.</li><li>«Pagar con tarjeta» salda la factura vía Stripe.</li></ol></div>
+  </div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>07 · Documentos</span></div>
+</section>
+
+<!-- ============ 08 AGENTE ============ -->
+<section class="page bg-cream">
+  <div class="sec-head"><div class="kicker">08 · Fuerza de ventas</div><h2>Modelo de agente: tu comercial, potenciado</h2></div>
+  <p class="lead">El agente entra con su cuenta, ve <strong>su cartera de clientes</strong> y puede <strong>suplantar</strong>
+    a cualquiera de ellos para pedir en su nombre, dar de alta clientes nuevos, gestionar citas y ver estadísticas
+    agregadas. Todo con aislamiento estricto: solo ve lo suyo.</p>
+  <div class="tagrow"><span class="tag">Cartera de clientes</span><span class="tag">Suplantación segura</span><span class="tag t">Alta de cliente + activación</span><span class="tag">Estadísticas de cartera</span></div>
+  <div class="two-shot">
+    <div class="shot"><img src="img/13-agent-clients.png" alt="Cartera del agente"></div>
+    <div class="shot"><img src="img/14-agent-stats.png" alt="Estadísticas del agente"></div>
+  </div>
+  <p class="cap">Izq.: cartera del agente con acceso a cada cliente. Dcha.: facturación de la cartera y ranking de clientes.</p>
+  <div class="cols">
+    <div class="card value"><span class="lab">Qué aporta</span>
+      <ul class="tick"><li>El agente vende más y mejor, desde cualquier sitio.</li><li>Alta de clientes sin fricción (con email de activación).</li><li>Visión de negocio de toda su cartera.</li></ul></div>
+    <div class="card how"><span class="lab">Cómo funciona</span>
+      <ol class="steps"><li>El agente elige un cliente y «suplanta» su sesión.</li><li>Pide, repone o programa como si fuera el cliente.</li><li>Alta de cliente nuevo → email de activación automático.</li></ol></div>
+  </div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>08 · Agente</span></div>
+</section>
+
+<!-- ============ 09 CUADROS DE MANDO ============ -->
+<section class="page bg-paper">
+  <div class="sec-head"><div class="kicker">09 · Analítica</div><h2>Cuadros de mando para el comprador</h2></div>
+  <p class="lead">Un menú de paneles con la analítica de sus compras: <strong>facturación por mes, modelos más comprados,
+    curva de tallas, reparto por familia y embudo de pedidos</strong>. Gráficos propios, rápidos y con su dato aislado.</p>
+  <div class="tagrow"><span class="tag">KPIs</span><span class="tag">Curva de tallas</span><span class="tag t">Top modelos</span><span class="tag">Embudo de pedidos</span></div>
+  <div class="shot"><img src="img/06-boards.png" alt="Cuadros de mando"></div>
+  <p class="cap">Panel del comprador: KPIs, facturación por mes, modelos, curva de tallas, familia y estados de pedido.</p>
+  <div class="cols">
+    <div class="card value"><span class="lab">Qué aporta</span>
+      <ul class="tick"><li>El cliente entiende su propio negocio contigo.</li><li>Refuerza la relación y detecta oportunidades.</li><li>El agente ve la analítica de su cartera.</li></ul></div>
+    <div class="card how"><span class="lab">Cómo funciona</span>
+      <ol class="steps"><li>El portal agrega las facturas del cliente en tiempo real.</li><li>Cada gráfico se dibuja en el navegador (sin dependencias).</li><li>Todo aislado por cliente/rol: solo sus datos.</li></ol></div>
+  </div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>09 · Cuadros de mando</span></div>
+</section>
+
+<!-- ============ 10 POWER BI / FABRIC ============ -->
+<section class="page bg-cream">
+  <div class="sec-head"><div class="kicker">10 · Business Intelligence</div><h2>Feed para Power BI y Microsoft Fabric</h2></div>
+  <p class="lead">Para tu equipo de dirección, un <strong>feed de solo lectura</strong> que Power BI o Microsoft Fabric
+    conectan directamente. 10 informes listos sobre tus ventas, con un usuario que <strong>solo ve la analítica</strong>,
+    nunca los datos internos de la app.</p>
+  <div class="band" style="margin-top:4px;">
+    <div class="stat"><b>10</b><span>informes listos</span></div>
+    <div class="stat terra"><b>Fabric</b><span>+ Power BI Desktop</span></div>
+    <div class="stat alt"><b>RO</b><span>solo lectura y aislado</span></div>
+  </div>
+  <div class="report-grid">
+    <div class="rep"><b>Ventas por mes</b><span>Facturación y unidades</span></div>
+    <div class="rep"><b>Top modelos</b><span>Más vendidos</span></div>
+    <div class="rep"><b>Ventas por cliente</b><span>Ranking</span></div>
+    <div class="rep"><b>Ventas por agente</b><span>Rendimiento comercial</span></div>
+    <div class="rep"><b>Curva de tallas</b><span>Unidades por talla</span></div>
+    <div class="rep"><b>Ventas por familia</b><span>Colección / silueta</span></div>
+    <div class="rep"><b>Ventas por país</b><span>Mercado</span></div>
+    <div class="rep"><b>Pedidos por temporada</b><span>Reposición / programación</span></div>
+    <div class="rep"><b>Embudo de pedidos</b><span>Por estado</span></div>
+    <div class="rep"><b>Devoluciones / SAT</b><span>Tasa y motivos</span></div>
+  </div>
+  <div class="callout" style="margin-top:14px;"><h3>Conecta en minutos</h3><p>Power BI Desktop o Fabric (Dataflow / mirroring)
+    se enchufan al feed con un usuario de solo lectura. Tú controlas el dato; ellos construyen sus cuadros.</p></div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>10 · Power BI / Fabric</span></div>
+</section>
+
+<!-- ============ 11 PDFs ============ -->
+<section class="page bg-paper">
+  <div class="sec-head"><div class="kicker">11 · Herramientas comerciales</div><h2>Documentos PDF con tu marca y tu tarifa</h2></div>
+  <p class="lead">El portal genera al vuelo <strong>fichas técnicas</strong> de producto y <strong>line-sheets</strong> de
+    varios productos (desde la selección del lookbook o el carrito), siempre con <strong>el precio del cliente</strong>.
+    La herramienta de venta perfecta para el agente.</p>
+  <div class="two-shot">
+    <div class="shot tall"><img src="img/15-pdf-ficha.png" alt="Ficha técnica PDF"></div>
+    <div class="shot tall"><img src="img/16-pdf-linesheet.png" alt="Line-sheet PDF"></div>
+  </div>
+  <p class="cap">Izq.: ficha técnica (atributos, tallas, EAN, precio). Dcha.: line-sheet de la selección, con tarifa del cliente.</p>
+  <div class="cols">
+    <div class="card value"><span class="lab">Qué aporta</span>
+      <ul class="tick"><li>El agente presenta y envía catálogos con tu marca.</li><li>Precios siempre correctos, por cliente.</li><li>Cero trabajo manual de maquetación.</li></ul></div>
+    <div class="card how"><span class="lab">Cómo funciona</span>
+      <ol class="steps"><li>En la ficha: «Descargar ficha técnica».</li><li>En el lookbook: «Descargar line-sheet» de la selección.</li><li>El PDF se genera con tu marca y la tarifa del cliente.</li></ol></div>
+  </div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>11 · PDFs comerciales</span></div>
+</section>
+
+<!-- ============ 12 CMS ============ -->
+<section class="page bg-cream">
+  <div class="sec-head"><div class="kicker">12 · Autonomía</div><h2>CMS: marketing gestiona todo sin desarrollo</h2></div>
+  <p class="lead">Un panel de administración donde marketing edita la <strong>portada</strong> y el <strong>lookbook</strong>
+    (historias, colores, productos del raíl, imágenes), programa campañas por fechas e idiomas y sube imágenes.
+    Con vista previa en vivo y publicación inmediata.</p>
+  <div class="tagrow"><span class="tag">Editor de portada</span><span class="tag">Editor de lookbook</span><span class="tag t">Selector de productos</span><span class="tag">Programación por fechas</span></div>
+  <div class="two-shot">
+    <div class="shot"><img src="img/10-cms-portada.png" alt="CMS portada"></div>
+    <div class="shot"><img src="img/11-cms-lookbook.png" alt="CMS lookbook"></div>
+  </div>
+  <p class="cap">Izq.: editor de la portada. Dcha.: editor del lookbook con vista previa y selector de productos.</p>
+  <div class="cols">
+    <div class="card value"><span class="lab">Qué aporta</span>
+      <ul class="tick"><li>Marketing es 100% autónomo: cero dependencia técnica.</li><li>Campañas al aire en minutos, no en semanas.</li><li>Control por idioma y por fechas.</li></ul></div>
+    <div class="card how"><span class="lab">Cómo funciona</span>
+      <ol class="steps"><li>Entra al CMS con su usuario de administración.</li><li>Edita portada/lookbook y ve la vista previa en vivo.</li><li>«Publicar» y el portal lo muestra al instante.</li></ol></div>
+  </div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>12 · CMS</span></div>
+</section>
+
+<!-- ============ 13 BC + 14 ARQUITECTURA ============ -->
+<section class="page bg-paper">
+  <div class="sec-head"><div class="kicker">13 · Integración</div><h2>Conectado a Business Central</h2></div>
+  <p class="lead">El portal no vive aislado: se sincroniza con <strong>Microsoft Dynamics 365 Business Central</strong>.
+    El catálogo, los precios, los clientes y los documentos (pedidos, albaranes, facturas) fluyen entre BC y el portal
+    con un conector propio, sin dobles cargas.</p>
+  <div class="arch">
+    <div class="box"><b>Business Central</b><p>Catálogo, tarifas, clientes, stock y documentos.</p></div>
+    <div class="arrow">⇄</div>
+    <div class="box"><b>Conector</b><p>Sincroniza en ambos sentidos vía la API del portal.</p></div>
+    <div class="arrow">⇄</div>
+    <div class="box"><b>Portal B2B</b><p>Todo actualizado para cliente y agente, en tiempo real.</p></div>
+  </div>
+  <div class="shot"><img src="img/12-cms-dashboard.png" alt="Salud de comunicación BC"></div>
+  <p class="cap">Panel de salud: control de todo lo que Business Central ha comunicado al portal.</p>
+  <div class="cols">
+    <div class="card value"><span class="lab">Qué aporta</span>
+      <ul class="tick"><li>Un solo dato, sin dobles cargas ni Excel.</li><li>Catálogo y precios siempre al día.</li><li>Los documentos del cliente, en tiempo real.</li></ul></div>
+    <div class="card how"><span class="lab">Cómo funciona</span>
+      <ol class="steps"><li>El conector sincroniza BC ⇄ portal por la API.</li><li>El panel de salud muestra todo lo comunicado.</li><li>Sin cambios en BC: solo URL y credenciales al arrancar.</li></ol></div>
+  </div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>13 · Business Central</span></div>
+</section>
+
+<section class="page bg-cream">
+  <div class="sec-head"><div class="kicker">14 · Base</div><h2>Multiidioma, seguridad y tecnología</h2></div>
+  <p class="lead">Cuatro idiomas, diseño premium con tu marca, aislamiento estricto de datos y una base técnica sólida
+    y probada. Lo que sostiene todo lo anterior.</p>
+  <div class="cols">
+    <div class="card how"><span class="lab">Multiidioma &amp; marca</span>
+      <ul class="tick"><li>ES · EN · FR · IT en toda la interfaz.</li><li>Diseño premium editorial, 100% tu marca.</li><li>Responsive: escritorio, tablet y móvil.</li></ul></div>
+    <div class="card value"><span class="lab">Seguridad</span>
+      <ul class="tick"><li>Aislamiento estricto por cliente y por rol.</li><li>Autenticación con token; pago seguro (Stripe/PCI).</li><li>Feed de BI de solo lectura, sin acceso a datos internos.</li></ul></div>
+  </div>
+  <div class="arch" style="margin-top:12px;">
+    <div class="box"><b>.NET + PostgreSQL</b><p>Backend robusto y probado (cientos de tests automáticos).</p></div>
+    <div class="box"><b>Business Central</b><p>Integración nativa con tu ERP.</p></div>
+    <div class="box"><b>Stripe · Power BI · Fabric</b><p>Pagos y analítica de primer nivel.</p></div>
+  </div>
+  <div class="foot"><span>MitoProjects · Portal B2B para <b>Lejan</b></span><span>14 · Base técnica</span></div>
+</section>
+
+<!-- ============ CIERRE ============ -->
+<section class="page cover bg-cream">
+  <div class="cover-top">
+    <div class="mito">mito<span>projects</span></div>
+    <div class="cover-tag">Hablemos</div>
+  </div>
+  <div class="cover-mid">
+    <div class="rule-green"></div>
+    <div class="kicker">Tu portal, tu marca, tu canal</div>
+    <h1 style="font-size:36pt;">Lo construimos<br>a tu medida.</h1>
+    <p class="desc">Lo que has visto es un caso real, en funcionamiento. MitoProjects diseña, desarrolla e integra
+      portales B2B como este —conectados a tu ERP, con tu marca y tu tarifa— y los pone en marcha con acompañamiento.
+      Si quieres un canal de venta mayorista propio, moderno y sin depender de terceros, este documento es el punto
+      de partida de esa conversación.</p>
+  </div>
+  <div class="callout" style="max-width:150mm;"><h3>El siguiente paso</h3><p>Una demo en vivo sobre tus datos. Elegimos
+    tres pantallas clave para tu negocio y las vemos funcionando con tu catálogo.</p></div>
+  <div class="cover-foot">
+    <div><span class="pill">MitoProjects · support@mitoprojects.com</span></div>
+    <div>Portal B2B · Documento comercial</div>
+  </div>
+</section>
+
+</body>
+</html>

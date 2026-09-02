@@ -145,6 +145,24 @@ public class RelatedProductsTests : IClassFixture<TestWebApplicationFactory>
         Assert.DoesNotContain(a, ids);
     }
 
+    // ── 1d. La simetría también aplica a la VENTA CRUZADA (misma colección): si B lista
+    // a A en upSellingIds, la ficha de A sugiere a B como "up" aunque A no declare nada ──
+    [Fact]
+    public async Task Related_RelacionInversaDeVentaCruzada_TambienSugiereComoUp()
+    {
+        const string a = "relsyu0a-0000-4000-9000-000000000061";   // zapatilla sin arrays
+        const string b = "relsyu0b-0000-4000-9000-000000000062";   // camiseta que lista a A (colección)
+        await PutModel(a, "SYM UP ORIGEN", "U-000");
+        await PutOffer("relsyuof-0000-4000-9000-000000000062", b, 15m);
+        await PutModel(b, "SYM UP CAMISETA", "U-100", upJson: $"""["{a}"]""");
+
+        var items = await GetItems($"?models={a}");
+
+        Assert.Single(items);
+        Assert.Equal(b, ModelIdOf(items[0]));
+        Assert.Equal("up", items[0].GetProperty("relation").GetString());
+    }
+
     // ── 2. El origen nunca se devuelve a sí mismo ──────────────────────────────
 
     [Fact]

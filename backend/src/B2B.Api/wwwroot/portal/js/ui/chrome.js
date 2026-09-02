@@ -313,16 +313,19 @@ function paintDrawer() {
 onCartChange(() => {
   if (document.body.dataset.chrome !== 'on') return;
   const label = header().querySelector('#cartBtn .label');
-  if (label) label.textContent = cartLabel();
+  if (label) label.textContent = windowLabel();
+  const count = header().querySelector('#cartBtn .h-count');
+  if (count) count.textContent = `(${state.cartUnits()})`;
   if (!drawer().hidden) paintCartBody(drawer(), { onClose: closeCart });
   const win = drawer().querySelector('.win');
   if (win) win.textContent = t(`window.${state.prefs.window}`);
 });
 
-const cartLabel = () => `${windowLabel()} (${state.cartUnits()})`;
-
+// Nombre de la ventana y contador en spans SEPARADOS: en móvil el nombre se oculta
+// visualmente (el header desbordaba 47px con "REPOSICIÓN (0)") pero el contador y el
+// icono siguen a la vista, y el lector de pantalla oye el botón completo.
 const cartButtonInner = () =>
-  `${icons.cart(16)}<span class="label">${esc(cartLabel())}</span>`;
+  `${icons.cart(16)}<span class="label">${esc(windowLabel())}</span><span class="h-count">(${state.cartUnits()})</span>`;
 
 // El panel entra desde la derecha: el foco se va con él (si no, el teclado se queda
 // detrás del velo) y Escape lo cierra devolviendo el foco al botón azul.

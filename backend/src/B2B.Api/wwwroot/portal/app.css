@@ -932,13 +932,16 @@ body[data-focus="on"] .cat-filters { display:none; }
 /* ── "También en:": swatches de la gama junto a la referencia ──
    Miniaturas de los hermanos cross (otros colores del modelo) a la vista al decidir,
    como los selectores de color de una PDP. Las pinta product.js cuando llegan los
-   relacionados; sin cross la fila NO existe. Entrada con fundido suave. */
-.product-alsoin { display:flex; align-items:center; flex-wrap:wrap; gap:.55rem;
-  margin:.9rem 0 0; opacity:0; transition:opacity .45s var(--ease); }
+   relacionados; sin cross la fila NO existe. Entrada con fundido suave.
+   Tamaño: 68px en escritorio (petición del cliente: que el color de cada foto se LEA
+   sin esfuerzo), 56px en móvil; la etiqueta pasa a su propia línea para que la fila
+   de swatches respire como un selector de color de PDP. */
+.product-alsoin { display:flex; align-items:center; flex-wrap:wrap;
+  gap:.6rem .55rem; margin:1rem 0 0; opacity:0; transition:opacity .45s var(--ease); }
 .product-alsoin.on { opacity:1; }
-.alsoin-label { font-size:.72rem; font-weight:700; letter-spacing:.07em;
-  text-transform:uppercase; color:var(--hint); margin-right:.2rem; }
-.alsoin-thumb { display:block; flex:none; width:44px; height:44px; overflow:hidden;
+.alsoin-label { flex-basis:100%; font-size:.72rem; font-weight:700; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--hint); }
+.alsoin-thumb { display:block; flex:none; width:68px; height:68px; overflow:hidden;
   border:1px solid var(--line-control); background:var(--card); border-radius:var(--r-sm);
   transition:border-color .15s var(--ease), box-shadow .15s var(--ease); }
 .alsoin-thumb:hover { border-color:var(--blue); box-shadow:0 0 0 1px var(--blue); }
@@ -946,12 +949,16 @@ body[data-focus="on"] .cat-filters { display:none; }
 .alsoin-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
 .alsoin-art { width:100%; height:100%; display:grid; place-items:center; color:var(--ink); opacity:.3; }
 /* "+N": mismo cuerpo que un swatch; baja al raíl "Completa la gama" */
-.alsoin-more { flex:none; width:44px; height:44px; display:grid; place-items:center;
+.alsoin-more { flex:none; width:68px; height:68px; display:grid; place-items:center;
   border:1px dashed var(--line-control); border-radius:var(--r-sm); background:none;
-  font:inherit; font-size:.8rem; font-weight:700; color:var(--ink-2); cursor:pointer;
+  font:inherit; font-size:.92rem; font-weight:700; color:var(--ink-2); cursor:pointer;
   transition:border-color .15s var(--ease), color .15s var(--ease); }
 .alsoin-more:hover { border-color:var(--blue); color:var(--blue); }
 .alsoin-more:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+@media (max-width:48rem) {
+  .alsoin-thumb, .alsoin-more { width:56px; height:56px; }
+  .alsoin-more { font-size:.84rem; }
+}
 
 .product-attrs { display:grid; grid-template-columns:repeat(auto-fit,minmax(7rem,1fr)); gap:1rem 1.6rem;
   margin:1.6rem 0 0; padding:1.5rem 0 0; border-top:1px solid var(--line); }
@@ -1477,6 +1484,19 @@ table.grid .num { white-space:nowrap; }
   /* Ficha en móvil: la foto ocupa el ancho y el pedido se apila con el CTA a lo ancho */
   .product-media { max-width:none; }
   .product-order .btn-primary { flex:1 1 auto; }
+  /* Bocabarra: el rótulo derecho ("Elige tallas…" / total) medía 240px fijos y sacaba
+     la página 67px del viewport (crítica A1). En móvil el botón envuelve en dos filas
+     y el rótulo puede partir línea; el clip del contenedor es el cinturón de seguridad. */
+  .product-order .btn-primary { display:flex; flex-wrap:wrap; align-items:center;
+    gap:.35rem .8rem; white-space:normal; text-align:left; }
+  .product-total, .product-hint { max-width:100%; white-space:normal; }
+  .page.product { overflow-x:clip; }
+  /* Header: "REPOSICIÓN (0)" desbordaba 47px en TODAS las páginas (crítica M2). El
+     texto de la ventana se oculta solo VISUALMENTE (clip accesible: el lector de
+     pantalla sigue oyendo el nombre completo) y queda icono + contador. */
+  .h-cart .label { position:absolute; width:1px; height:1px; overflow:hidden;
+    clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
+  .h-cart { gap:.4rem; }
 
   /* Checkout: los campos en una columna y los botones de la cabecera repartidos */
   .ck-row, .ck-row.two { grid-template-columns:1fr; gap:.9rem; }
@@ -2084,7 +2104,7 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 .related-rail::-webkit-scrollbar { display:none; }
 .related-cell { scroll-snap-align:start; min-width:0; display:flex; }
 .related-cell .pcard { flex:1; }
-/* Up-selling: etiqueta "Complemento" sobre la foto (venta cruzada va sin etiqueta) */
+/* Up-selling: etiqueta "De la colección" sobre la foto (los otros colores van sin etiqueta) */
 .rel-badge { position:absolute; top:.7rem; left:.7rem; z-index:2; font-size:.64rem;
   font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#fff;
   background:var(--ink); padding:.34rem .6rem; }
@@ -2108,7 +2128,10 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 .related-compact .pcard-price { margin-top:.4rem; }
 .related-compact .pcard-price b { font-size:1.05rem; }
 .related-compact .pcard-cta { font-size:.7rem; margin-top:.5rem; }
-.related-compact .rel-badge { font-size:.58rem; padding:.28rem .5rem; }
+/* El badge nunca debe partirse en dos líneas ni salirse de la card (crítica: EN
+   "From the collection" envolvía sobre la card compacta de 152px). */
+.related-compact .rel-badge { font-size:.62rem; padding:.28rem .45rem; letter-spacing:.04em;
+  max-width:calc(100% - 1.4rem); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 @media (max-width:48rem) {
   .related { margin-top:2.6rem; padding-top:1.6rem; }

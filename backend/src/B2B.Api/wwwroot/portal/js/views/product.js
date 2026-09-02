@@ -200,7 +200,7 @@ export default async function product(host, route) {
 
     // ── "También en:": la gama, visible donde se decide ──
     // Patrón de swatches de PDP: miniaturas de los HERMANOS de gama (solo cross;
-    // los complementos se quedan en el raíl) junto a la referencia, para ver de un
+    // los artículos de la colección se quedan en el raíl) junto a la referencia, para ver de un
     // vistazo que el modelo existe en otros colores sin bajar la página. Máximo 6
     // y "+N" que lleva con scroll suave al raíl completo.
     const cross = related.filter(entry => entry.relation === 'cross');
@@ -215,7 +215,7 @@ export default async function product(host, route) {
           <a class="alsoin-thumb" href="${esc(url)}" title="${esc(label)}" aria-label="${esc(label)}">
             ${card.imageUri
               ? `<img src="${esc(card.imageUri)}" alt="" loading="lazy" decoding="async">`
-              : `<span class="alsoin-art" aria-hidden="true">${icons.shoe(22)}</span>`}
+              : `<span class="alsoin-art" aria-hidden="true">${icons.shoe(32)}</span>`}
           </a>`;
       };
       refLine.insertAdjacentHTML('afterend', `

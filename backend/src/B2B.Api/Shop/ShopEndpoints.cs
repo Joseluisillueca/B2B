@@ -191,15 +191,28 @@ public static class ShopEndpoints
 
         // 2ª pasada: relación inversa — X lista a un origen → X es hermano (y sus hermanos
         // declarados también). Van detrás de los directos, en orden estable de documento.
+        // Vale para las DOS relaciones: compartir el valor de un atributo (mismo Modelo →
+        // cross; misma Colección → up) es simétrico por definición, aunque BC solo refresque
+        // la lista de cada artículo al re-enviarlo. Si un documento lista al origen en ambas,
+        // manda cross (misma prioridad que la deduplicación general).
+        var inverseUp = new List<string>();
         foreach (var doc in docs)
         {
             if (sourceIds.Contains(doc.ExternalId)) continue;
             var root = ClientIdentity.Parse(doc.Payload);
-            if (!ContainsAny(root?["crossSellingIds"], sourceIds)) continue;
-            if (seen.Add(doc.ExternalId)) inverse.Add(doc.ExternalId);
-            Collect(root?["crossSellingIds"], inverse, seen);   // hermanos del hermano
+            if (ContainsAny(root?["crossSellingIds"], sourceIds))
+            {
+                if (seen.Add(doc.ExternalId)) inverse.Add(doc.ExternalId);
+                Collect(root?["crossSellingIds"], inverse, seen);   // hermanos del hermano
+            }
+            else if (ContainsAny(root?["upSellingIds"], sourceIds))
+            {
+                if (seen.Add(doc.ExternalId)) inverseUp.Add(doc.ExternalId);
+                Collect(root?["upSellingIds"], inverseUp, seen);    // colección del hermano
+            }
         }
         cross.AddRange(inverse);
+        up.AddRange(inverseUp);
         return (cross, up);
 
         static void Collect(System.Text.Json.Nodes.JsonNode? node, List<string> into, HashSet<string> seen)

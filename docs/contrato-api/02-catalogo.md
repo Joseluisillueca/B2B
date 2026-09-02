@@ -97,8 +97,8 @@ Usan la variante **con traducciones**: nombre/descripción de **Modelo** y de **
 | `attributes` | objeto {nombre: valor} | Dos fuentes: (1) `Item Attribute Value Mapping` → clave = `Item Attribute.Name` tal cual, valor = `Item Attribute Value.Value` (se omiten valores vacíos); (2) atributos "de campo": `Item Attribute` con `Sync to B2B=true` y `B2B Item Field Attribute<>0` → clave = `Item Attribute."B2B Code"`, valor = `Format()` del campo del Item referenciado (se omite si el campo no existe o el valor es vacío) | Sí (puede ser `{}`) | Ojo: la fuente (1) usa el **Name** del atributo como clave; la (2) usa el **B2B Code** |
 | `familyId` | string | `LowerCase(Item."Item Category Code")` | Sí | Enlaza con la Familia (§7). `""` si el item no tiene categoría |
 | `brandId` | string | Fijo `""` | Sí | Siempre vacío |
-| `crossSellingIds` | array | Fijo `[]` | Sí | |
-| `upSellingIds` | array | Fijo `[]` | Sí | |
+| `crossSellingIds` | array | SystemIds de los artículos que comparten el VALOR de algún atributo marcado con **"B2B Related Products"** (TabExt80102 campo 50108; unión deduplicada, solo items Sync-to-B2B no bloqueados, tope 100, se recalcula en cada envío) | Sí (puede ser `[]`) | Relacionados: "mismo modelo en otro color". El portal los enseña como "También en:" + "Completa la gama" |
+| `upSellingIds` | array | Igual pero con el check **"B2B Cross Selling"** (campo 50109) | Sí (puede ser `[]`) | Venta cruzada: "misma colección, otra categoría". Portal: badge "De la colección" + sugerencias del checkout |
 | `configuragleComponennts` | array | Fijo `[]` | Sí | **El nombre lleva ese typo exacto en el JSON** — mantener |
 | `productSegments` | array de string | Tabla `B2B Item Segment` (Item No.) → valores del enum `B2B Customer Segment` en MAYÚSCULAS: `"A+"`, `"A"`, `"B"`, `"C"`, `"D"` | Sí (puede ser `[]`) | `Tab80129.B2BItemSegment.al`, `Enum80116.B2BCustomerSegment.al` |
 
