@@ -4,7 +4,7 @@
 import { SCHEMAS, OPTS } from '../schemas.js';
 import { icons } from '../icons.js';
 import { api } from '../api.js';
-import { esc, dig, setPath, delPath, slugify, i18nObject, fkOptions, flash, invalidateOptions, showJson } from '../util.js';
+import { esc, dig, setPath, delPath, slugify, i18nObject, fkOptions, flash, invalidateOptions, showJson, loadRows } from '../util.js';
 import { go } from '../router.js';
 
 const SLUG = { model: 'models', product: 'products', offer: 'offers', inventory: 'inventory',
@@ -41,7 +41,7 @@ export default async function form(main, type, id) {
     <form class="mng-form nc-form" id="f" novalidate>
       <div id="notice"></div>
       ${sc.sections.map(sectionHtml).join('')}
-      ${editing && type === 'model' ? '<div id="imgHost"></div>' : ''}
+      ${editing && type === 'model' ? '<div id="imgHost"></div><div id="relHost"></div>' : ''}
       <div class="acc-actions nc-actions">
         ${editing ? '<button type="button" class="btn-danger" id="del">Eliminar</button>' : ''}
         <a class="btn-ghost" href="#/${SLUG[type]}">Cancelar</a>
@@ -153,7 +153,7 @@ export default async function form(main, type, id) {
   };
 
   // Imagen del modelo (solo al editar; para uno nuevo se añade desde «Imágenes» tras crearlo)
-  if (editing && type === 'model') await mountModelImage();
+  if (editing && type === 'model') { await mountModelImage(); await mountRelatedBc(); }
 
   async function mountModelImage() {
     const host = main.querySelector('#imgHost');
@@ -199,6 +199,77 @@ export default async function form(main, type, id) {
       };
     };
     render();
+  }
+
+  // ── "Relacionados (de BC)": solo lectura ──────────────────────────────────────
+  // Los cross/up-selling los decide Business Central en la ficha del modelo y viajan
+  // en el payload crudo (crossSellingIds / upSellingIds). Aquí solo se comprueban:
+  // cada id se resuelve a nombre + referencia, y los que aún no están sincronizados
+  // en el portal se marcan en rojo. Nada es editable (la fuente es BC).
+  async function mountRelatedBc() {
+    const relHost = main.querySelector('#relHost');
+    if (!relHost) return;
+
+    const clean = value => String(value ?? '').trim().replace(/^\{|\}$/g, '');
+    let raw = payload;
+    try { if (typeof rawPayload === 'string') raw = JSON.parse(rawPayload); } catch { raw = payload; }
+    if (Array.isArray(raw)) raw = raw[0] ?? {};
+    const cross = Array.isArray(raw?.crossSellingIds) ? raw.crossSellingIds.map(clean).filter(Boolean) : [];
+    const up = Array.isArray(raw?.upSellingIds) ? raw.upSellingIds.map(clean).filter(Boolean) : [];
+
+    let byId = new Map();
+    if (cross.length || up.length) {
+      try { byId = new Map((await loadRows('model')).map(r => [String(r.id).toLowerCase(), r])); }
+      catch { /* sin catálogo no hay resolución: los ids se pintan igualmente */ }
+    }
+
+    // role="listitem" va en un contenedor propio, nunca sobre el <a>/<span> del
+    // chip (a un enlace no se le pisa el rol de link).
+    const chip = relId => {
+      const row = byId.get(relId.toLowerCase());
+      if (!row) return `
+        <div role="listitem"><span class="mng-rel-chip is-missing"
+          title="Este SystemId no existe (todavía) como modelo sincronizado en el portal">
+          ${icons.alert(13)} <code>${esc(relId)}</code><em>sin sincronizar</em></span></div>`;
+      const p = row.payload || {};
+      const name = typeof p.name === 'string' ? p.name
+        : (p.name?.es_ES || Object.values(p.name || {})[0] || row.id);
+      const ref = p.externalReference || '';
+      return `
+        <div role="listitem"><a class="mng-rel-chip" href="#/models/edit/${encodeURIComponent(row.id)}"
+          title="Abrir la ficha de este modelo">
+          <b>${esc(name)}</b>${ref ? `<span>Ref. ${esc(ref)}</span>` : ''}</a></div>`;
+    };
+
+    const group = (title, hint, ids) => {
+      const missing = ids.filter(relId => !byId.get(relId.toLowerCase())).length;
+      return `
+      <div class="mng-rel-group">
+        <h3>${esc(title)} <span class="mng-rel-count">${ids.length}</span></h3>
+        <p class="mng-rel-hint">${esc(hint)}</p>
+        ${ids.length
+          ? `<div class="mng-rel-chips" role="list">${ids.map(chip).join('')}</div>`
+          : '<p class="mng-rel-none">BC no envía ninguno para este modelo.</p>'}
+        ${missing ? `
+          <p class="mng-rel-missing-note">${icons.alert(13)}
+            <span>${missing === 1 ? 'Un modelo aún no ha llegado' : `${missing} modelos aún no han llegado`}
+            del conector — <a href="#/received">revísalo en Comunicación BC</a>.</span></p>` : ''}
+      </div>`;
+    };
+
+    relHost.innerHTML = `
+      <section class="biz-section">
+        <header class="acc-head biz-head"><h2>${icons.layers(20)}Relacionados (de BC)</h2></header>
+        <div class="biz-card">
+          <p class="mng-rel-note">Solo lectura: los fija Business Central en la ficha del modelo
+            (<code>crossSellingIds</code> / <code>upSellingIds</code> del JSON recibido). El portal los
+            enseña en la ficha de producto («Completa la gama») y en el checkout («Añade también»).</p>
+          <div class="mng-rel-grid">
+            ${group('Venta cruzada', 'Otros colores o modelos hermanos.', cross)}
+            ${group('Complementos (up-selling)', 'Se ofrecen con la etiqueta «Complemento».', up)}
+          </div>
+        </div>
+      </section>`;
   }
 
   function collect() {

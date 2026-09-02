@@ -161,6 +161,11 @@ public static class CatalogService
         AppDbContext db, PortalActorPrices prices, CatalogQuery query, DateTimeOffset now)
     {
         var models = await db.CatalogModels.Where(m => m.Active).ToListAsync();
+        // Con filtro por Ids (relacionados) no tiene sentido tarificar el catálogo entero:
+        // se recorta ANTES de Build. Las facetas del resultado quedan referidas al recorte,
+        // lo cual es correcto para ese uso (el endpoint de relacionados las ignora).
+        if (query.Ids.Count > 0)
+            models = models.Where(m => query.Ids.Contains(m.ExternalId)).ToList();
         var products = await db.CatalogProducts.Where(p => p.Active && !p.IsCasePack).ToListAsync();
         var stocks = await db.StockLevels.ToListAsync();
         var offers = await db.Offers.ToListAsync();

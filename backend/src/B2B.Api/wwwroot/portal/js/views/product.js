@@ -11,6 +11,7 @@ import { href } from '../router.js';
 import { icons } from '../ui/icons.js';
 import { sizeMatrix, bindMatrix, rowState } from '../ui/size-matrix.js';
 import { createViewer } from '../ui/viewer.js';
+import { fetchRelated, relatedSectionHtml, bindRelatedRail } from '../ui/related.js';
 
 // Precio de la ficha: una sola línea, la de la preferencia MOSTRAR PRECIOS del perfil
 // (PVD por defecto). Si el artículo no trae ese precio se enseña el otro (mismo criterio
@@ -178,6 +179,67 @@ export default async function product(host, route) {
         </div>
       </div>
     </div>`;
+
+  // ── "Completa la gama": cross/up-selling que fija BC, cargado en paralelo ──
+  // La ficha ya está pintada; los relacionados llegan después y la sección aparece
+  // con una transición suave. Sin relacionados (o con error) no existe ni el hueco.
+  (async () => {
+    // El centinela se captura ANTES del await: si el usuario navega a OTRA ficha
+    // mientras el fetch está en vuelo, este nodo concreto ya no está conectado y
+    // se aborta (evita inyectar los relacionados de A en la ficha de B).
+    const page = host.querySelector('.page.product');
+    let related = [];
+    try { related = await fetchRelated([item.modelId], data.window); } catch { return; }
+    if (!related.length || !page || !page.isConnected) return;
+    page.insertAdjacentHTML('beforeend', relatedSectionHtml(related, {
+      title: t('related.title'),
+      sub: t('related.sub')
+    }));
+    const section = page.querySelector('.related');
+    bindRelatedRail(section);
+
+    // ── "También en:": la gama, visible donde se decide ──
+    // Patrón de swatches de PDP: miniaturas de los HERMANOS de gama (solo cross;
+    // los complementos se quedan en el raíl) junto a la referencia, para ver de un
+    // vistazo que el modelo existe en otros colores sin bajar la página. Máximo 6
+    // y "+N" que lleva con scroll suave al raíl completo.
+    const cross = related.filter(entry => entry.relation === 'cross');
+    const refLine = page.querySelector('.product-ref');
+    if (cross.length && refLine) {
+      const MAX = 6;
+      const swatch = ({ card }) => {
+        const label = [card.name, card.reference && `${t('catalog.reference')} ${card.reference}`]
+          .filter(Boolean).join(' — ');
+        const url = `${href('product')}/${encodeURIComponent(card.reference || card.modelId)}`;
+        return `
+          <a class="alsoin-thumb" href="${esc(url)}" title="${esc(label)}" aria-label="${esc(label)}">
+            ${card.imageUri
+              ? `<img src="${esc(card.imageUri)}" alt="" loading="lazy" decoding="async">`
+              : `<span class="alsoin-art" aria-hidden="true">${icons.shoe(22)}</span>`}
+          </a>`;
+      };
+      refLine.insertAdjacentHTML('afterend', `
+        <div class="product-alsoin" role="group" aria-label="${esc(t('related.alsoIn'))}">
+          <span class="alsoin-label">${esc(t('related.alsoIn'))}</span>
+          ${cross.slice(0, MAX).map(swatch).join('')}
+          ${cross.length > MAX ? `
+            <button type="button" class="alsoin-more" title="${esc(t('related.next'))}"
+              aria-label="${esc(t('related.next'))}">+${cross.length - MAX}</button>` : ''}
+        </div>`);
+      // "+N": el resto de la gama vive en el raíl "Completa la gama" de abajo
+      page.querySelector('.alsoin-more')?.addEventListener('click', () => {
+        section.scrollIntoView({
+          behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+          block: 'start'
+        });
+      });
+    }
+
+    const alsoIn = page.querySelector('.product-alsoin');
+    void section.offsetWidth;   // reflow: la transición de entrada arranca desde el estado inicial
+    section.classList.add('on');
+    alsoIn?.classList.add('on');
+  })();
 
   // ── Visor multi-ángulo (giro 360 + zoom); degrada a la portada o a placeholder ──
   createViewer(host.querySelector('#media'),

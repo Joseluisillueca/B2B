@@ -351,3 +351,39 @@ a.btn-primary, a.btn-ghost, a.btn-danger { text-decoration:none; }
   .mng-who .who { display:none; }                                          /* rol/email fuera en móvil */
   .mng-out { padding:.4rem .7rem; }
 }
+
+/* ── Ficha de modelo: "Relacionados (de BC)" (solo lectura) ── */
+.mng-rel-note { margin:0 0 1.2rem; font-size:.84rem; color:var(--muted); line-height:1.55; }
+.mng-rel-note code { font:.78rem/1 ui-monospace,Consolas,monospace; background:var(--surface);
+  padding:.1rem .35rem; border:1px solid var(--line); }
+.mng-rel-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(18rem,1fr)); gap:1.6rem; }
+.mng-rel-group h3 { margin:0; font-size:.78rem; font-weight:800; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--ink); display:flex; align-items:center; gap:.5rem; }
+.mng-rel-count { font-size:.7rem; font-weight:700; color:var(--muted); background:var(--surface);
+  border:1px solid var(--line); padding:.08rem .45rem; }
+.mng-rel-hint { margin:.3rem 0 .7rem; font-size:.78rem; color:var(--muted); }
+.mng-rel-none { margin:0; font-size:.84rem; color:var(--muted-2); font-style:italic; }
+.mng-rel-chips { display:flex; flex-direction:column; gap:.5rem; align-items:flex-start; }
+.mng-rel-chip { display:inline-flex; align-items:center; gap:.55rem; max-width:100%;
+  border:1px solid var(--line-control); background:var(--card); padding:.5rem .8rem;
+  font-size:.84rem; color:var(--ink); text-decoration:none;
+  transition:border-color .15s ease, color .15s ease; }
+a.mng-rel-chip:hover { border-color:var(--ink); }
+a.mng-rel-chip:hover b { color:var(--blue); }
+.mng-rel-chip b { font-weight:700; }
+.mng-rel-chip span { color:var(--muted); font-size:.78rem; white-space:nowrap; }
+/* Id que BC referencia pero que aún no está sincronizado en el portal: en rojo.
+   El TEXTO va en rojo profundo #b3240d (AA sobre el fondo rosado #fdf1f0); el
+   icono de alerta conserva el rojo de marca --out (es señal, no texto). */
+.mng-rel-chip.is-missing { color:#b3240d; border-color:#e6b6b0; background:#fdf1f0; }
+.mng-rel-chip.is-missing code { font:.76rem/1 ui-monospace,Consolas,monospace; }
+.mng-rel-chip.is-missing em { font-style:normal; font-size:.72rem; font-weight:800;
+  letter-spacing:.05em; text-transform:uppercase; }
+.mng-rel-chip.is-missing svg { flex:none; color:var(--out); }
+/* Aviso bajo el grupo cuando algún id aún no ha llegado del conector: visible
+   (no solo el tooltip del chip) y con el enlace a Comunicación BC para revisarlo */
+.mng-rel-missing-note { display:flex; align-items:flex-start; gap:.4rem;
+  margin:.7rem 0 0; font-size:.78rem; line-height:1.5; color:#b3240d; }
+.mng-rel-missing-note svg { flex:none; margin-top:.15rem; }
+.mng-rel-missing-note a { color:inherit; font-weight:700; }
+.mng-rel-missing-note a:hover { color:var(--out); }

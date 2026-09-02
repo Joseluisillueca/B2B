@@ -16,6 +16,7 @@ import { icons } from '../ui/icons.js';
 import { pageHead } from '../ui/chrome.js';
 import { groupLines } from '../ui/cart.js';
 import { confirmDialog, promptDialog } from '../ui/dialog.js';
+import { fetchRelated, relatedSectionHtml, bindRelatedRail } from '../ui/related.js';
 
 const IVA = 0.21;   // Tipo general: el desglose real por línea llega con el pedido de BC
 
@@ -49,11 +50,62 @@ export default function checkout(host) {
   const credential = state.credential || {};
 
   let editing = false;
-  let accepted = false;
+  // Aceptar las condiciones sobrevive a la navegación DENTRO de la sesión del
+  // carrito (ir a una ficha sugerida y volver no obliga a re-marcar). Se limpia
+  // al terminar el pedido o al vaciar el carrito (sessionStorage: muere con la
+  // pestaña, nunca se arrastra a un pedido de mañana).
+  const ACCEPTED_KEY = 'ck_accepted';
+  const readAccepted = () => { try { return sessionStorage.getItem(ACCEPTED_KEY) === '1'; } catch { return false; } };
+  let accepted = readAccepted();
+  const setAccepted = value => {
+    accepted = value;
+    try { value ? sessionStorage.setItem(ACCEPTED_KEY, '1') : sessionStorage.removeItem(ACCEPTED_KEY); } catch { /* modo privado */ }
+  };
   let sent = null;
   let error = '';   // fallo de la última acción, en línea junto a los totales
   let transport = 0;      // porte calculado por las reglas para el carrito actual (0 = gratis)
   let previewKey = '';    // evita re-pedir la preview si no cambian los datos relevantes
+
+  // "Añade también": relacionados (cross/up de BC) de los modelos del carrito. El
+  // servidor ya excluye los modelos de origen, así que nada de lo que ya está en el
+  // pedido se sugiere. Se cachea por juego de modelos para no re-pedir en cada
+  // repintado, y sin sugerencias el bloque no existe.
+  let suggested = [];
+  let suggestKey = null;      // modelos de la última petición lanzada
+  let suggestShown = false;   // la aparición suave solo la primera vez
+  let windowIdPromise = null; // id real de la ventana activa (para la tarifa correcta)
+
+  const serviceWindowId = () => windowIdPromise ??= api
+    .get(`/api/shop/catalog?take=1&locale=${lang()}`)
+    .then(data => {
+      const type = state.prefs.window === 'scheduled' ? 'SCHEDULED' : 'REPLENISHMENT';
+      const windows = data.windows || [];
+      return (windows.find(w => w.orderType === type) || windows[0])?.id || '';
+    })
+    .catch(() => '');
+
+  async function loadSuggestions() {
+    const models = [...new Set(state.cartLines().map(line => line.modelId))].sort();
+    const key = models.join(',');
+    if (key === suggestKey) return;
+    suggestKey = key;
+
+    // Centinela de DESMONTAJE: `host` es el #view permanente del router (siempre
+    // conectado), así que el guard real es un nodo PROPIO del checkout — si el usuario
+    // navegó a otra vista mientras el fetch volaba, ese nodo ya no está conectado y NO
+    // se debe repintar (repintaría el checkout encima de la otra vista).
+    const sentinel = host.querySelector('.page.checkout');
+    let items = [];
+    if (models.length) {
+      try { items = await fetchRelated(models, await serviceWindowId()); } catch { items = []; }
+    }
+    if (suggestKey !== key) return;                        // llegó tarde: ya manda otro carrito
+    if (!sentinel || !sentinel.isConnected) return;        // el usuario ya no está en el checkout
+    const changed = items.length !== suggested.length
+      || items.some((it, i) => it.card.modelId !== suggested[i]?.card.modelId);
+    suggested = items;
+    if (changed) render();
+  }
   const form = {
     reference: '',
     payMethod: payOptions(client)[0]?.value || '',
@@ -65,6 +117,9 @@ export default function checkout(host) {
   const clientNumber = credential.clientNumber || client.number || '';
 
   function render() {
+    // El checkout se repinta entero a menudo (condiciones, porte, líneas): el raíl
+    // de sugerencias no debe perder su posición de scroll en cada repintado.
+    const railScroll = host.querySelector('.ck-grid > .related .related-rail')?.scrollLeft || 0;
     const lines = state.cartLines();
     const units = state.cartUnits();
     const subtotal = state.cartTotal();
@@ -136,6 +191,18 @@ export default function checkout(host) {
               ${blocked ? 'aria-describedby="ckBlocked"' : ''}
               ${units && accepted && !sent ? '' : 'disabled'}>${esc(t('checkout.submit'))}</button>
           </aside>
+
+          <!-- "Añade también" es la ÚLTIMA hija de .ck-grid: en escritorio la rejilla
+               la coloca bajo las líneas (columna 1) y en columna única queda DESPUÉS
+               del resumen y de TERMINAR PEDIDO — las sugerencias jamás se interponen
+               entre el pedido y su CTA (D-A1). CTA de card: "Elegir tallas". -->
+          ${lines.length && suggested.length ? relatedSectionHtml(suggested, {
+            title: t('checkout.suggestTitle'),
+            sub: t('checkout.suggestSub'),
+            compact: true,
+            id: 'ck-suggest',
+            cta: t('related.ctaCheckout')
+          }) : ''}
         </div>
       </div>`;
 
@@ -148,6 +215,17 @@ export default function checkout(host) {
         .then(r => { const c = Number(r?.cost) || 0; if (c !== transport) { transport = c; render(); } })
         .catch(() => {});
     }
+
+    // El raíl de sugerencias: flechas si desborda, y la aparición suave solo la
+    // primera vez (los repintados posteriores lo dejan quieto, sin re-animar).
+    const suggest = host.querySelector('.ck-grid > .related');
+    if (suggest) {
+      bindRelatedRail(suggest);
+      if (railScroll) suggest.querySelector('.related-rail').scrollLeft = railScroll;
+      if (!suggestShown) { suggestShown = true; void suggest.offsetWidth; }
+      suggest.classList.add('on');
+    }
+    loadSuggestions();
 
     bind();
   }
@@ -247,10 +325,15 @@ export default function checkout(host) {
   function bind() {
     const $ = id => host.querySelector(`#${id}`);
 
-    $('edit').onclick = () => { editing = !editing; render(); };
+    // El repintado destruye el botón que se acaba de pulsar: se devuelve el foco
+    $('edit').onclick = () => {
+      editing = !editing;
+      render();
+      host.querySelector('#edit')?.focus({ preventScroll: true });
+    };
     // El repintado destruye la casilla que se acaba de marcar: se devuelve el foco
     $('terms').onchange = event => {
-      accepted = event.target.checked;
+      setAccepted(event.target.checked);
       render();
       host.querySelector('#terms')?.focus({ preventScroll: true });
     };
@@ -274,6 +357,7 @@ export default function checkout(host) {
       });
       if (!ok) return;
       state.clearCart();
+      setAccepted(false);   // carrito nuevo, condiciones nuevas
       sent = null;
       error = '';
       render();
@@ -335,6 +419,7 @@ export default function checkout(host) {
           const order = await api.post('/api/portal/orders', payload(defaultName()));
           const pay = await api.payOrder(order.id, lang());
           state.clearCart();
+          setAccepted(false);
           window.location.href = pay.url;
         } catch {
           button.disabled = false;
@@ -347,7 +432,7 @@ export default function checkout(host) {
       try {
         sent = await api.post('/api/portal/orders', payload(defaultName()));
         state.clearCart();
-        accepted = false;
+        setAccepted(false);
         error = '';
         render();
       } catch {

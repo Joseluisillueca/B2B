@@ -15,10 +15,12 @@
      grandes, con solo --gutter de canal lateral. Cap alto para no volverse absurdo en
      monitores 4K. Las páginas de LECTURA siguen usando --maxw (1240). */
   --maxw-wide:2400px;
-  --muted:#7d7979; --muted-2:#9b9797; --line-control:#bab6b6;
-  /* Texto de AYUDA (hints, crumbs, labels de simulador): --muted (#7d7979) se
-     queda en ~3,9:1 sobre el papel del back-office (<4,5 AA). --hint lo oscurece
-     a ~5,8:1 sin tocar el --muted global (muy transversal). */
+  /* --muted a #6a6666: el #7d7979 original daba 3,85:1 sobre --paper
+     (#f3f2f2), por debajo de AA. #6a6666 llega a ~5,1:1 sin dejar de leerse como
+     "texto secundario" (oscurecido sutil, misma temperatura). */
+  --muted:#6a6666; --muted-2:#9b9797; --line-control:#bab6b6;
+  /* Texto de AYUDA (hints, crumbs, labels de simulador): --hint sigue un punto
+     más oscuro (~5,8:1) que --muted para las piezas más pequeñas. */
   --hint:#5f5b5b;
   /* --blue* = ahora el ROJO de marca (acento único). Rojo a tamaño de párrafo
      usa --accent-deep (#c94b39 ≈ accent-700), no el base, por contraste. */
@@ -801,6 +803,9 @@ body[data-focus="on"] .cat-filters { display:none; }
 .pcard:hover .pcard-cta { gap:.7rem; color:var(--blue); }
 .pcard-cta svg { flex:none; }
 .pcard-link:focus-visible::after { outline:2px solid var(--blue); outline-offset:3px; }
+/* Un solo anillo de foco por card: el del ::after estirado (el outline nativo del
+   enlace dibujaba un segundo anillo pegado al nombre). */
+.pcard-link:focus-visible { outline:none; }
 
 /* ══════════════ Ficha de producto (estilo thehoffbrand.com) ══════════════ */
 /* Foto protagonista a la izquierda (pegajosa al hacer scroll) y ficha aireada a la
@@ -923,6 +928,30 @@ body[data-focus="on"] .cat-filters { display:none; }
 .product-fav[aria-pressed="true"] { color:var(--accent); }
 .product-ref { margin:1rem 0 0; font-size:.95rem; color:var(--ink-2); }
 .product-ref b { color:var(--ink); font-weight:600; }
+
+/* ── "También en:": swatches de la gama junto a la referencia ──
+   Miniaturas de los hermanos cross (otros colores del modelo) a la vista al decidir,
+   como los selectores de color de una PDP. Las pinta product.js cuando llegan los
+   relacionados; sin cross la fila NO existe. Entrada con fundido suave. */
+.product-alsoin { display:flex; align-items:center; flex-wrap:wrap; gap:.55rem;
+  margin:.9rem 0 0; opacity:0; transition:opacity .45s var(--ease); }
+.product-alsoin.on { opacity:1; }
+.alsoin-label { font-size:.72rem; font-weight:700; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--hint); margin-right:.2rem; }
+.alsoin-thumb { display:block; flex:none; width:44px; height:44px; overflow:hidden;
+  border:1px solid var(--line-control); background:var(--card); border-radius:var(--r-sm);
+  transition:border-color .15s var(--ease), box-shadow .15s var(--ease); }
+.alsoin-thumb:hover { border-color:var(--blue); box-shadow:0 0 0 1px var(--blue); }
+.alsoin-thumb:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+.alsoin-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+.alsoin-art { width:100%; height:100%; display:grid; place-items:center; color:var(--ink); opacity:.3; }
+/* "+N": mismo cuerpo que un swatch; baja al raíl "Completa la gama" */
+.alsoin-more { flex:none; width:44px; height:44px; display:grid; place-items:center;
+  border:1px dashed var(--line-control); border-radius:var(--r-sm); background:none;
+  font:inherit; font-size:.8rem; font-weight:700; color:var(--ink-2); cursor:pointer;
+  transition:border-color .15s var(--ease), color .15s var(--ease); }
+.alsoin-more:hover { border-color:var(--blue); color:var(--blue); }
+.alsoin-more:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
 
 .product-attrs { display:grid; grid-template-columns:repeat(auto-fit,minmax(7rem,1fr)); gap:1rem 1.6rem;
   margin:1.6rem 0 0; padding:1.5rem 0 0; border-top:1px solid var(--line); }
@@ -2023,3 +2052,81 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 /* Cifra encima de cada barra (modo minimalista) */
 .ch-val { fill:var(--ink); font-family:var(--display); font-weight:800; font-size:15px; }
 .ch-min .ch-xlab { fill:var(--ink-2); font-weight:600; }
+
+/* ══════════════ Productos relacionados (cross/up-selling de BC) ══════════════ */
+/* Raíl horizontal compartido: la ficha ("Completa la gama", a lo ancho, regla de
+   capítulo en tinta) y el checkout (".related-compact", bajo las líneas y discreto
+   para no estorbar la compra). Sin relacionados la sección no se pinta (JS). */
+.related { margin:3.6rem 0 0; padding-top:2rem; border-top:2px solid var(--ink);
+  opacity:0; translate:0 14px;
+  transition:opacity .5s var(--ease), translate .5s var(--ease); }
+.related.on { opacity:1; translate:0 0; }
+.related-head { display:flex; align-items:flex-end; justify-content:space-between;
+  gap:1.2rem; margin-bottom:1.5rem; }
+.related-title { margin:0; font-family:var(--display); font-size:1.5rem; letter-spacing:-.02em; }
+.related-sub { margin:.4rem 0 0; font-size:.9rem; color:var(--muted); }
+/* Flechas: solo cuando el raíl desborda (JS pone .has-nav); apagadas en los extremos */
+.related-nav { display:none; gap:.5rem; flex:none; }
+.related.has-nav .related-nav { display:flex; }
+.related-arrow { width:2.6rem; height:2.6rem; display:inline-flex; align-items:center;
+  justify-content:center; border:1px solid var(--line-control); border-radius:0;
+  background:var(--card); color:var(--ink); cursor:pointer; padding:0;
+  transition:border-color .15s var(--ease), opacity .15s var(--ease); }
+.related-arrow:hover:not([disabled]) { border-color:var(--ink); }
+.related-arrow[disabled] { opacity:.3; cursor:default; }
+.related-arrow svg { flex:none; }
+/* El raíl: columnas fijas (4 a la vista en escritorio), snap y barra oculta —
+   se navega con las flechas, con el dedo o tabulando por las cards */
+.related-rail { display:grid; grid-auto-flow:column; justify-content:start; gap:1.4rem;
+  grid-auto-columns:clamp(12.5rem, calc((100% - 3 * 1.4rem) / 4), 19rem);
+  overflow-x:auto; overscroll-behavior-x:contain; scroll-snap-type:x mandatory;
+  padding:.3rem .3rem .5rem; scroll-padding-left:.3rem; scrollbar-width:none; }
+.related-rail::-webkit-scrollbar { display:none; }
+.related-cell { scroll-snap-align:start; min-width:0; display:flex; }
+.related-cell .pcard { flex:1; }
+/* Up-selling: etiqueta "Complemento" sobre la foto (venta cruzada va sin etiqueta) */
+.rel-badge { position:absolute; top:.7rem; left:.7rem; z-index:2; font-size:.64rem;
+  font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#fff;
+  background:var(--ink); padding:.34rem .6rem; }
+
+/* Checkout: variante compacta — título menor, cards de 5 a la vista, regla fina */
+.related-compact { margin:2rem 0 0; padding-top:1.5rem; border-top:1px solid var(--line); }
+/* En el checkout el bloque es hija DIRECTA de .ck-grid (no de .ck-main): en
+   escritorio se ancla a la columna de las líneas (misma posición de siempre) y en
+   columna única el flujo del documento lo deja el ÚLTIMO — después del resumen y
+   de TERMINAR PEDIDO, para que las sugerencias nunca se interpongan ante el CTA. */
+.ck-grid > .related-compact { grid-column:1; min-width:0; }
+.related-compact .related-head { margin-bottom:1rem; }
+.related-compact .related-title { font-size:1.15rem; }
+.related-compact .related-sub { font-size:.82rem; margin-top:.25rem; }
+.related-compact .related-arrow { width:2.2rem; height:2.2rem; }
+.related-compact .related-rail { gap:1rem;
+  grid-auto-columns:clamp(9.5rem, calc((100% - 4 * 1rem) / 5), 12rem); }
+.related-compact .pcard-body { padding-top:.7rem; }
+.related-compact .pcard-name { font-size:.95rem; }
+.related-compact .pcard-ref { font-size:.76rem; }
+.related-compact .pcard-price { margin-top:.4rem; }
+.related-compact .pcard-price b { font-size:1.05rem; }
+.related-compact .pcard-cta { font-size:.7rem; margin-top:.5rem; }
+.related-compact .rel-badge { font-size:.58rem; padding:.28rem .5rem; }
+
+@media (max-width:48rem) {
+  .related { margin-top:2.6rem; padding-top:1.6rem; }
+  .related-title { font-size:1.25rem; }
+  .related-rail { grid-auto-columns:70%; gap:1rem; }
+  .related-compact .related-rail { grid-auto-columns:11rem; }
+  /* En táctil manda el dedo: el snap ya pagina y las flechas solo estorban */
+  .related.has-nav .related-nav { display:none; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .related { transition:none; opacity:1; translate:none; }
+}
+
+/* Alineación del raíl: el nombre reserva SIEMPRE dos líneas (y recorta a dos),
+   así referencia, precio y CTA quedan a la misma altura en todas las cards
+   aunque un nombre ocupe una línea y el vecino dos. */
+.related-rail .pcard-name { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+  overflow:hidden; min-height:2.4em; }
+/* Las cards compactas del checkout son más estrechas: tres líneas de nombre para
+   no amputar referencias largas (y se reservan las tres, alineación intacta). */
+.related-compact .related-rail .pcard-name { -webkit-line-clamp:3; min-height:3.6em; }

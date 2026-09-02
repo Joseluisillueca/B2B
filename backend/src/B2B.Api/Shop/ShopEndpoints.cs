@@ -49,21 +49,31 @@ public static class ShopEndpoints
         app.MapGet("/api/shop/related", async (HttpRequest request, ClaimsPrincipal principal, AppDbContext db) =>
         {
             var actor = await PortalScope.ActorAsync(principal, db);
+            var baseQuery = CatalogQuery.From(request.Query);
+            // Misma forma de respuesta en TODOS los retornos (con o sin relacionados).
+            var empty = new { window = baseQuery.Window, locale = baseQuery.Locale, items = Array.Empty<object>() };
+            // Ids de origen normalizados como los arrays (sin llaves): un `models={GUID}` con
+            // llaves debe excluirse igual de los resultados.
             var sources = (request.Query["models"].ToString() ?? "")
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(s => s.Trim('{', '}'))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            if (sources.Count == 0) return Results.Ok(new { items = Array.Empty<object>() });
+            if (sources.Count == 0) return Results.Ok(empty);
 
             // crossSellingIds/upSellingIds de los payloads crudos de los modelos de origen,
             // conservando el ORDEN de aparición (el orden comercial que fijó BC).
             var (cross, up) = await RelatedIdsAsync(db, sources);
             var wanted = cross.Concat(up).Where(id => !sources.Contains(id))
                 .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            if (wanted.Count == 0) return Results.Ok(new { items = Array.Empty<object>() });
+            if (wanted.Count == 0) return Results.Ok(empty);
 
-            var query = CatalogQuery.From(request.Query) with
+            // Sin NINGÚN filtro residual del querystring: los relacionados se resuelven solo
+            // por id (un ?availability= o ?a.*= colado no debe vaciar las sugerencias).
+            var query = baseQuery with
             {
                 Search = null, Family = null, Skip = 0, Take = CatalogQuery.MaxTake,
+                Availability = new HashSet<string>(),
+                Attributes = new Dictionary<string, IReadOnlySet<string>>(),
                 Ids = wanted.ToHashSet(StringComparer.OrdinalIgnoreCase),
             };
             var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow);
@@ -71,7 +81,10 @@ public static class ShopEndpoints
             var upSet = up.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             // En el orden de BC (primero cross, luego up), solo los visibles/comprables.
-            var byId = page.Rows.ToDictionary(r => r.Model.ExternalId, StringComparer.OrdinalIgnoreCase);
+            // Decisión de negocio: un relacionado SIN tarifa para este cliente no se sugiere
+            // (en el catálogo sale como "consultar"; aquí sería ruido sin precio).
+            var byId = page.Rows.Where(r => r.Pvd is not null)
+                .ToDictionary(r => r.Model.ExternalId, StringComparer.OrdinalIgnoreCase);
             var items = wanted.Where(byId.ContainsKey).Select(id => new
             {
                 relation = upSet.Contains(id) ? "up" : "cross",
@@ -143,25 +156,50 @@ public static class ShopEndpoints
         })
     };
 
-    // Lee crossSellingIds/upSellingIds de los payloads CRUDOS de los modelos de origen
-    // (el normalizador no los materializa; el documento jsonb sí los conserva). Devuelve
-    // los ids en orden de aparición, sin llaves y deduplicados.
+    // Lee crossSellingIds/upSellingIds de los payloads CRUDOS de los modelos (el normalizador
+    // no los materializa; el documento jsonb sí los conserva). Devuelve los ids en orden de
+    // aparición, sin llaves y deduplicados. La comparación de ids es SIEMPRE en memoria y
+    // case-insensitive (la traducción SQL de un HashSet ignora el comparer y la collation de
+    // Postgres es sensible: un id en otra caja fallaría en silencio).
+    //
+    // Resolución SIMÉTRICA: en BC la relación es "mismo Modelo base" (simétrica por
+    // definición), pero cada artículo solo refresca SU lista al re-enviarse. Si B lista a A
+    // pero A aún no fue re-enviado con sus ids, la ficha de A también debe enseñar a B (y a
+    // los demás hermanos que B declare). Por eso, además de los arrays de los orígenes, se
+    // incorporan los modelos que LISTAN a un origen y sus hermanos declarados.
     private static async Task<(List<string> Cross, List<string> Up)> RelatedIdsAsync(
         AppDbContext db, IReadOnlySet<string> sourceIds)
     {
         var docs = await db.SyncDocuments
-            .Where(d => d.EntityType == "model" && sourceIds.Contains(d.ExternalId))
-            .Select(d => d.Payload)
+            .Where(d => d.EntityType == "model")
+            .Select(d => new { d.ExternalId, d.Payload })
             .ToListAsync();
 
         List<string> cross = [], up = [];
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var payload in docs)
+        var inverse = new List<string>();
+        var inverseSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // 1ª pasada: los arrays DIRECTOS de los orígenes (mandan en el orden).
+        foreach (var doc in docs)
         {
-            var root = ClientIdentity.Parse(payload);
+            if (!sourceIds.Contains(doc.ExternalId)) continue;
+            var root = ClientIdentity.Parse(doc.Payload);
             Collect(root?["crossSellingIds"], cross, seen);
             Collect(root?["upSellingIds"], up, seen);
         }
+
+        // 2ª pasada: relación inversa — X lista a un origen → X es hermano (y sus hermanos
+        // declarados también). Van detrás de los directos, en orden estable de documento.
+        foreach (var doc in docs)
+        {
+            if (sourceIds.Contains(doc.ExternalId)) continue;
+            var root = ClientIdentity.Parse(doc.Payload);
+            if (!ContainsAny(root?["crossSellingIds"], sourceIds)) continue;
+            if (seen.Add(doc.ExternalId)) inverse.Add(doc.ExternalId);
+            Collect(root?["crossSellingIds"], inverse, seen);   // hermanos del hermano
+        }
+        cross.AddRange(inverse);
         return (cross, up);
 
         static void Collect(System.Text.Json.Nodes.JsonNode? node, List<string> into, HashSet<string> seen)
@@ -173,6 +211,17 @@ public static class ShopEndpoints
                     ? s.Trim().Trim('{', '}') : null;
                 if (!string.IsNullOrWhiteSpace(id) && seen.Add(id!)) into.Add(id!);
             }
+        }
+
+        static bool ContainsAny(System.Text.Json.Nodes.JsonNode? node, IReadOnlySet<string> ids)
+        {
+            if (node is not System.Text.Json.Nodes.JsonArray arr) return false;
+            foreach (var item in arr)
+            {
+                if ((item as System.Text.Json.Nodes.JsonValue)?.TryGetValue<string>(out var s) == true
+                    && ids.Contains(s.Trim().Trim('{', '}'))) return true;
+            }
+            return false;
         }
     }
 
