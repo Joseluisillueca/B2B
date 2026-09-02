@@ -36,36 +36,48 @@ public static class ShopEndpoints
                     availability = page.AvailabilityFacet.Select(f => new { id = f.Value, count = f.Count }),
                     attributes = page.AttributeFacets
                 },
-                items = page.Rows.Select(row => new
-                {
-                    modelId = row.Model.ExternalId,
-                    name = row.Name,
-                    reference = row.Model.ExternalReference,
-                    familyId = row.Model.FamilyId,
-                    familyLabel = row.FamilyLabel,
-                    segments = row.Segments,
-                    attributes = row.Attributes,
-                    attributeList = row.AttributeList,
-                    imageUri = row.ImageUri,
-                    images = row.Images,
-                    pvd = row.Pvd,
-                    pvp = row.Pvp,
-                    currency = row.Currency,
-                    availability = row.Availability,
-                    pricePerSize = row.PricePerSize,
-                    favorite = favorites.Contains(row.Model.ExternalId),
-                    products = row.Variants.Select(variant => new
-                    {
-                        productId = variant.Product.ExternalId,
-                        size = variant.Product.Size,
-                        sku = variant.Product.Sku,
-                        ean = variant.Product.Ean,
-                        stock = variant.Stock,
-                        pvd = variant.Pvd,
-                        pvp = variant.Pvp
-                    })
-                })
+                items = page.Rows.Select(row => CardItem(row, favorites))
             });
+        }).RequireAuthorization();
+
+        // ── Productos relacionados ─────────────────────────────────────────────
+        // Los modelos llegan de BC con `crossSellingIds`/`upSellingIds` (SystemIds de los
+        // modelos hermanos, mismo "Modelo" base). Este endpoint los resuelve con el MISMO
+        // pipeline del catálogo (tarifa del cliente, stock por ventana, visibilidad): solo
+        // devuelve los relacionados que el cliente puede comprar. `models` admite varios ids
+        // (carrito) separados por comas; los modelos de origen nunca se devuelven a sí mismos.
+        app.MapGet("/api/shop/related", async (HttpRequest request, ClaimsPrincipal principal, AppDbContext db) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            var sources = (request.Query["models"].ToString() ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (sources.Count == 0) return Results.Ok(new { items = Array.Empty<object>() });
+
+            // crossSellingIds/upSellingIds de los payloads crudos de los modelos de origen,
+            // conservando el ORDEN de aparición (el orden comercial que fijó BC).
+            var (cross, up) = await RelatedIdsAsync(db, sources);
+            var wanted = cross.Concat(up).Where(id => !sources.Contains(id))
+                .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (wanted.Count == 0) return Results.Ok(new { items = Array.Empty<object>() });
+
+            var query = CatalogQuery.From(request.Query) with
+            {
+                Search = null, Family = null, Skip = 0, Take = CatalogQuery.MaxTake,
+                Ids = wanted.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            };
+            var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow);
+            var favorites = await FavoritesAsync(db, actor);
+            var upSet = up.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // En el orden de BC (primero cross, luego up), solo los visibles/comprables.
+            var byId = page.Rows.ToDictionary(r => r.Model.ExternalId, StringComparer.OrdinalIgnoreCase);
+            var items = wanted.Where(byId.ContainsKey).Select(id => new
+            {
+                relation = upSet.Contains(id) ? "up" : "cross",
+                card = CardItem(byId[id], favorites),
+            });
+            return Results.Ok(new { window = page.Window, locale = page.Locale, items });
         }).RequireAuthorization();
 
         // Botón "Desc. Stock" de la toolbar: el listado que se está viendo, con los
@@ -97,6 +109,71 @@ public static class ShopEndpoints
 
             return Results.File(csv, "text/csv; charset=utf-8", $"stock-{DateTime.Now:yyyyMMdd}.csv");
         }).RequireAuthorization();
+    }
+
+    // Proyección de una card de modelo (catálogo, relacionados): SIEMPRE la misma forma,
+    // así el front pinta cualquier lista de modelos con el mismo componente.
+    private static object CardItem(CatalogRow row, HashSet<string> favorites) => new
+    {
+        modelId = row.Model.ExternalId,
+        name = row.Name,
+        reference = row.Model.ExternalReference,
+        familyId = row.Model.FamilyId,
+        familyLabel = row.FamilyLabel,
+        segments = row.Segments,
+        attributes = row.Attributes,
+        attributeList = row.AttributeList,
+        imageUri = row.ImageUri,
+        images = row.Images,
+        pvd = row.Pvd,
+        pvp = row.Pvp,
+        currency = row.Currency,
+        availability = row.Availability,
+        pricePerSize = row.PricePerSize,
+        favorite = favorites.Contains(row.Model.ExternalId),
+        products = row.Variants.Select(variant => new
+        {
+            productId = variant.Product.ExternalId,
+            size = variant.Product.Size,
+            sku = variant.Product.Sku,
+            ean = variant.Product.Ean,
+            stock = variant.Stock,
+            pvd = variant.Pvd,
+            pvp = variant.Pvp
+        })
+    };
+
+    // Lee crossSellingIds/upSellingIds de los payloads CRUDOS de los modelos de origen
+    // (el normalizador no los materializa; el documento jsonb sí los conserva). Devuelve
+    // los ids en orden de aparición, sin llaves y deduplicados.
+    private static async Task<(List<string> Cross, List<string> Up)> RelatedIdsAsync(
+        AppDbContext db, IReadOnlySet<string> sourceIds)
+    {
+        var docs = await db.SyncDocuments
+            .Where(d => d.EntityType == "model" && sourceIds.Contains(d.ExternalId))
+            .Select(d => d.Payload)
+            .ToListAsync();
+
+        List<string> cross = [], up = [];
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var payload in docs)
+        {
+            var root = ClientIdentity.Parse(payload);
+            Collect(root?["crossSellingIds"], cross, seen);
+            Collect(root?["upSellingIds"], up, seen);
+        }
+        return (cross, up);
+
+        static void Collect(System.Text.Json.Nodes.JsonNode? node, List<string> into, HashSet<string> seen)
+        {
+            if (node is not System.Text.Json.Nodes.JsonArray arr) return;
+            foreach (var item in arr)
+            {
+                var id = (item as System.Text.Json.Nodes.JsonValue)?.TryGetValue<string>(out var s) == true
+                    ? s.Trim().Trim('{', '}') : null;
+                if (!string.IsNullOrWhiteSpace(id) && seen.Add(id!)) into.Add(id!);
+            }
+        }
     }
 
     private static PortalActorPrices Prices(PortalActor? actor) =>

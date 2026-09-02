@@ -20,6 +20,10 @@ public sealed record CatalogQuery
 
     public string? Search { get; init; }
     public string? Family { get; init; }
+    // Filtro por ids de modelo (ExternalId/SystemId). Vacío = sin filtro. Lo usa el endpoint
+    // de PRODUCTOS RELACIONADOS para resolver crossSellingIds con el mismo pipeline de
+    // precios/stock/visibilidad del catálogo.
+    public IReadOnlySet<string> Ids { get; init; } = new HashSet<string>();
     public IReadOnlySet<string> Availability { get; init; } = new HashSet<string>();
     public IReadOnlyDictionary<string, IReadOnlySet<string>> Attributes { get; init; } =
         new Dictionary<string, IReadOnlySet<string>>();
@@ -324,8 +328,11 @@ public static class CatalogService
     // ── Filtros ────────────────────────────────────────────────────────────────
 
     private static bool Matches(CatalogRow row, CatalogQuery query) =>
-        MatchesSearch(row, query) && MatchesFamily(row, query)
+        MatchesIds(row, query) && MatchesSearch(row, query) && MatchesFamily(row, query)
         && MatchesAvailability(row, query) && MatchesAttributes(row, query, skip: null);
+
+    private static bool MatchesIds(CatalogRow row, CatalogQuery query) =>
+        query.Ids.Count == 0 || query.Ids.Contains(row.Model.ExternalId);
 
     // El buscador entra por el nombre que se está viendo, por el original del sync y
     // por la referencia: cambiar de idioma no puede hacer desaparecer un resultado.
