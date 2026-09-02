@@ -929,35 +929,77 @@ body[data-focus="on"] .cat-filters { display:none; }
 .product-ref { margin:1rem 0 0; font-size:.95rem; color:var(--ink-2); }
 .product-ref b { color:var(--ink); font-weight:600; }
 
-/* ── "También en:": swatches de la gama junto a la referencia ──
+/* ── "También en:": la gama como selector de variantes premium ──
    Miniaturas de los hermanos cross (otros colores del modelo) a la vista al decidir,
    como los selectores de color de una PDP. Las pinta product.js cuando llegan los
    relacionados; sin cross la fila NO existe. Entrada con fundido suave.
-   Tamaño: 68px en escritorio (petición del cliente: que el color de cada foto se LEA
-   sin esfuerzo), 56px en móvil; la etiqueta pasa a su propia línea para que la fila
-   de swatches respire como un selector de color de PDP. */
-.product-alsoin { display:flex; align-items:center; flex-wrap:wrap;
-  gap:.6rem .55rem; margin:1rem 0 0; opacity:0; transition:opacity .45s var(--ease); }
+   ENCUADRE: las fotos de producto son verticales (4:5) con el zapato en una banda
+   horizontal centrada y mucho aire blanco; el marco APAISADO 4:3 + cover + zoom
+   (scale) recorta ese aire y el zapato LLENA la miniatura. Pie con el nombre del
+   color (uppercase, --hint) para leer la variante sin depender de la foto. */
+/* Zoom de encuadre como TOKEN: cada instancia (fotos ya recortadas de otro cliente)
+   puede ajustarlo o desactivarlo (1) sin tocar código. El hover suma +.04. */
+:root { --alsoin-zoom:1.32; }
+/* Slot reservado: existe desde el PRIMER render de la ficha con la altura de la fila
+   (esqueleto de 2 marcos fantasma). Con gama se rellena DENTRO —el precio y la matriz
+   no se mueven—; sin gama se pliega con transición de altura y desaparece. */
+/* min-height = alto real de la fila con pie de 2 líneas (label 12 + hueco 13 +
+   marco 87 + pie 31 ≈ 145 / móvil con marco 69 ≈ 127): así el relleno tardío
+   no mueve NI UN PÍXEL el precio ni la matriz. */
+.product-alsoin-slot { margin:1.1rem 0 0; min-height:145px;
+  transition:height .25s var(--ease), min-height .25s var(--ease),
+    margin .25s var(--ease), opacity .2s var(--ease); }
+.product-alsoin-slot.alsoin-collapse { overflow:hidden; height:0 !important;
+  min-height:0; margin-top:0; opacity:0; }
+.alsoin-skel-bar { display:block; width:6rem; height:.72rem; margin:0 0 .8rem;
+  border-radius:3px; background:#eeede9; }
+.alsoin-skel-pics { display:flex; gap:.7rem; }
+.alsoin-skel-pic { width:116px; height:87px; border-radius:var(--r-sm);
+  border:1px solid var(--line-control); background:var(--card); }
+.product-alsoin { display:flex; align-items:flex-start; flex-wrap:wrap;
+  gap:.8rem .7rem; margin:0; opacity:0; transition:opacity .45s var(--ease); }
 .product-alsoin.on { opacity:1; }
 .alsoin-label { flex-basis:100%; font-size:.72rem; font-weight:700; letter-spacing:.07em;
-  text-transform:uppercase; color:var(--hint); }
-.alsoin-thumb { display:block; flex:none; width:68px; height:68px; overflow:hidden;
+  line-height:1; text-transform:uppercase; color:var(--hint); }
+.alsoin-thumb { display:block; flex:none; width:116px; text-decoration:none; }
+.alsoin-pic { display:block; width:100%; height:87px; overflow:hidden;
   border:1px solid var(--line-control); background:var(--card); border-radius:var(--r-sm);
   transition:border-color .15s var(--ease), box-shadow .15s var(--ease); }
-.alsoin-thumb:hover { border-color:var(--blue); box-shadow:0 0 0 1px var(--blue); }
+a.alsoin-thumb:hover .alsoin-pic { border-color:var(--blue); box-shadow:0 0 0 1px var(--blue); }
 .alsoin-thumb:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
-.alsoin-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+.alsoin-thumb img { width:100%; height:100%; object-fit:cover; display:block;
+  transform:scale(var(--alsoin-zoom)); transform-origin:50% 56%; transition:transform .25s var(--ease); }
+a.alsoin-thumb:hover img { transform:scale(calc(var(--alsoin-zoom) + .04)); }
+@media (prefers-reduced-motion: reduce) { a.alsoin-thumb:hover img { transform:scale(var(--alsoin-zoom)); } }
+/* El color ACTUAL (primer swatch): marcado con el marco de tinta, no navega */
+.alsoin-current { cursor:default; }
+.alsoin-current .alsoin-pic { border:2px solid var(--ink); }
+/* Agotado: la foto se atenúa y el pie lo dice en vez del precio */
+.alsoin-thumb.is-out .alsoin-pic { opacity:.55; }
+.alsoin-color { display:block; margin-top:.35rem; font-size:.66rem; font-weight:600;
+  letter-spacing:.06em; line-height:1.2; text-transform:uppercase; color:var(--hint);
+  text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  transition:color .15s var(--ease); }
+a.alsoin-thumb:hover .alsoin-color { color:var(--ink); }
+/* Segunda línea del pie: PVD del hermano solo si difiere, o AGOTADO sin stock */
+.alsoin-sub { display:block; margin-top:.15rem; font-size:.66rem; font-weight:500;
+  letter-spacing:.02em; line-height:1.2; color:var(--ink-2); text-align:center;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.alsoin-sub.alsoin-outlbl { text-transform:uppercase; letter-spacing:.06em; color:var(--hint); }
 .alsoin-art { width:100%; height:100%; display:grid; place-items:center; color:var(--ink); opacity:.3; }
-/* "+N": mismo cuerpo que un swatch; baja al raíl "Completa la gama" */
-.alsoin-more { flex:none; width:68px; height:68px; display:grid; place-items:center;
+/* "+N": mismo marco que un swatch; baja al raíl "Completa la gama" */
+.alsoin-more { flex:none; width:116px; height:87px; display:grid; place-items:center;
   border:1px dashed var(--line-control); border-radius:var(--r-sm); background:none;
-  font:inherit; font-size:.92rem; font-weight:700; color:var(--ink-2); cursor:pointer;
+  font:inherit; font-size:1rem; font-weight:700; color:var(--ink-2); cursor:pointer;
   transition:border-color .15s var(--ease), color .15s var(--ease); }
 .alsoin-more:hover { border-color:var(--blue); color:var(--blue); }
 .alsoin-more:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
 @media (max-width:48rem) {
-  .alsoin-thumb, .alsoin-more { width:56px; height:56px; }
-  .alsoin-more { font-size:.84rem; }
+  .product-alsoin-slot { min-height:127px; }
+  .alsoin-skel-pic { width:92px; height:69px; }
+  .alsoin-thumb, .alsoin-more { width:92px; }
+  .alsoin-pic, .alsoin-more { height:69px; }
+  .alsoin-more { font-size:.9rem; }
 }
 
 .product-attrs { display:grid; grid-template-columns:repeat(auto-fit,minmax(7rem,1fr)); gap:1rem 1.6rem;
@@ -2142,7 +2184,7 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
   .related.has-nav .related-nav { display:none; }
 }
 @media (prefers-reduced-motion:reduce) {
-  .related { transition:none; opacity:1; translate:none; }
+  .related, .product-alsoin, .product-alsoin-slot { transition:none; opacity:1; translate:none; }
 }
 
 /* Alineación del raíl: el nombre reserva SIEMPRE dos líneas (y recorta a dos),

@@ -146,6 +146,20 @@ export default async function product(host, route) {
 
           <p class="product-ref">${esc(t('catalog.reference'))} <b>${esc(item.reference || '')}</b></p>
 
+          <!-- Slot RESERVADO del "También en:" — existe desde el primer render con la
+               altura de la fila (esqueleto), así los relacionados llegan y se rellenan
+               DENTRO sin empujar el precio ni la matriz (con red lenta el precio caía
+               157px). Sin gama, el slot se pliega con una transición suave. -->
+          <div class="product-alsoin-slot" data-pending>
+            <div class="alsoin-skel" aria-hidden="true">
+              <span class="alsoin-skel-bar"></span>
+              <span class="alsoin-skel-pics">
+                <span class="alsoin-skel-pic"></span>
+                <span class="alsoin-skel-pic"></span>
+              </span>
+            </div>
+          </div>
+
           ${attributes.length || available ? `<div class="product-attrs">${attributes.map(attribute => `
             <span class="tag" title="${esc(attribute.label)}">${esc(attribute.value)}</span>`).join('')}
             ${available ? `<span class="tag tag-avail">${esc(t('product.available'))}</span>` : ''}</div>` : ''}
@@ -182,62 +196,116 @@ export default async function product(host, route) {
 
   // ── "Completa la gama": cross/up-selling que fija BC, cargado en paralelo ──
   // La ficha ya está pintada; los relacionados llegan después y la sección aparece
-  // con una transición suave. Sin relacionados (o con error) no existe ni el hueco.
+  // con una transición suave. La fila "También en:" se rellena DENTRO de su slot
+  // reservado (cero salto de layout); sin gama (o con error) el slot se pliega.
   (async () => {
     // El centinela se captura ANTES del await: si el usuario navega a OTRA ficha
     // mientras el fetch está en vuelo, este nodo concreto ya no está conectado y
     // se aborta (evita inyectar los relacionados de A en la ficha de B).
     const page = host.querySelector('.page.product');
+    const slot = page?.querySelector('.product-alsoin-slot');
+    const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Plegar el hueco reservado: transición de altura suave (~.25s); con "reducir
+    // movimiento" desaparece al instante. El nodo se retira al terminar.
+    const collapseSlot = () => {
+      if (!slot || !slot.isConnected) return;
+      if (reduced()) { slot.remove(); return; }
+      slot.style.height = `${slot.offsetHeight}px`;
+      void slot.offsetHeight;   // reflow: la transición parte de la altura real
+      slot.classList.add('alsoin-collapse');
+      setTimeout(() => slot.remove(), 320);
+    };
+
     let related = [];
-    try { related = await fetchRelated([item.modelId], data.window); } catch { return; }
-    if (!related.length || !page || !page.isConnected) return;
-    page.insertAdjacentHTML('beforeend', relatedSectionHtml(related, {
-      title: t('related.title'),
-      sub: t('related.sub')
-    }));
-    const section = page.querySelector('.related');
-    bindRelatedRail(section);
+    try { related = await fetchRelated([item.modelId], data.window); }
+    catch { related = []; }
+    if (!page || !page.isConnected) return;
+
+    let section = null;
+    if (related.length) {
+      page.insertAdjacentHTML('beforeend', relatedSectionHtml(related, {
+        title: t('related.title'),
+        sub: t('related.sub')
+      }));
+      section = page.querySelector('.related');
+      bindRelatedRail(section);
+    }
 
     // ── "También en:": la gama, visible donde se decide ──
-    // Patrón de swatches de PDP: miniaturas de los HERMANOS de gama (solo cross;
-    // los artículos de la colección se quedan en el raíl) junto a la referencia, para ver de un
-    // vistazo que el modelo existe en otros colores sin bajar la página. Máximo 6
-    // y "+N" que lleva con scroll suave al raíl completo.
+    // Patrón de swatches de PDP: el color del PROPIO artículo abre la fila (marcado,
+    // no clicable: "estás viendo BLACK") seguido de los HERMANOS de gama (solo cross;
+    // los artículos de la colección se quedan en el raíl). Máximo 6 swatches en
+    // escritorio, 5 en móvil, y "+N" que lleva con scroll suave al raíl completo.
     const cross = related.filter(entry => entry.relation === 'cross');
-    const refLine = page.querySelector('.product-ref');
-    if (cross.length && refLine) {
-      const MAX = 6;
+    if (cross.length && slot) {
+      // Pie de color: los nombres siguen "MODELO — COLOR" (raya em — o en –, con
+      // espacios); sin raya no hay pie
+      const colorOf = name => {
+        const parts = String(name || '').split(/\s[—–]\s/);
+        return parts.length > 1 ? parts.pop().trim() : '';
+      };
+      // Miniatura ligera: un marco de 116px no necesita el JPEG de 1400px del visor
+      const thumbSrc = uri => (uri || '').replace(/([?&]width=)\d+/, '$1300');
+      const pic = uri => uri
+        ? `<img src="${esc(thumbSrc(uri))}" alt="" loading="lazy" decoding="async">`
+        : `<span class="alsoin-art" aria-hidden="true">${icons.shoe(32)}</span>`;
+
       const swatch = ({ card }) => {
-        const label = [card.name, card.reference && `${t('catalog.reference')} ${card.reference}`]
-          .filter(Boolean).join(' — ');
+        const color = colorOf(card.name);
+        // Sin stock en ninguna talla (availability solo "consult"): foto atenuada + AGOTADO
+        const out = (card.availability || []).includes('consult');
+        // El PVD del hermano SOLO cuando difiere del artículo abierto (igual es ruido)
+        const price = !out && card.pvd != null && card.pvd !== item.pvd ? eur(card.pvd) : '';
+        const label = [card.name, card.reference && `${t('catalog.reference')} ${card.reference}`,
+          out ? t('related.out') : ''].filter(Boolean).join(' — ');
         const url = `${href('product')}/${encodeURIComponent(card.reference || card.modelId)}`;
         return `
-          <a class="alsoin-thumb" href="${esc(url)}" title="${esc(label)}" aria-label="${esc(label)}">
-            ${card.imageUri
-              ? `<img src="${esc(card.imageUri)}" alt="" loading="lazy" decoding="async">`
-              : `<span class="alsoin-art" aria-hidden="true">${icons.shoe(32)}</span>`}
+          <a class="alsoin-thumb${out ? ' is-out' : ''}" href="${esc(url)}"
+            title="${esc(label)}" aria-label="${esc(label)}">
+            <span class="alsoin-pic">${pic(card.imageUri)}</span>
+            ${color ? `<span class="alsoin-color" aria-hidden="true">${esc(color)}</span>` : ''}
+            ${out ? `<span class="alsoin-sub alsoin-outlbl" aria-hidden="true">${esc(t('related.out'))}</span>`
+              : price ? `<span class="alsoin-sub" aria-hidden="true">${esc(price)}</span>` : ''}
           </a>`;
       };
-      refLine.insertAdjacentHTML('afterend', `
-        <div class="product-alsoin" role="group" aria-label="${esc(t('related.alsoIn'))}">
-          <span class="alsoin-label">${esc(t('related.alsoIn'))}</span>
-          ${cross.slice(0, MAX).map(swatch).join('')}
-          ${cross.length > MAX ? `
+
+      // Color actual primero; si el nombre no lleva raya, la fila queda como antes
+      const ownColor = colorOf(item.name);
+      const current = ownColor ? `
+        <span class="alsoin-thumb alsoin-current" aria-current="true" title="${esc(item.name || '')}">
+          <span class="alsoin-pic">${pic(item.imageUri)}</span>
+          <span class="alsoin-color">${esc(ownColor)}</span>
+        </span>` : '';
+
+      // Tope de la fila (el swatch actual cuenta): 6 escritorio / 5 móvil
+      const max = matchMedia('(max-width:48rem)').matches ? 5 : 6;
+      const shown = Math.max(1, max - (current ? 1 : 0));
+      slot.innerHTML = `
+        <div class="product-alsoin" role="group" aria-labelledby="alsoin-label">
+          <span class="alsoin-label" id="alsoin-label">${esc(t('related.alsoIn'))}</span>
+          ${current}
+          ${cross.slice(0, shown).map(swatch).join('')}
+          ${cross.length > shown ? `
             <button type="button" class="alsoin-more" title="${esc(t('related.next'))}"
-              aria-label="${esc(t('related.next'))}">+${cross.length - MAX}</button>` : ''}
-        </div>`);
+              aria-label="${esc(t('related.next'))}">+${cross.length - shown}</button>` : ''}
+        </div>`;
+      slot.removeAttribute('data-pending');
       // "+N": el resto de la gama vive en el raíl "Completa la gama" de abajo
-      page.querySelector('.alsoin-more')?.addEventListener('click', () => {
-        section.scrollIntoView({
-          behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-          block: 'start'
-        });
+      slot.querySelector('.alsoin-more')?.addEventListener('click', () => {
+        section?.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
       });
+    } else {
+      collapseSlot();
     }
 
     const alsoIn = page.querySelector('.product-alsoin');
-    void section.offsetWidth;   // reflow: la transición de entrada arranca desde el estado inicial
-    section.classList.add('on');
+    if (section) {
+      void section.offsetWidth;   // reflow: la transición de entrada arranca desde el estado inicial
+      section.classList.add('on');
+    } else {
+      void alsoIn?.offsetWidth;
+    }
     alsoIn?.classList.add('on');
   })();
 
