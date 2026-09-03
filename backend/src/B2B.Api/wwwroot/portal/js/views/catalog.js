@@ -223,12 +223,17 @@ export default async function catalog(host) {
     }
   };
 
-  // slug de servidor → { key, value } crudos para query.attributes. Si el mapa aún
-  // no conoce el valor (deep-link con facetas recortadas) se usan los slugs tal
-  // cual: la clave casa igual (el servidor compara sin mayúsculas) y TODO restaura.
+  // slug de servidor → { key, value } crudos para query.attributes. Prioridad del
+  // valor: el vocabulario de facetas; si no lo conoce (facetas recortadas por otro
+  // filtro), `entry.raw` — el valor CRUDO que la propia cinta trae del servidor y
+  // que el filtro compara tal cual (fix de revisión: el slug no casaba y dejaba el
+  // catálogo vacío en silencio); el slug queda de último recurso (cintas antiguas).
   const resolveEntry = entry => {
     const rec = ribbonVocab.get(entry.attributeId);
-    return { key: rec?.key || entry.attributeId, value: rec?.values.get(entry.value) ?? entry.value };
+    return {
+      key: rec?.key || entry.attributeId,
+      value: rec?.values.get(entry.value) ?? entry.raw ?? entry.value
+    };
   };
 
   const familyOf = entry => entry.key.startsWith('family:') ? entry.key.slice(7) : '';
@@ -310,7 +315,12 @@ export default async function catalog(host) {
     prev.onclick = () => rail.scrollBy({ left: -step(), behavior: reduced ? 'auto' : 'smooth' });
     next.onclick = () => rail.scrollBy({ left: step(), behavior: reduced ? 'auto' : 'smooth' });
     rail.addEventListener('scroll', update, { passive: true });
-    const onResize = () => (ribbon.isConnected ? update() : removeEventListener('resize', onResize));
+    // El listener de resize se vigila con un temporizador barato además del propio
+    // evento (patrón de related.js): si la cinta se desconecta al cambiar de vista,
+    // se retira aunque el usuario nunca redimensione — sin acumulación de listeners.
+    const onResize = () => (ribbon.isConnected ? update() : dispose());
+    const watchdog = setInterval(() => { if (!ribbon.isConnected) dispose(); }, 15_000);
+    function dispose() { removeEventListener('resize', onResize); clearInterval(watchdog); }
     addEventListener('resize', onResize);
 
     // El estado activo puede llegar por deep-link: el chip encendido se centra
@@ -388,6 +398,9 @@ export default async function catalog(host) {
     // La cinta llega en paralelo con el primer catálogo y se pinta en ESTA misma
     // pasada (los esqueletos aún están: nada legible se mueve al aparecer).
     if (ribbonEntries === null) ribbonEntries = await ribbonFetch;
+    // Tras el await el usuario puede haber navegado: si la vista ya no está
+    // conectada, no se pinta nada encima de la siguiente (patrón del checkout).
+    if (!list.isConnected) return;
     feedRibbonVocab();
     buildRibbon();
 

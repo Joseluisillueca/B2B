@@ -122,7 +122,8 @@ public static class ShopEndpoints
             // que el actor no pueda ver. Sin config → solo familias (cinta autogenerada).
             var candidates = new List<RibbonCandidate>();
             foreach (var family in page.Families)
-                candidates.Add(new("family:" + family.Id, "family", null, null, family.Label, family.Count));
+                candidates.Add(new("family:" + family.Id, "family", null, null, family.Label, family.Count,
+                    Raw: family.Id));
 
             if (config?["attributes"] is JsonArray attributes)
                 foreach (var wanted in attributes)
@@ -134,7 +135,9 @@ public static class ShopEndpoints
                     if (facet is null) continue;
                     foreach (var value in facet.Values)
                         candidates.Add(new($"attr:{facet.KeySlug}:{value.Slug}", "attr",
-                            facet.KeySlug, value.Slug, value.Label, value.Count));
+                            // Raw = el valor CRUDO de BC (Value/Label de la faceta, ANTES de los
+                            // overrides de títulos): es lo que el filtro a.{clave}= compara tal cual.
+                            facet.KeySlug, value.Slug, value.Label, value.Count, Raw: value.Value));
                 }
 
             // Overrides por entrada: hidden → fuera; order → delante (los sin order al
@@ -152,6 +155,9 @@ public static class ShopEndpoints
                     kind = x.candidate.Kind,
                     attributeId = x.candidate.AttributeId,
                     value = x.candidate.Value,
+                    // El valor crudo NO pasa por los overrides de títulos: es dato de
+                    // filtro, no etiqueta — el front lo manda tal cual en a.{clave}=.
+                    raw = x.candidate.Raw,
                     label = Title(x.over, locale) ?? x.candidate.Label,
                     count = x.candidate.Count,
                 });
@@ -308,7 +314,7 @@ public static class ShopEndpoints
     // ── Helpers de la cinta ────────────────────────────────────────────────────
 
     private sealed record RibbonCandidate(
-        string Key, string Kind, string? AttributeId, string? Value, string Label, int Count);
+        string Key, string Kind, string? AttributeId, string? Value, string Label, int Count, string Raw);
 
     private sealed record RibbonOverride(bool Hidden, int? Order, JsonObject? Titles);
 

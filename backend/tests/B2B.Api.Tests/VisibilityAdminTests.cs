@@ -348,10 +348,14 @@ public class VisibilityAdminTests : IClassFixture<TestWebApplicationFactory>
             Assert.Equal("beta", entries[0].GetProperty("value").GetString());
             Assert.Equal("Beta EN", entries[0].GetProperty("label").GetString());
             Assert.Equal(1, entries[0].GetProperty("count").GetInt32());
+            // `raw` = el valor CRUDO de BC con el que filtra a.{clave}=; el override
+            // de título ("Beta EN") NO lo toca — es dato de filtro, no etiqueta.
+            Assert.Equal("BETA", entries[0].GetProperty("raw").GetString());
 
             // Sin título configurado → label de la faceta (el valor tal cual llega de BC).
             Assert.Equal("attr:marcar6:alfa", entries[1].GetProperty("key").GetString());
             Assert.Equal("ALFA", entries[1].GetProperty("label").GetString());
+            Assert.Equal("ALFA", entries[1].GetProperty("raw").GetString());
 
             // GAMMA (fuera del scope) JAMÁS aparece; la familia hidden tampoco.
             Assert.DoesNotContain(entries, e => (e.GetProperty("key").GetString() ?? "").Contains("gamma"));
