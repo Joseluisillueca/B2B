@@ -523,6 +523,12 @@ public static class AgentEndpoints
             var take = Math.Clamp(Int(request.Query["take"], 24), 1, 100);
 
             var models = await db.CatalogModels.Where(m => m.Active).ToListAsync();
+            // Visibilidad (Tarea 5): el selector "Añadir más modelos" listaba TODO el
+            // catálogo activo, cliente aparte — un agente restringido podía añadir a la
+            // selección lo que ni el propio cliente ve. Scope SOLO del agente (sin cliente:
+            // aquí no hay uno concreto, es la cartera entera del comercial).
+            var visibility = await Shop.VisibilityStore.ScopeForAsync(db, null, actor.User.AgentExternalId);
+            if (visibility.IsRestricted) models = models.Where(visibility.Visible).ToList();
             var imageByModel = (await db.SyncDocuments.Where(d => d.EntityType == "model-image").ToListAsync())
                 .ToDictionary(d => d.ExternalId, d => ModelImageUri(d.Payload), StringComparer.OrdinalIgnoreCase);
             var rows = models

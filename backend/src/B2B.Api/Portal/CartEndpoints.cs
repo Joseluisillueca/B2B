@@ -217,6 +217,26 @@ public static class CartEndpoints
             if (actor is null) return Unknown();
             if (Invalid(body, requireName: false, out var lines, out var problem)) return problem;
 
+            // Visibilidad (Tarea 5): el checkout arma el pedido con las líneas que manda el
+            // CLIENTE, sin pasar por CatalogService.QueryAsync (donde la Tarea 4 enchufó el
+            // filtro) — así que sin esto un cliente restringido podía comprar por id lo que
+            // no ve en el catálogo. Un único punto, COMÚN a los dos modos (portal/erp): aquí,
+            // con `lines` ya resuelto y ANTES de la primera bifurcación y de cualquier
+            // SaveChanges. Un modelo que ni siquiera existe en el catálogo (id inventado o
+            // desactivado) también se bloquea: "conocido" sale de esta misma consulta.
+            var visibility = await Shop.VisibilityStore.ScopeForAsync(db, actor.ClientId, actor.User.AgentExternalId);
+            if (visibility.IsRestricted)
+            {
+                var modelIds = lines.Select(l => l.ModelId ?? "").Where(s => s.Length > 0).Distinct().ToList();
+                var models = await db.CatalogModels.Where(m => modelIds.Contains(m.ExternalId)).ToListAsync();
+                var blocked = models.Where(m => !visibility.Visible(m)).Select(m => m.ExternalReference).ToList();
+                var known = models.Select(m => m.ExternalId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                blocked.AddRange(modelIds.Where(id => !known.Contains(id)));
+                if (blocked.Count > 0)
+                    return Results.BadRequest(new { error =
+                        $"Estos artículos no están disponibles para tu cuenta: {string.Join(", ", blocked)}." });
+            }
+
             var settings = await db.IntegrationSettings.FindAsync(1) ?? new Data.IntegrationSettings();
             var portalMode = PortalOrdersMode(settings, config);
             string? orderType = null;

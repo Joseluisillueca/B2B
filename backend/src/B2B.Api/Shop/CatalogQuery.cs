@@ -223,14 +223,6 @@ public static class CatalogService
             AttributeFacets: AttributeFacets(all, query, vocabulary));
     }
 
-    /// Mismas filas que el listado pero sin paginar: lo que baja "Desc. Stock"
-    public static async Task<IReadOnlyList<CatalogRow>> RowsAsync(
-        AppDbContext db, PortalActorPrices prices, CatalogQuery query, DateTimeOffset now)
-    {
-        var page = await QueryAsync(db, prices, query with { Skip = 0, Take = CatalogQuery.ExportTake }, now);
-        return page.Rows;
-    }
-
     private static ServiceWindow? PickWindow(List<ServiceWindow> windows, string? requested)
     {
         if (!string.IsNullOrEmpty(requested))
