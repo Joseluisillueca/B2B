@@ -248,6 +248,31 @@ public class VisibilityAdminTests : IClassFixture<TestWebApplicationFactory>
         Assert.Empty(await RowsAsync("client", clientId));
     }
 
+    // ── 3a. Resumen para los chips de las listas de /manage (UX-M6, 14a-5):
+    // { client: {id: source}, agent: {id: source} } con la fuente EFECTIVA por sujeto ──
+
+    [Fact]
+    public async Task GetSummary_DevuelveSujetosConReglasYSuFuenteEfectiva()
+    {
+        const string onlyBc = "VISAD3AC-0000-4000-9000-000000000031";
+        const string both = "VISAD3AB-0000-4000-9000-000000000032";
+        const string onlyManualAgent = "VISAD3AA-0000-4000-9000-000000000033";
+        await SeedVisibilityRowAsync("client", onlyBc, "bc", """[{"attributeId":"marca","valueIds":["a"]}]""");
+        await SeedVisibilityRowAsync("client", both, "bc", """[{"attributeId":"marca","valueIds":["a"]}]""");
+        await SeedVisibilityRowAsync("client", both, "manual", """[{"attributeId":"marca","valueIds":["b"]}]""");
+        await SeedVisibilityRowAsync("agent", onlyManualAgent, "manual", """[{"attributeId":"marca","valueIds":["c"]}]""");
+
+        var admin = await _factory.GetAdminTokenAsync(_client);
+        var response = await Send(HttpMethod.Get, "/api/admin/visibility/summary", admin);
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal("bc", body.GetProperty("client").GetProperty(onlyBc).GetString());
+        Assert.Equal("bc", body.GetProperty("client").GetProperty(both).GetString());
+        Assert.Equal("manual", body.GetProperty("agent").GetProperty(onlyManualAgent).GetString());
+        Assert.False(body.GetProperty("agent").TryGetProperty(onlyBc, out _));
+    }
+
     // ── 3b. Borrar un cliente/agente desde /manage limpia sus filas de visibilidad
     // (14a-3): ni la bc ni la manual sobreviven al sujeto ──────────────────────
 

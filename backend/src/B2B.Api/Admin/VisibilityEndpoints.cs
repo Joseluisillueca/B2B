@@ -18,6 +18,22 @@ public static class VisibilityEndpoints
 {
     public static void MapVisibilityEndpoints(this IEndpointRouteBuilder app)
     {
+        // ── Resumen para las listas de /manage (UX-M6, 14a-5) ─────────────────
+        // { client: {id: source}, agent: {id: source} } — solo los sujetos con reglas,
+        // con la fuente EFECTIVA (misma precedencia que el runtime: bc manda sobre manual).
+        // Va ANTES de /{type}/{id} para que "summary" no se lea como un tipo.
+        app.MapGet("/api/admin/visibility/summary", async (AppDbContext db) =>
+        {
+            var rows = await db.CatalogVisibilities
+                .Select(v => new { v.SubjectType, v.SubjectId, v.Source })
+                .ToListAsync();
+            Dictionary<string, string> Effective(string type) => rows
+                .Where(r => r.SubjectType == type)
+                .GroupBy(r => r.SubjectId)
+                .ToDictionary(g => g.Key, g => g.Any(r => r.Source == "bc") ? "bc" : "manual");
+            return Results.Ok(new { client = Effective("client"), agent = Effective("agent") });
+        }).RequireAdmin();
+
         // ── Visibilidad por sujeto (cliente o agente) ──────────────────────────
 
         app.MapGet("/api/admin/visibility/{type}/{id}", async (string type, string id, AppDbContext db) =>

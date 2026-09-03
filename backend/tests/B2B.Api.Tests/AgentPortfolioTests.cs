@@ -60,7 +60,8 @@ public class AgentPortfolioTests : IClassFixture<AgentPortfolioTests.Factory>
 
             // Pedidos: CP1 ×2 (uno REPLENISHMENT, uno SCHEDULED), CP2 ×1, CP3 ×1
             Doc("order", "PO-1", CP1, OrderDoc("PV0001", CP1, 1000, "REPLENISHMENT", "open"));
-            Doc("order", "PO-2", CP1, OrderDoc("PV0002", CP1, 500, "SCHEDULED", "shipped"));
+            // PO-2 lo creó el agente A suplantando (saleId) → UX-A3: la lista lo atribuye.
+            Doc("order", "PO-2", CP1, OrderDoc("PV0002", CP1, 500, "SCHEDULED", "shipped", saleId: AgentA));
             Doc("order", "PO-3", CP2, OrderDoc("PV0003", CP2, 250, "REPLENISHMENT", "invoiced"));
             Doc("order", "PO-9", CP3, OrderDoc("PV9999", CP3, 999, "REPLENISHMENT", "open"));
 
@@ -117,6 +118,14 @@ public class AgentPortfolioTests : IClassFixture<AgentPortfolioTests.Factory>
         Assert.Contains("Calzados Uno", clientNames);
         Assert.Contains("Deportes Dos", clientNames);
         Assert.DoesNotContain("Zapatos Tres", clientNames);
+
+        // UX-A3 (14a-5): cada pedido expone el agente creador (saleId → nombre del doc agent).
+        var byAgent = items.Single(i => i.GetProperty("number").GetString() == "PV0002");
+        Assert.Equal(AgentA, byAgent.GetProperty("agentId").GetString());
+        Assert.Equal("Comercial Cartera A", byAgent.GetProperty("agentName").GetString());
+        var byClient = items.Single(i => i.GetProperty("number").GetString() == "PV0001");
+        Assert.Equal("", byClient.GetProperty("agentId").GetString());
+        Assert.Equal(JsonValueKind.Null, byClient.GetProperty("agentName").ValueKind);
     }
 
     [Fact]
@@ -382,10 +391,10 @@ public class AgentPortfolioTests : IClassFixture<AgentPortfolioTests.Factory>
           "name": "{{name}}", "email": "{{email}}", "culture": "es_ES" }
         """;
 
-    private static string OrderDoc(string number, string clientId, decimal total, string type, string status) =>
+    private static string OrderDoc(string number, string clientId, decimal total, string type, string status, string saleId = "") =>
         $$"""
         { "externalReference": "{{number}}", "clientId": "{{clientId}}", "type": "{{type}}",
-          "status": "{{status}}", "orderedDate": "2026-08-10T00:00:00",
+          "status": "{{status}}", "orderedDate": "2026-08-10T00:00:00", "saleId": "{{saleId}}",
           "purchaseOrderId": "{{number}}",
           "totals": { "total": { "code": "EUR", "value": {{total}} } },
           "items": [ { "transactionInfo": { "info": { "quantity": 3 } } } ] }

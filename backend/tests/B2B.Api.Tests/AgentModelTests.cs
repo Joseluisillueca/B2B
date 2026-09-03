@@ -230,6 +230,47 @@ public class AgentModelTests : IClassFixture<AgentModelTests.Factory>, IAsyncLif
         Assert.Equal("Comercial A", credential.GetProperty("name").GetString());
     }
 
+    // UX-A1 (14a-5): bajo suplantación /me devuelve la ficha del cliente SUPLANTADO
+    // (fiscalInfo, direcciones, formas de pago) igual que para un cliente normal, y la
+    // credencial de cliente va delante con su nombre: el checkout ya no enseña al
+    // agente como cliente/facturación ni pierde direcciones y pagos.
+    [Fact]
+    public async Task Me_Suplantando_DevuelveFichaDelClienteSuplantado()
+    {
+        // Mismos datos de A2 que la semilla + forma de pago y una dirección de envío.
+        await PutAsync($"/api/clients/{ClientA2}", """
+            { "name": "CLIENTE A2", "externalReference": "C0002", "canShop": false, "groupIds": [],
+              "productSegments": ["B"], "payMethods": ["transf30"],
+              "fiscalInfo": { "fiscalName": "Cliente A2 SL", "address": { "city": "Vigo", "province": "Pontevedra", "countryIsoId": "ES" } } }
+            """);
+        await PutAsync($"/api/clients/{ClientA2}/shipping-addresses/SA-A2-0001",
+            """{ "alias": "Almacén Vigo", "address": { "city": "Vigo", "countryIsoId": "ES" } }""");
+
+        var impersonate = await PostAsync("/api/agent/impersonate", new { clientId = ClientA2 }, await AgentAToken());
+        var token = (await impersonate.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("token").GetString()!;
+
+        var body = await JsonAsync("/api/portal/me", token);
+
+        Assert.True(body.GetProperty("isAgent").GetBoolean());
+        Assert.True(body.GetProperty("impersonating").GetBoolean());
+        var client = body.GetProperty("client");
+        Assert.Equal(ClientA2, client.GetProperty("id").GetString());
+        Assert.Equal("CLIENTE A2", client.GetProperty("name").GetString());
+        Assert.Equal("Cliente A2 SL", client.GetProperty("fiscalInfo").GetProperty("fiscalName").GetString());
+        Assert.Equal("transf30", client.GetProperty("payMethods")[0].GetProperty("id").GetString());
+        Assert.Equal("SA-A2-0001", client.GetProperty("shippingAddresses")[0].GetProperty("id").GetString());
+
+        // La credencial del cliente (la que usa el checkout) va primero y lleva SU nombre.
+        var first = body.GetProperty("credentials")[0];
+        Assert.Equal("CLIENTE A2", first.GetProperty("name").GetString());
+        Assert.Equal(ClientA2, first.GetProperty("clientId").GetString());
+
+        // Sin suplantar, todo sigue igual: sin cliente.
+        var plain = await JsonAsync("/api/portal/me", await AgentAToken());
+        Assert.Equal(JsonValueKind.Null, plain.GetProperty("client").ValueKind);
+        Assert.False(plain.GetProperty("impersonating").GetBoolean());
+    }
+
     // ══════════════ /api/agent/clients ══════════════
 
     [Fact]

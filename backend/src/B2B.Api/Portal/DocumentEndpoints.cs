@@ -52,11 +52,14 @@ public static class DocumentEndpoints
 
             var row = DocumentProjections.Order(id, payload);
             if (row is null) return NotFound();   // una devolución no es un pedido
+            row = (await AgentNames.AttachAsync(db, [row]))[0];
 
             return Results.Ok(new
             {
                 row.Id, row.Number, row.Date, row.Reference, row.Type,
                 row.Units, row.Total, row.Currency, row.Status, row.Season,
+                // UX-A3: "Gestionado por {agente}" cuando lo creó un comercial suplantando.
+                row.AgentId, row.AgentName,
                 payMethodId = DocumentProjections.Text(payload["payMethodId"]),
                 observations = DocumentProjections.Text(payload["observations"]),
                 shippingAddress = DocumentProjections.Address(payload["shippingAddress"]),
@@ -180,7 +183,8 @@ public static class DocumentEndpoints
         // Los pedidos de devolución comparten endpoint con los pedidos: Order() los
         // descarta devolviendo null y aquí se caen del listado.
         var rows = docs.Select(doc => DocumentProjections.Order(doc.Id, doc.Payload)).OfType<OrderRow>();
-        return (rows, query);
+        // UX-A3: columna "Agente" en la lista del cliente (nombre resuelto una vez por petición).
+        return (await AgentNames.AttachAsync(db, rows), query);
     }
 
     private static async Task<(IEnumerable<DeliveryNoteRow> Rows, DocumentQuery Query)> DeliveryNotesAsync(

@@ -300,6 +300,10 @@ public static class AgentEndpoints
             var docs = await LoadPortfolioDocsAsync(db, entity, ids);
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             var orderType = request.Query["orderType"].ToString().Trim().ToUpperInvariant();
+            // UX-A3: nombre del comercial creador de cada pedido (saleId), resuelto una vez.
+            var agentNames = entity == DocumentProjections.OrderEntity
+                ? await AgentNames.ResolveAsync(db, docs.Select(d => ClientIdentity.Text(d.Payload["saleId"])))
+                : [];
 
             // Local genérica: proyecta cada doc a su fila, la envuelve con su cliente,
             // pagina con el pipeline compartido y proyecta el item de salida.
@@ -322,9 +326,12 @@ public static class AgentEndpoints
             return entity switch
             {
                 DocumentProjections.OrderEntity => Page<OrderRow>(
-                    DocumentProjections.Order, DocumentProjections.OrderStatuses,
+                    (id, p) => DocumentProjections.Order(id, p) is { } row
+                        ? row with { AgentName = agentNames.GetValueOrDefault(row.AgentId) } : null,
+                    DocumentProjections.OrderStatuses,
                     r => new { client = Client(r), r.Inner.Id, r.Inner.Number, r.Inner.Date,
-                        r.Inner.Reference, r.Inner.Type, r.Inner.Units, r.Inner.Total, r.Inner.Currency, r.Inner.Status },
+                        r.Inner.Reference, r.Inner.Type, r.Inner.Units, r.Inner.Total, r.Inner.Currency, r.Inner.Status,
+                        r.Inner.AgentId, r.Inner.AgentName },
                     keep: orderType.Length > 0 ? row => string.Equals(row.Type, orderType, StringComparison.OrdinalIgnoreCase) : null),
 
                 DocumentProjections.DeliveryNoteEntity => Page<DeliveryNoteRow>(

@@ -25,9 +25,12 @@ public interface IDocumentRow
 
 public sealed record OrderRow(
     string Id, string Number, DateTimeOffset? Date, string Reference, string Type,
-    decimal Units, decimal Total, string Currency, string Status, string Season) : IDocumentRow
+    decimal Units, decimal Total, string Currency, string Status, string Season,
+    // UX-A3: el comercial que creó el pedido suplantando (saleId del doc; "" si lo hizo
+    // el propio cliente). El nombre lo resuelve AgentNames por petición (doc agent).
+    string AgentId = "", string? AgentName = null) : IDocumentRow
 {
-    [JsonIgnore] public string SearchBlob => $"{Number} {Reference} {Type}";
+    [JsonIgnore] public string SearchBlob => $"{Number} {Reference} {Type} {AgentName}";
 }
 
 public sealed record DeliveryNoteRow(
@@ -130,7 +133,8 @@ public static class DocumentProjections
             Total: total,
             Currency: Currency(payload["totals"]?["total"]),
             Status: OrderStatus(payload),
-            Season: Text(payload["seasonId"]));
+            Season: Text(payload["seasonId"]),
+            AgentId: Text(payload["saleId"]));
     }
 
     private static string OrderStatus(JsonObject payload)

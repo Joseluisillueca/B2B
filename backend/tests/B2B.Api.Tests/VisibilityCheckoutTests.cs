@@ -577,6 +577,17 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         // agente creador, mismo valor que el saliente a BC.
         var nativeDoc = await NativeOrderPayloadAsync(orderId);
         Assert.Equal(agentId, nativeDoc.GetProperty("saleId").GetString());
+
+        // UX-A3 (14a-5): el cliente ve quién gestionó el pedido (lista y detalle).
+        var list = await (await Send(HttpMethod.Get, "/api/portal/orders", impersonatedToken))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        var row = list.GetProperty("items").EnumerateArray().Single(i => i.GetProperty("id").GetString() == orderId);
+        Assert.Equal(agentId, row.GetProperty("agentId").GetString());
+        Assert.Equal("Comercial", row.GetProperty("agentName").GetString());
+        var detail = await (await Send(HttpMethod.Get, $"/api/portal/orders/{orderId}", impersonatedToken))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(agentId, detail.GetProperty("agentId").GetString());
+        Assert.Equal("Comercial", detail.GetProperty("agentName").GetString());
     }
 
     [Fact]

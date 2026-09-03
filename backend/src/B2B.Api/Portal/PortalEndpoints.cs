@@ -1,4 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.Json.Nodes;
 using B2B.Api.Data;
@@ -16,9 +15,15 @@ public static class PortalEndpoints
         // Se proyecta de los sync_documents client y shipping-address.
         app.MapGet("/api/portal/me", async (HttpRequest request, ClaimsPrincipal principal, AppDbContext db) =>
         {
-            var user = await CurrentUserAsync(principal, db);
-            if (user is null)
+            // UX-A1 (14a-5): el cliente de ámbito sale del MISMO sitio que en el resto del
+            // portal (PortalScope.ActorAsync): el vínculo del usuario o, bajo suplantación,
+            // el claim clientId del token del agente. Antes /me miraba solo el vínculo y un
+            // agente suplantando recibía client:null → el checkout lo enseñaba a él como
+            // cliente y perdía direcciones y formas de pago.
+            var actor = await PortalScope.ActorAsync(principal, db);
+            if (actor is null)
                 return Results.Json(new { error = "Unknown user" }, statusCode: StatusCodes.Status401Unauthorized);
+            var user = actor.User;
 
             // M5: el nombre de la forma de pago viene traducido del sync. Sin parámetro
             // se usa la cultura del propio usuario, que es la que el portal ya respeta.
@@ -26,7 +31,9 @@ public static class PortalEndpoints
                 ? DocumentProjections.Locale(request.Query["locale"])
                 : DocumentProjections.Locale(user.Culture);
 
-            var client = await ClientCardAsync(db, user.ClientExternalId, locale);
+            var client = await ClientCardAsync(db, actor.ClientId, locale);
+            var impersonating = client is not null
+                && !string.IsNullOrEmpty(principal.FindFirstValue("actingAgent"));
             var role = ClientIdentity.RoleLabel(user.Role);
             // M-4: la etiqueta se queda por compatibilidad y la clave estable es la que
             // traduce el portal (roleKey en el usuario, typeKey/roleKey en la credencial).
@@ -69,6 +76,9 @@ public static class PortalEndpoints
                 roleKey,
                 culture = user.Culture,
                 isAgent,
+                // true cuando el token es de un comercial que ha elegido cliente: `client`
+                // es entonces la ficha del suplantado (el front pinta "gestionado por").
+                impersonating,
                 credentials,
                 client,
                 // Preferencias de /profile: el catálogo necesita saber ya en el
@@ -104,16 +114,6 @@ public static class PortalEndpoints
 
             return Results.Ok(new { key, locale = block?.Locale ?? requested, items });
         }).RequireAuthorization();
-    }
-
-    private static async Task<AppUser?> CurrentUserAsync(ClaimsPrincipal principal, AppDbContext db)
-    {
-        // JwtBearer mapea "sub" a NameIdentifier salvo que se desactive MapInboundClaims
-        var id = principal.FindFirstValue(ClaimTypes.NameIdentifier)
-                 ?? principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
-        return Guid.TryParse(id, out var userId)
-            ? await db.Users.SingleOrDefaultAsync(u => u.Id == userId && u.IsActive)
-            : null;
     }
 
     // Proyección canónica del cliente: lo que el portal necesita en cada vista
