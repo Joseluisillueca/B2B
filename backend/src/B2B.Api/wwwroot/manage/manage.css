@@ -96,7 +96,8 @@ table.grid tbody tr.row-link { cursor:pointer; }
   padding:.16rem .5rem; color:var(--ink-2); }
 .grid-chip.ok { color:var(--ok); border-color:#b6d9c3; background:#f0f8f3; }
 .grid-chip.off { color:var(--muted); }
-.grid-chip.warn { color:var(--low); border-color:#e6d3a6; background:#fbf6e9; }
+/* #7d5710 (6,0:1 sobre #fbf6e9): el ámbar de --low a .72rem se queda en 3,36:1 */
+.grid-chip.warn { color:#7d5710; border-color:#e6d3a6; background:#fbf6e9; }
 .grid-chip.danger { color:var(--out); border-color:#e6b6b0; background:#fdf1f0; }
 
 /* ── Formulario (reutiliza .biz-*/.acc-*; aquí solo pequeños ajustes) ── */
@@ -458,7 +459,9 @@ a.mng-rel-chip:hover b { text-decoration:underline; text-underline-offset:.15em;
 .rb-lang { border:1px solid var(--line-control); background:none; border-radius:0; cursor:pointer;
   font:inherit; font-size:.72rem; font-weight:800; letter-spacing:.1em; padding:.32rem .6rem; color:var(--ink-2); }
 .rb-lang:hover { border-color:var(--ink); color:var(--ink); }
-.rb-lang.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+/* Blanco sobre --blue son 4,20:1 en un texto de .72rem: se usa el rojo de TEXTO
+   (--blue-text #b8230c), 6,40:1, la misma política que .rb-chip.on y .rb-dirty. */
+.rb-lang.on { background:var(--blue-text); border-color:var(--blue-text); color:#fff; }
 /* Maqueta: mismo lenguaje que la cinta real del portal (.rib-*): pestañas uppercase
    sobre un raíl con regla, la activa en rojo de marca. Solo lectura (spans). */
 .rb-mock { border:1px solid var(--line); background:var(--card); padding:.85rem 1.3rem 0; }
@@ -468,9 +471,13 @@ a.mng-rel-chip:hover b { text-decoration:underline; text-underline-offset:.15em;
 .rb-band { display:flex; align-items:stretch; gap:1.7rem; overflow-x:auto; scrollbar-width:none;
   border-bottom:1px solid var(--line); }
 .rb-band::-webkit-scrollbar { display:none; }
-/* Desvanecido por la derecha: la maqueta insinúa que la cinta sigue, como en el portal */
-.rb-band { -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 2rem), transparent);
-  mask-image:linear-gradient(to right, #000 calc(100% - 2rem), transparent); }
+/* Sin desvanecido por la derecha. En el portal el degradado está condicionado al
+   estado real del raíl (.cat-ribbon.has-nav, con .at-start/.at-end levantándolo por
+   el lado que ya no esconde nada); aquí no lo estaba, así que difuminaba la última
+   pestaña con la maqueta entera a la vista —insinuando cinta que no existe— y no se
+   levantaba nunca al llegar al final. La maqueta es de SOLO LECTURA: no es navegación
+   y nadie tiene que alcanzar el último chip, así que se retira en lugar de mantener
+   una promesa que la vista previa no cumple. */
 .rb-chip { flex:none; display:inline-flex; align-items:baseline; gap:.32rem; padding:.58rem .1rem;
   font-size:.78rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
   color:var(--ink-2); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }
@@ -535,8 +542,13 @@ a.mng-rel-chip:hover b { text-decoration:underline; text-underline-offset:.15em;
 .rb-foot { margin-top:.7rem; }
 @media (max-width: 640px) {
   .rb-row { flex-wrap:wrap; }
-  /* Los botones bajan a su propia línea alineados con el nombre, no partidos a media fila */
-  .rb-tools { flex:0 0 100%; margin-left:2.55rem; }
+  /* Los botones bajan a su propia línea alineados con el nombre, no partidos a media
+     fila. El punto de alineación es la columna de flechas (2.75rem, justo abajo) más
+     el gap de .rb-row (1rem) = 3.75rem; con 2.55rem —el ancho de flecha ANTERIOR—
+     quedaban 1,2rem a la izquierda del nombre. Y la base ha de poder encoger: con
+     `flex:0 0 100%` más el margen, la línea envuelta tenía espacio libre negativo y
+     desbordaba 3,75rem, sacando barra horizontal a TODA la página de GESTIÓN. */
+  .rb-tools { flex:0 1 100%; min-width:0; margin-left:3.75rem; }
   .rb-move button { width:2.75rem; height:2.25rem; }
   .rb-titles { margin-left:0; }
   .rb-titles-grid { grid-template-columns:1fr; }
@@ -547,4 +559,49 @@ a.mng-rel-chip:hover b { text-decoration:underline; text-underline-offset:.15em;
   .vis-rule-attr { min-width:0; flex:1; }
   .vis-del { width:2.75rem; min-height:2.75rem; padding:0; justify-content:center; }
   .vis-del-text { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+}
+
+/* ── Marca: acordeón «Avanzado · estilo de la instancia» ──────────────────────
+   Lenguaje del back-office: filete, radio 0 y etiquetas en versalitas. Los
+   selectores llevan .acc-field delante (0,2,0) para ganar a `.acc-field span`
+   de app.css, que pone en MAYÚSCULAS todo span suelto dentro de un campo. */
+.brt { margin:.9rem 0 .2rem; border-top:1px solid var(--line); }
+.brt-toggle { display:flex; align-items:center; gap:.6rem; width:100%; padding:.85rem 0 .8rem;
+  background:none; border:0; border-radius:0; cursor:pointer; text-align:left; color:var(--ink); }
+.brt-toggle:hover .brt-toggle-t { color:var(--blue); }
+.brt-toggle:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+.brt-toggle-t { flex:1; font-size:.74rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; }
+.brt-caret { display:grid; place-items:center; color:var(--hint); transition:rotate .15s ease; }
+.brt-toggle[aria-expanded="true"] .brt-caret { rotate:180deg; }
+.brt-panel { padding:.2rem 0 .4rem; border-top:1px dashed var(--line-control); }
+/* El bloque de marca vive FUERA de `form.mng-form`, así que `.acc-field.wide` necesita
+   aquí su propia regla para ocupar toda la fila de la rejilla. */
+.brt-panel .acc-field.wide { grid-column:1 / -1; }
+.acc-field .brt-intro, .brt-intro { margin:.9rem 0 1.2rem; max-width:62ch; }
+.brt-group { margin:1.4rem 0 .9rem; padding-top:.9rem; border-top:1px solid var(--line);
+  font-size:.72rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--hint); }
+.brt-panel > .brt-group:first-of-type { border-top:0; padding-top:0; margin-top:0; }
+/* Color: selector + hexadecimal, igual que el acento de la marca */
+.acc-field .brt-color { display:flex; gap:.6rem; align-items:center; }
+.brt-color input[type=color] { width:2.6rem; height:2.2rem; flex:none; padding:.15rem;
+  border:1px solid var(--line-control); border-radius:0; background:#fff; cursor:pointer; }
+.acc-field .brt-color input:not([type=color]) { flex:1; min-width:0; }
+/* Caja de imagen (logo, logo oscuro, favicon) */
+.acc-field .brt-media { display:flex; gap:.8rem; align-items:center; min-height:2.4rem; flex-wrap:wrap; }
+.acc-field .brt-inline { display:flex; gap:.6rem; margin-top:.45rem; }
+.brt-inline .btn-ghost, .brt-panel .brt-media .btn-ghost { padding:.42rem .7rem; font-size:.72rem; }
+/* Campo que solo aparece con «Personalizado…» */
+.acc-field input.brt-sub { margin-top:.5rem; }
+.brt-panel code { font:.76rem/1 ui-monospace,Consolas,monospace; background:var(--paper);
+  border:1px solid var(--line); padding:.1rem .3rem; }
+.brt-panel .mng-check { margin:.15rem 0 0; }
+/* El campo que ha parado el guardado queda marcado hasta que se toca. Sin esto la
+   única señal era el foco, que se pierde en cuanto el usuario se mueve, y el aviso,
+   que se desvanece a los 6 s. Mismo lenguaje que .vis-rule.is-invalid. */
+.brt-panel [aria-invalid="true"] { border-color:var(--out); box-shadow:inset 3px 0 0 var(--out); }
+.brt-panel .acc-field .mng-check span { display:inline; font-size:.92rem; font-weight:400;
+  letter-spacing:0; text-transform:none; color:var(--ink-2); }
+@media (max-width: 640px) {
+  .brt-toggle { min-height:2.75rem; }
+  .brt-panel .brt-media .btn-ghost, .brt-inline .btn-ghost { min-height:2.75rem; }
 }

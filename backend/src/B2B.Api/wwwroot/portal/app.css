@@ -8,8 +8,12 @@
         radio 0 en todo, reglas divisorias fuertes, fondo gris claro, tinta casi
         negra. Se conservan los nombres de token (--blue*, --accent*, --r…) para
         que las 100+ reglas existentes tomen los valores nuevos sin reescribirse. */
-  --ink:#201e1d; --ink-2:#605d5d; --ink-3:#7d7979;
-  --paper:#f3f2f2; --surface:#eae9e9; --card:#f8f4f4; --line:#d3cfcf;
+  /* ── Marca configurable (tokens de /api/portal/branding, ver js/branding.js) ──
+     Cada token llega como variable --brand-* en el style inline de <html>; aquí solo
+     se lee con var(--token, <valor de MITO>). SIN tokens el valor por defecto es el de
+     siempre, así que el portal de MITO PROJECTS no cambia ni un píxel. */
+  --ink:var(--brand-ink,#201e1d); --ink-2:#605d5d; --ink-3:#7d7979;
+  --paper:var(--brand-paper,#f3f2f2); --surface:var(--brand-surface,#eae9e9); --card:#f8f4f4; --line:#d3cfcf;
   --gutter:clamp(1.25rem, 5vw, 4rem); --maxw:1240px;
   /* Ancho AMPLIO para superficies de rejilla (catálogo): casi a sangre en pantallas
      grandes, con solo --gutter de canal lateral. Cap alto para no volverse absurdo en
@@ -35,15 +39,20 @@
   --shadow-card:0 3px 10px color-mix(in srgb,#2d2b2b 16%,transparent);
   --ease:cubic-bezier(.16,1,.3,1);
   --header-h:66px;
-  /* Cabecera NEGRA modernist con tinta clara */
-  --header-bg:#201e1d; --header-ink:#f3f2f2; --header-ink-2:rgba(243,242,242,.62);
-  --display:"Archivo", system-ui, -apple-system, sans-serif;
+  /* Cabecera NEGRA modernist con tinta clara. --header-bg/--header-ink son tokens de
+     marca: branding.js los pisa en el style inline de <html> cuando la instancia los
+     configura. --header-ink-2 y --header-veil (velos, filetes y focos de la cabecera)
+     salen de la tinta, para que sigan viéndose si la cabecera pasa a ser clara. */
+  --header-bg:#201e1d; --header-ink:#f3f2f2;
+  --header-ink-2:color-mix(in srgb, var(--header-ink) 62%, transparent);
+  --header-veil:#fff;
+  --display:var(--brand-font,"Archivo"), system-ui, -apple-system, sans-serif;
 }
 
 * { box-sizing:border-box; }
 html { scrollbar-color:#c9bfab var(--surface); }
 body { margin:0; min-height:100vh; background:var(--paper); color:var(--ink);
-  font:15px/1.55 "Archivo",system-ui,sans-serif; font-variant-numeric:tabular-nums;
+  font:15px/1.55 var(--brand-font,"Archivo"),system-ui,sans-serif; font-variant-numeric:tabular-nums;
   -webkit-font-smoothing:antialiased; display:flex; flex-direction:column; }
 ::selection { background:var(--blue); color:#fff; }
 :focus-visible { outline:2px solid var(--blue); outline-offset:2px; border-radius:0; }
@@ -57,7 +66,8 @@ main { flex:1; outline:none; }
   padding:.6rem 1rem; z-index:100; }
 .skip:focus { left:0; }
 
-.brand { font-family:var(--display); font-weight:800; letter-spacing:-.03em; text-transform:none; }
+.brand { font-family:var(--display); font-weight:800;
+  letter-spacing:var(--brand-tracking,-.03em); text-transform:var(--brand-caps,none); }
 .brand sup { font-size:.42em; letter-spacing:0; vertical-align:.95em; }
 /* Marca configurable: si el despliegue sube logo, sustituye al texto en .brand */
 .brand img { display:block; height:28px; width:auto; max-width:220px; object-fit:contain; }
@@ -80,7 +90,7 @@ main { flex:1; outline:none; }
 .h-search input:focus { border-color:var(--blue); }
 /* Sobre el header negro el azul de marca no contrasta: el foco se marca en blanco */
 .h-search input:focus-visible, #chrome-header button:focus-visible, #chrome-header a:focus-visible {
-  outline:2px solid #fff; outline-offset:2px; }
+  outline:2px solid var(--header-veil); outline-offset:2px; }
 .h-search button { position:absolute; right:.4rem; top:50%; translate:0 -50%; padding:.35rem;
   color:var(--ink); border-radius:6px; display:grid; place-items:center; }
 .h-search button:hover { color:var(--blue); }
@@ -93,7 +103,7 @@ main { flex:1; outline:none; }
 .h-user { display:flex; align-items:center; gap:.6rem; position:relative; }
 .h-user > button { display:flex; align-items:center; gap:.6rem; padding:.3rem .4rem; border-radius:var(--r-sm);
   transition:background .15s var(--ease); }
-.h-user > button:hover { background:rgba(255,255,255,.12); }
+.h-user > button:hover { background:color-mix(in srgb, var(--header-veil) 12%, transparent); }
 .avatar { width:2.1rem; height:2.1rem; border-radius:50%; background:var(--accent); color:#fff; flex:none;
   display:grid; place-items:center; font-weight:700; font-size:.85rem; text-transform:uppercase; }
 .h-user .who { text-align:left; line-height:1.35; font-size:.8rem; }
@@ -114,14 +124,15 @@ main { flex:1; outline:none; }
 
 .h-icon { color:var(--header-ink); padding:.45rem; border-radius:var(--r-sm); display:grid; place-items:center;
   transition:background .15s var(--ease), color .15s var(--ease); }
-.h-icon:hover { background:rgba(255,255,255,.12); }
+.h-icon:hover { background:color-mix(in srgb, var(--header-veil) 12%, transparent); }
 .h-icon[aria-pressed="true"] { background:var(--header-ink); color:var(--blue); }
-#chrome-header .sep { width:1px; height:1.6rem; background:rgba(255,255,255,.22); }
+#chrome-header .sep { width:1px; height:1.6rem; background:color-mix(in srgb, var(--header-veil) 22%, transparent); }
 
-.h-lang { display:flex; align-items:center; gap:.35rem; border:1px solid rgba(255,255,255,.3); border-radius:999px;
+.h-lang { display:flex; align-items:center; gap:.35rem; border-radius:999px;
+  border:1px solid color-mix(in srgb, var(--header-veil) 30%, transparent);
   padding:.45rem .6rem .45rem .8rem; font-size:.82rem; font-weight:600; color:var(--header-ink); text-transform:uppercase;
   transition:border-color .15s var(--ease), background .15s var(--ease); }
-.h-lang:hover { border-color:var(--header-ink); background:rgba(255,255,255,.08); }
+.h-lang:hover { border-color:var(--header-ink); background:color-mix(in srgb, var(--header-veil) 8%, transparent); }
 
 /* Carrito: acento terracota, el único botón "acción" del header verde */
 .h-cart { display:flex; align-items:center; gap:.55rem; background:var(--accent); color:#fff;
@@ -149,10 +160,10 @@ main { flex:1; outline:none; }
   display:flex; align-items:center; justify-content:center; gap:1.5rem; padding:1.8rem; flex-wrap:wrap; }
 #chrome-footer > span:first-child { font-size:.82rem; letter-spacing:.05em; text-transform:uppercase; opacity:.9; }
 #chrome-footer .social { display:flex; align-items:center; gap:.9rem; }
-#chrome-footer .social a { padding:.25rem; border-radius:6px; color:#fff; opacity:.92;
+#chrome-footer .social a { padding:.25rem; border-radius:6px; color:var(--header-veil); opacity:.92;
   display:grid; place-items:center; transition:opacity .15s var(--ease), background .15s var(--ease); }
-#chrome-footer .social a:hover { opacity:1; background-color:rgba(255,255,255,.16); }
-#chrome-footer .social a:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+#chrome-footer .social a:hover { opacity:1; background-color:color-mix(in srgb, var(--header-veil) 16%, transparent); }
+#chrome-footer .social a:focus-visible { outline:2px solid var(--header-veil); outline-offset:2px; }
 
 /* ══════════════ Vistas con chrome ══════════════ */
 /* La referencia va casi a sangre: ~1,5 % de canal lateral, sin contenedor centrado.
@@ -163,7 +174,7 @@ main { flex:1; outline:none; }
 .crumbs a:hover { color:var(--blue); }
 .crumbs span { color:var(--ink); }
 h1.title { font-family:var(--display); font-weight:500; font-size:clamp(2.2rem,4.2vw,3.2rem);
-  letter-spacing:-.015em; line-height:1.04; margin:0 0 2rem; }
+  letter-spacing:var(--brand-tracking,-.015em); line-height:1.04; margin:0 0 2rem; }
 .cat-headline { display:flex; align-items:baseline; gap:.8rem; flex-wrap:wrap; }
 /* Vista sin distracciones: se va el H1 y las migas se quedan en "Inicio" (20-header-ojo.png) */
 body[data-focus="on"] .crumb, body[data-focus="on"] h1.title { display:none; }
@@ -174,7 +185,7 @@ body[data-focus="on"] .crumb, body[data-focus="on"] h1.title { display:none; }
 .panel .tag { display:inline-block; margin-top:.9rem; background:var(--blue-soft); color:var(--blue-deep);
   border-radius:999px; padding:.28rem .8rem; font-size:.75rem; font-weight:700; letter-spacing:.04em; }
 .panel .cta { display:inline-block; margin-top:1.1rem; background:var(--blue); color:#fff; font-weight:700;
-  border-radius:var(--r-sm); padding:.7rem 1.3rem; text-decoration:none; }
+  border-radius:var(--r-btn,var(--r-sm)); padding:.7rem 1.3rem; text-decoration:none; }
 .panel .cta:hover { background:var(--blue-deep); }
 
 /* ══════════════ Portada: carrusel + tarjetas de acceso ══════════════ */
@@ -209,7 +220,7 @@ body:has(#hero) { background:var(--paper); }
 .hero-kicker { font-size:.82rem; letter-spacing:.16em; text-transform:uppercase; opacity:.92;
   font-style:italic; font-family:var(--display); }
 .hero-title { font-family:var(--display); font-weight:500; font-size:clamp(2.6rem,7vw,5.5rem);
-  line-height:.98; letter-spacing:-.02em; margin:.1rem 0 .8rem; text-wrap:balance;
+  line-height:.98; letter-spacing:var(--brand-tracking,-.02em); margin:.1rem 0 .8rem; text-wrap:balance;
   text-shadow:0 2px 30px rgba(0,0,0,.35); }
 .hero-cta { display:inline-flex; align-items:center; gap:.6rem; color:#fff; text-decoration:none;
   font-weight:600; font-size:.92rem; letter-spacing:.02em; border:1px solid rgba(255,255,255,.6);
@@ -223,14 +234,14 @@ body:has(#hero) { background:var(--paper); }
 
 /* ── Portada: saludo editorial + bento de KPIs ── */
 .dash-greet { font-family:var(--display); font-weight:500; font-style:italic;
-  font-size:clamp(1.5rem,3vw,2.1rem); color:var(--ink); letter-spacing:-.01em; margin:0 0 1.3rem; }
+  font-size:clamp(1.5rem,3vw,2.1rem); color:var(--ink); letter-spacing:var(--brand-tracking,-.01em); margin:0 0 1.3rem; }
 .kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem; margin:0 0 2.6rem; }
 .kpi { display:flex; flex-direction:column; gap:.35rem; background:var(--card); border:1px solid var(--line);
   border-radius:var(--r); padding:1.3rem 1.4rem; text-decoration:none; color:var(--ink);
   box-shadow:var(--shadow); transition:transform .18s var(--ease), box-shadow .18s var(--ease), border-color .18s var(--ease); }
 .kpi:hover { transform:translateY(-3px); box-shadow:var(--shadow-card); border-color:var(--line-control); }
 .kpi-label { font-size:.72rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
-.kpi-value { font-family:var(--display); font-weight:500; font-size:2.1rem; line-height:1; letter-spacing:-.01em;
+.kpi-value { font-family:var(--display); font-weight:500; font-size:2.1rem; line-height:1; letter-spacing:var(--brand-tracking,-.01em);
   font-variant-numeric:tabular-nums; }
 .kpi-sub { font-size:.82rem; color:var(--muted); }
 /* Tarjeta de aviso (deuda vencida): superficie terracota */
@@ -250,7 +261,7 @@ body:has(#hero) { background:var(--paper); }
   display:flex; flex-direction:column; align-items:flex-start; gap:.35rem;
   background:linear-gradient(transparent, rgba(13,13,13,.72)); }
 .c-caption strong { font-family:var(--display); font-size:clamp(1.3rem,2.6vw,2.2rem);
-  letter-spacing:-.03em; line-height:1.1; }
+  letter-spacing:var(--brand-tracking,-.03em); line-height:1.1; }
 .c-caption span { font-size:clamp(.9rem,1.2vw,1.05rem); color:#e9e9ee; }
 .c-caption .c-cta { margin-top:.7rem; background:var(--blue); color:#fff; font-weight:700;
   border-radius:var(--r-sm); padding:.6rem 1.15rem; letter-spacing:.02em; }
@@ -321,11 +332,11 @@ body[data-chrome="credentials"] { background:var(--ink); }
 .login-hero { background:var(--blue); color:#fff; display:flex; flex-direction:column; justify-content:space-between;
   gap:2rem; padding:clamp(2rem,5vw,3.5rem); }
 .login-hero .brand { color:#fff; font-size:1.9rem; }
-.login-display { font-family:var(--display); font-weight:800; text-transform:uppercase; letter-spacing:-.03em;
+.login-display { font-family:var(--display); font-weight:800; text-transform:uppercase; letter-spacing:var(--brand-tracking,-.03em);
   line-height:.96; font-size:clamp(2.6rem,6.4vw,5.4rem); margin:0; color:#fff; }
 .login-panel { display:grid; place-items:center; padding:2rem clamp(1.5rem,5vw,4rem); }
 .login-panel .login-card { width:min(25rem,100%); background:none; box-shadow:none; padding:0; }
-.login-h { font-family:var(--display); font-weight:800; font-size:2rem; margin:0 0 1.4rem; letter-spacing:-.02em; }
+.login-h { font-family:var(--display); font-weight:800; font-size:2rem; margin:0 0 1.4rem; letter-spacing:var(--brand-tracking,-.02em); }
 @media (max-width:52rem) {
   .login-split { grid-template-columns:1fr; }
   .login-hero { min-height:36vh; }
@@ -343,8 +354,9 @@ body[data-chrome="credentials"] { background:var(--ink); }
 .login-card .field:focus-visible { outline:2px solid var(--blue); outline-offset:1px; }
 .login-card .field::placeholder { color:var(--muted); }
 .login-card .forgot { display:block; text-align:right; font-size:.85rem; color:var(--blue); margin:.1rem 0 1.4rem; }
-.login-card .submit { width:100%; background:var(--blue); color:#fff; font-weight:700; letter-spacing:.04em;
-  border-radius:4px; padding:.95rem; transition:background .15s var(--ease); }
+.login-card .submit { width:100%; background:var(--blue); color:#fff; font-weight:700;
+  letter-spacing:var(--brand-tracking,.04em);
+  border-radius:var(--r-btn,4px); padding:.95rem; transition:background .15s var(--ease); }
 .login-card .submit:hover { background:var(--blue-deep); }
 .login-card .submit[disabled] { opacity:.6; cursor:progress; }
 .login-card h2 { font-size:.95rem; font-weight:700; margin:1.6rem 0 .7rem; }
@@ -361,8 +373,9 @@ body[data-chrome="credentials"] { background:var(--ink); }
 .activate-card .activate-form .field:focus { border-color:var(--blue); }
 .activate-card .activate-form .field:focus-visible { outline:2px solid var(--blue); outline-offset:1px; }
 .activate-card .activate-hint { font-size:.82rem; color:var(--muted); margin:-.3rem 0 1rem; }
-.activate-card .submit { width:100%; background:var(--blue); color:#fff; font-weight:700; letter-spacing:.04em;
-  border:none; border-radius:4px; padding:.9rem; font-size:.95rem; cursor:pointer; }
+.activate-card .submit { width:100%; background:var(--blue); color:#fff; font-weight:700;
+  letter-spacing:var(--brand-tracking,.04em);
+  border:none; border-radius:var(--r-btn,4px); padding:.9rem; font-size:.95rem; cursor:pointer; }
 .activate-card .submit:hover { background:var(--blue-deep); }
 .activate-card .submit[disabled] { opacity:.6; cursor:progress; }
 .activate-card .activate-ok { color:var(--blue-deep); font-size:.9rem; margin:.8rem 0 0; }
@@ -379,12 +392,12 @@ body[data-chrome="credentials"] { background:var(--ink); }
 .cred-hero-mid { display:flex; flex-direction:column; }
 .cred-hero-mid .hero-kicker { font-size:.9rem; font-weight:700; letter-spacing:.22em; text-transform:uppercase;
   color:#fff; margin:0 0 .7rem; font-style:normal; }
-.cred-hero-name { font-family:var(--display); font-weight:800; text-transform:uppercase; letter-spacing:-.03em;
+.cred-hero-name { font-family:var(--display); font-weight:800; text-transform:uppercase; letter-spacing:var(--brand-tracking,-.03em);
   line-height:.94; font-size:clamp(2.4rem,5.8vw,4.8rem); margin:0; color:#fff; text-wrap:balance; }
 
 .cred-panel { display:grid; place-items:center; padding:2rem clamp(1.5rem,5vw,4rem); }
 .cred-wrap { width:min(30rem,100%); }
-.cred-h { font-family:var(--display); font-weight:800; font-size:2rem; letter-spacing:-.02em; margin:0;
+.cred-h { font-family:var(--display); font-weight:800; font-size:2rem; letter-spacing:var(--brand-tracking,-.02em); margin:0;
   padding-bottom:1rem; border-bottom:2px solid var(--ink); }
 .cred-lead { color:var(--ink-2); font-size:.95rem; line-height:1.5; max-width:30rem; margin:1.1rem 0 0; }
 .cred-cards { display:flex; flex-direction:column; gap:.8rem; margin-top:1.5rem; }
@@ -449,8 +462,8 @@ body[data-chrome="credentials"] { background:var(--ink); }
   clip-path:inset(50%); white-space:nowrap; }
 
 .btn-primary, .btn-ghost, .btn-danger { display:inline-flex; align-items:center; justify-content:center;
-  gap:.5rem; border-radius:var(--r-sm); padding:.72rem 1.15rem; font-weight:700; font-size:.82rem;
-  letter-spacing:.045em; text-transform:uppercase; white-space:nowrap;
+  gap:.5rem; border-radius:var(--r-btn,var(--r-sm)); padding:.72rem 1.15rem; font-weight:700; font-size:.82rem;
+  letter-spacing:var(--brand-tracking,.045em); text-transform:uppercase; white-space:nowrap;
   transition:background .15s var(--ease), border-color .15s var(--ease), color .15s var(--ease); }
 .btn-primary { background:var(--blue); color:#fff; }
 .btn-primary:hover:not([disabled]) { background:var(--blue-deep); }
@@ -693,8 +706,12 @@ body[data-focus="on"] .cat-filters { display:none; }
   color:var(--ink-2); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap;
   transition:color .12s var(--ease), border-color .12s var(--ease); }
 .rib-chip:hover { color:var(--ink); }
-/* offset positivo: el anillo no se come la regla de 2px de la pestaña activa */
-.rib-chip:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+/* Anillo INTERIOR (offset negativo), obligatorio aquí: `.rib-rail` es contenedor de
+   scroll (overflow-x:auto ⇒ overflow-y calculado auto) y los chips, estirados por
+   align-items:stretch, miden justo el alto del raíl; con offset POSITIVO el anillo
+   cae fuera del scrollport y se recorta entero (WCAG 2.4.7). El activo no pierde
+   nada: su regla de 2px es del mismo --blue que el anillo. */
+.rib-chip:focus-visible { outline:2px solid var(--blue); outline-offset:-2px; }
 .rib-chip.on { color:var(--blue-text); border-bottom-color:var(--blue); }
 .rib-count { font-size:.68rem; font-weight:600; color:var(--muted); letter-spacing:.02em; translate:0 -.32em; }
 .rib-chip.on .rib-count { color:var(--blue-text); }
@@ -709,8 +726,14 @@ body[data-focus="on"] .cat-filters { display:none; }
   color:var(--ink); transition:color .12s var(--ease); }
 .cat-ribbon.has-nav .rib-prev { left:0; justify-content:flex-start; }
 .cat-ribbon.has-nav .rib-next { right:0; justify-content:flex-end; }
-.cat-ribbon.has-nav .rib-prev[disabled] { display:none; }
+/* NINGUNA flecha apagada se queda flotando sobre las pestañas: al estar superpuestas,
+   una <button disabled> no despacha el clic NI lo deja pasar al chip de debajo (28px
+   de zona muerta) y su chevron se dibuja encima del recuento. */
+.cat-ribbon.has-nav .rib-arrow[disabled] { display:none; }
 .cat-ribbon.has-nav .rib-rail {
+  /* Las flechas van superpuestas: sin este relleno de scroll el snap deja pestañas
+     aparcadas DEBAJO de ellas (1,75rem de texto que se lee pero no recibe el clic). */
+  scroll-padding-inline:1.75rem;
   -webkit-mask-image:linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
   mask-image:linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent); }
 .cat-ribbon.has-nav.at-start .rib-rail {
@@ -721,7 +744,9 @@ body[data-focus="on"] .cat-filters { display:none; }
   mask-image:linear-gradient(to right, transparent, #000 2rem); }
 .cat-ribbon.has-nav.at-start.at-end .rib-rail { -webkit-mask-image:none; mask-image:none; }
 .rib-arrow:hover:not([disabled]) { color:var(--blue); }
-.rib-arrow[disabled] { opacity:.45; cursor:default; }
+/* pointer-events:none es cinturón y tirantes del display:none de arriba: si alguna vez
+   una flecha apagada volviese a verse, no puede robarle el clic al chip que tapa. */
+.rib-arrow[disabled] { opacity:.45; cursor:default; pointer-events:none; }
 .rib-arrow svg { flex:none; }
 /* Línea de contexto (<=1 entrada): "Tu surtido: Calzado · 38 artículos", mismo hueco */
 .cat-context { flex:1; min-width:0; display:flex; align-items:center; gap:.45rem; margin:0; padding:.62rem 0;
@@ -735,9 +760,13 @@ body[data-focus="on"] .cat-filters { display:none; }
   border:1px solid var(--line-control); padding:.14rem .5rem; white-space:nowrap; }
 .cat-adapted[hidden] { display:none; }
 .cat-adapted svg { flex:none; }
-/* Huecos reservados de la barra de herramientas y de los filtros mientras carga (UX-M4) */
-.cat-bar #tools:empty { min-height:2.6rem; }
-.cat-filters:empty { min-height:2.8rem; }
+/* Huecos reservados de la barra de herramientas y de los filtros mientras carga (UX-M4).
+   Van atados a la MISMA señal de "primera carga en vuelo" que la cinta (.is-pending, que
+   catalog.js retira tanto al pintar como al fallar): si el catálogo da error, tools y
+   filtros se quedan vacíos para siempre y sin esto dejaban 5,4rem de bloques fantasma
+   colgando sobre el panel de error. */
+.catalog-top:has(.cat-ribbon.is-pending) .cat-bar #tools:empty { min-height:2.6rem; }
+.catalog-top:has(.cat-ribbon.is-pending) .cat-filters:empty { min-height:2.8rem; }
 /* Vista sin distracciones (ojo del header): la cinta se va con los filtros */
 body[data-focus="on"] .cat-ribbon { display:none; }
 @media (max-width:48rem) {
@@ -771,7 +800,7 @@ body[data-focus="on"] .cat-ribbon { display:none; }
 /* Nombre de artículo en serif, peso medio y sin forzar mayúsculas (el dato ya viene
    en mayúsculas): editorial, no lápida. */
 .item h2 { font-family:var(--display); font-weight:500; font-size:1.35rem; line-height:1.15;
-  letter-spacing:0; margin:0; text-transform:none; flex:1; }
+  letter-spacing:var(--brand-tracking,0); margin:0; text-transform:var(--brand-caps,none); flex:1; }
 .item-fav { color:var(--ink); padding:.15rem; border-radius:6px; flex:none;
   transition:color .15s var(--ease), scale .15s var(--ease); }
 .item-fav:hover { scale:1.1; }
@@ -870,7 +899,7 @@ body[data-focus="on"] .cat-ribbon { display:none; }
 
 .pcard-body { display:flex; flex-direction:column; padding:.95rem .15rem 0; }
 .pcard-name { margin:0; font-family:var(--display); font-weight:500; font-size:1.12rem; line-height:1.2;
-  letter-spacing:0; transition:color .15s var(--ease); }
+  letter-spacing:var(--brand-tracking,0); text-transform:var(--brand-caps,none); transition:color .15s var(--ease); }
 .pcard-name a { text-decoration:none; }
 /* Enlace estirado: cubre toda la tarjeta sin robar el clic al corazón (z-index 1<2) */
 .pcard-link::after { content:""; position:absolute; inset:0; z-index:1; border-radius:var(--r); }
@@ -1004,7 +1033,7 @@ body[data-focus="on"] .cat-ribbon { display:none; }
 .product-panel { min-width:0; }
 .product-head { display:flex; align-items:flex-start; gap:1rem; }
 .product-name { flex:1; margin:0; font-family:var(--display); font-weight:500;
-  font-size:clamp(1.9rem,3.6vw,2.8rem); line-height:1.05; letter-spacing:-.015em; }
+  font-size:clamp(1.9rem,3.6vw,2.8rem); line-height:1.05; letter-spacing:var(--brand-tracking,-.015em); }
 .product-fav { flex:none; color:var(--ink); padding:.3rem; border-radius:8px;
   transition:color .15s var(--ease), scale .15s var(--ease); }
 .product-fav:hover { scale:1.1; }
@@ -1650,7 +1679,8 @@ table.grid .num { white-space:nowrap; }
 
 /* Header suplantando: al lado del badge, "Deseleccionar cliente" en terracota para
    que la salida del contexto de compra del cliente destaque sobre el verde. */
-.h-release { display:flex; align-items:center; gap:.4rem; border:1px solid rgba(255,255,255,.28);
+.h-release { display:flex; align-items:center; gap:.4rem;
+  border:1px solid color-mix(in srgb, var(--header-veil) 28%, transparent);
   border-radius:999px; padding:.42rem .8rem; font-size:.78rem; font-weight:600; color:var(--header-ink);
   white-space:nowrap; transition:background .15s var(--ease), border-color .15s var(--ease); }
 .h-release:hover { background:var(--accent); border-color:var(--accent); color:#fff; }
@@ -2026,18 +2056,25 @@ table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6
    Se aplica al final (gana por cascada): radio 0, nav MAYÚSCULAS + rojo, titulares
    800, checkbox/celda de talla en su color, fotos de catálogo en B/N. */
 
-h1,h2,h3,h4,h5,h6,.title,.card-title { font-weight:800; letter-spacing:-.02em; }
+h1,h2,h3,h4,h5,h6,.title,.card-title { font-weight:800; letter-spacing:var(--brand-tracking,-.02em); }
 
-/* Radio 0 en lo que quedaba redondeado (avatar y cart = rectos) */
-.avatar,.h-lang,.h-cart,.cta,.btn-primary,.submit,.item-units,.chip,.viewer-badge,
+/* Radio 0 en lo que quedaba redondeado (avatar y cart = rectos). El 0 sale ahora de
+   --r, el radio GENERAL: sin token vale 0px (Modernist de MITO, idéntico a antes) y
+   con el token `radius` estas piezas dejan de ser la excepción recta del portal. */
+.item-units,.chip,.viewer-badge,
 .viewer-hint,.pcard-360,.ch-hbar-track,.ch-hbar-track span,.login-card .field,
-.login-card .submit,.activate-card .activate-form .field,.item-fav,.product-fav,
-.grid-drop,.ck-drop,.h-menu a,.h-menu button,#chrome-footer .social a,.c-arrow,
-.viewer-zoom,.viewer-thumb { border-radius:0 !important; }
+.activate-card .activate-form .field,
+.grid-drop,.ck-drop,.h-menu a,.h-menu button,
+.viewer-thumb { border-radius:var(--r,0) !important; }
+/* Los controles con forma de botón tienen su propio radio (token radiusButton);
+   si no se configura, caen en el general. */
+.avatar,.h-lang,.h-cart,.cta,.btn-primary,.submit,.login-card .submit,
+.item-fav,.product-fav,#chrome-footer .social a,.c-arrow,
+.viewer-zoom { border-radius:var(--r-btn,var(--r,0)) !important; }
 
 /* Nav de cabecera: MAYÚSCULAS, activo/hover en rojo, regla inferior de 2px */
 #chrome-nav { border-bottom-width:2px; border-bottom-color:var(--ink); }
-#chrome-nav a { text-transform:uppercase; font-weight:700; font-size:.82rem; letter-spacing:.05em; }
+#chrome-nav a { text-transform:uppercase; font-weight:700; font-size:.82rem; letter-spacing:var(--brand-tracking,.05em); }
 #chrome-nav a[aria-current="page"], #chrome-nav a.active { color:var(--blue); border-bottom-color:var(--blue); }
 
 /* Controles nativos en rojo */
@@ -2051,12 +2088,19 @@ input[type=checkbox], input[type=radio] { accent-color:var(--blue); }
 
 /* Solo el HERO de campaña va en B/N (foto de ambiente); los PRODUCTOS en color
    para que el comprador vea la tonalidad real (decisión del cliente sobre el handoff). */
-.hero-media .c-slide img, .hero-media .c-video { filter:grayscale(1) contrast(1.05); }
+.hero-media .c-slide img, .hero-media .c-video { filter:var(--hero-filter,grayscale(1) contrast(1.05)); }
+
+/* ── Marca configurable: MAYÚSCULAS de los titulares (token caps) ──
+   Solo las piezas de display que hoy van en caja normal: nav, botones, chips y
+   etiquetas ya están en mayúsculas, así que el token no tiene nada que hacer ahí.
+   Sin token el valor es «none», que es exactamente lo que heredan hoy. */
+h1.title, .hero-title, .dash-greet, .kpi-value, .c-caption strong, .login-h, .cred-h,
+.cred-meta b, .product-name, .item h2, .pcard-name, .brand { text-transform:var(--brand-caps,none); }
 
 /* Hero de portada: título pesado, saludo sin itálica, CTA recto */
-.hero-title { font-weight:800; letter-spacing:-.02em; }
+.hero-title { font-weight:800; letter-spacing:var(--brand-tracking,-.02em); }
 .dash-greet { font-style:normal; font-weight:700; }
-.hero-cta { border-radius:0 !important; }
+.hero-cta { border-radius:var(--r-btn,var(--r,0)) !important; }
 
 /* KPIs de portada: cifra sobre REGLA superior de 2px (sin tarjeta ni sombra) */
 .kpi { background:none; border:0; border-top:2px solid var(--ink); border-radius:0; padding:.9rem 0 0; }
@@ -2083,7 +2127,7 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 /* Terracota (#e15b47) → rojo único en piezas de marca */
 .avatar, .h-cart, #assistant-fab { background:var(--blue) !important; }
 #assistant-fab:hover { background:var(--blue-deep) !important; }
-#assistant-fab { border-radius:0 !important; }
+#assistant-fab { border-radius:var(--r-btn,var(--r,0)) !important; }
 
 
 /* Cuadros de mando: KPI como cifra sobre regla superior de 2px (igual que portada) */
@@ -2102,9 +2146,15 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 .rail section + section { border-top:2px solid var(--line-control); padding-top:1.4rem; }
 
 /* Conmutador de vista segmentado del catálogo (Listado / Cuadrícula), activo rojo */
-.tb-seg { display:inline-flex; border:1px solid var(--ink); }
+/* Sin overflow:hidden: el raíl del foco global (:focus-visible, outline-offset:2px) se
+   dibuja 4px POR FUERA del padding box del contenedor, así que un clip lo borraba
+   entero en el conmutador (WCAG 2.4.7). El redondeo del token va en los propios
+   botones, que es lo único que el clip pretendía recortar. */
+.tb-seg { display:inline-flex; border:1px solid var(--ink); border-radius:var(--r,0); }
 .tb-seg-opt { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem .9rem; font:inherit;
   font-size:.85rem; font-weight:600; background:var(--card); color:var(--ink); border:0; cursor:pointer; }
+.tb-seg-opt:first-child { border-start-start-radius:var(--r,0); border-end-start-radius:var(--r,0); }
+.tb-seg-opt:last-child { border-start-end-radius:var(--r,0); border-end-end-radius:var(--r,0); }
 .tb-seg-opt + .tb-seg-opt { border-left:1px solid var(--ink); }
 .tb-seg-opt.on { background:var(--blue); color:#fff; }
 .tb-seg-opt svg { display:block; }
@@ -2139,9 +2189,9 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 /* El nombre de cliente pasa a subtítulo del H1 */
 .page.checkout .ck-client { font-size:1rem; color:var(--ink-2); font-weight:400; }
 /* Hero del lookbook en B/N editorial */
-.lb-hero .c-slide img, .lb-hero .c-video { filter:grayscale(1) contrast(1.05); }
+.lb-hero .c-slide img, .lb-hero .c-video { filter:var(--hero-filter,grayscale(1) contrast(1.05)); }
 /* Píldora de panel y lift de tarjetas del lookbook: coherencia radio 0 / sin sombra flotante */
-.panel .tag { border-radius:0; }
+.panel .tag { border-radius:var(--r,0); }
 .lb-rail .pcard:hover { transform:none; box-shadow:none; }
 /* Banda MODO AGENTE: solo "MODO AGENTE" fuerte, resto normal */
 .agent-band { text-transform:none; font-weight:400; }
@@ -2152,7 +2202,7 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
   margin:1.6rem 0 0; padding:1.5rem 0 0; border-top:2px solid var(--line); }
 .product-attrs .tag { display:inline-flex; align-items:center; font-size:.72rem; font-weight:700;
   letter-spacing:.06em; text-transform:uppercase; color:var(--ink); background:none;
-  border:1px solid var(--line-control); border-radius:0; padding:.3rem .7rem; }
+  border:1px solid var(--line-control); border-radius:var(--r,0); padding:.3rem .7rem; }
 .product-attrs .tag-avail { border:2px solid var(--blue); color:var(--accent-deep); }
 /* PVD y PVP recomendado, uno al lado del otro, cifra sobre etiqueta */
 .product-price { display:flex; align-items:flex-end; gap:2.6rem; margin:1.6rem 0 0; padding:1.5rem 0 0;
@@ -2291,6 +2341,12 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 .ck-pay-note { display:block; margin-top:.35rem; font-size:.76rem; line-height:1.45; color:var(--hint);
   font-weight:400; text-transform:none; letter-spacing:0; }
 .doc-agent { display:block; margin-top:.15rem; font-size:.72rem; font-weight:400; color:var(--muted); }
+/* Es una ANOTACIÓN del título del modal, no un tercer control: el margen auto se come
+   el espacio libre que si no repartiría el justify-content:space-between de .mp-head a
+   ambos lados (79px de deriva), y deja el distintivo pegado al h2 con el gap de 1rem.
+   nowrap + elipsis (mismo patrón que .rel-badge) para que en anchos estrechos no parta
+   la cabecera en dos líneas. */
 .mp-scope { display:inline-flex; align-items:center; gap:.3rem; font-size:.7rem; font-weight:700;
   letter-spacing:.06em; text-transform:uppercase; color:var(--hint);
-  border:1px solid var(--line-control); padding:.14rem .5rem; }
+  border:1px solid var(--line-control); padding:.14rem .5rem;
+  margin-inline-end:auto; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }

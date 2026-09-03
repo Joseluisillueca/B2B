@@ -119,6 +119,76 @@ public class AdminMediaTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal(antes, despues);
     }
 
+    // Theming (fase 2): la marca de la instancia sube su tipografía y su favicon por este
+    // mismo endpoint (el back-office ya ofrece «Subir .woff2»). El navegador no siempre
+    // sabe su MIME —manda application/octet-stream—, así que se admite el genérico y a
+    // cambio se comprueba la cabecera del fichero.
+    private static byte[] Binary(params byte[] header)
+    {
+        var bytes = new byte[64];
+        header.CopyTo(bytes, 0);
+        return bytes;
+    }
+
+    private static readonly byte[] Woff2 = Binary(0x77, 0x4F, 0x46, 0x32);        // "wOF2"
+    private static readonly byte[] Ico = Binary(0x00, 0x00, 0x01, 0x00, 0x01, 0x00);
+
+    [Theory]
+    [InlineData("font/woff2")]
+    [InlineData("application/font-woff2")]
+    [InlineData("application/octet-stream")]
+    public async Task Subida_DeUnaFuenteWoff2_SeGuardaYSeLista(string contentType)
+    {
+        var response = await UploadAsync(Woff2, "GillSansMT Light.woff2", contentType);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var name = body.GetProperty("name").GetString()!;
+        var url = body.GetProperty("url").GetString()!;
+        Assert.EndsWith(".woff2", url);
+        Assert.DoesNotContain(' ', url);
+        Assert.True(File.Exists(Path.Combine(_factory.MediaRoot, name)));
+
+        // Y se lista: lo que no aparece en la biblioteca no se puede borrar desde Gestión.
+        var list = await (await SendAsync(HttpMethod.Get, "/api/admin/media")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(list.GetProperty("items").EnumerateArray(), i => i.GetProperty("name").GetString() == name);
+    }
+
+    [Theory]
+    [InlineData("image/x-icon")]
+    [InlineData("image/vnd.microsoft.icon")]
+    [InlineData("application/octet-stream")]
+    public async Task Subida_DeUnFaviconIco_SeGuardaYSeLista(string contentType)
+    {
+        var response = await UploadAsync(Ico, "favicon.ico", contentType);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var name = body.GetProperty("name").GetString()!;
+        Assert.EndsWith(".ico", body.GetProperty("url").GetString());
+        Assert.True(File.Exists(Path.Combine(_factory.MediaRoot, name)));
+
+        var list = await (await SendAsync(HttpMethod.Get, "/api/admin/media")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(list.GetProperty("items").EnumerateArray(), i => i.GetProperty("name").GetString() == name);
+    }
+
+    // Admitir el MIME genérico no puede ser una rendija: la cabecera tiene que cuadrar.
+    [Theory]
+    [InlineData("trampa.woff2")]
+    [InlineData("trampa.ico")]
+    public async Task Subida_DeUnBinarioFalso_Devuelve400YNoEscribeNada(string fileName)
+    {
+        var antes = Directory.Exists(_factory.MediaRoot) ? Directory.GetFiles(_factory.MediaRoot).Length : 0;
+
+        var response = await UploadAsync(
+            System.Text.Encoding.UTF8.GetBytes("<html><script>alert(1)</script></html>"),
+            fileName, "application/octet-stream");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var despues = Directory.Exists(_factory.MediaRoot) ? Directory.GetFiles(_factory.MediaRoot).Length : 0;
+        Assert.Equal(antes, despues);
+    }
+
     [Theory]
     [InlineData("script.txt", "text/plain")]              // no es una imagen
     [InlineData("marca.svg", "image/png")]                // extensión SVG, tipo que no cuadra
@@ -126,6 +196,8 @@ public class AdminMediaTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("truco.png", "text/html")]                // extensión de imagen, contenido no
     [InlineData("truco.php", "image/png")]                // tipo de imagen, extensión ejecutable
     [InlineData("sin-extension", "image/png")]
+    [InlineData("truco.woff2", "text/html")]             // extensión de fuente, contenido no
+    [InlineData("truco.ico", "text/html")]
     public async Task Subida_ConTipoNoPermitido_Devuelve400YNoEscribeNada(string fileName, string contentType)
     {
         var antes = Directory.Exists(_factory.MediaRoot) ? Directory.GetFiles(_factory.MediaRoot).Length : 0;

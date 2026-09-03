@@ -14,7 +14,7 @@ import { esc, initial, roleLabel, typeLabel } from '../format.js';
 import { state } from '../state.js';
 import { go } from '../router.js';
 import { icons } from '../ui/icons.js';
-import { brandMark } from '../branding.js';
+import { brandMarkOnBrand, brandSupport } from '../branding.js';
 
 const isAgent = credential => !!(credential && (credential.agent || credential.type === 'agent'));
 
@@ -30,7 +30,7 @@ export default function credentials(host) {
   host.innerHTML = `
     <div class="cred-split">
       <aside class="cred-hero">
-        <span class="brand">${brandMark()}</span>
+        <span class="brand">${brandMarkOnBrand()}</span>
         <div class="cred-hero-mid">
           <p class="hero-kicker">${esc(t('credentials.greeting'))}</p>
           <h1 class="cred-hero-name">${esc(displayName || t('credentials.choose'))}</h1>
@@ -97,7 +97,12 @@ const exitLine = () => `
   <p class="cred-exit">${esc(t('credentials.notYou'))}
     <button type="button" class="cred-exit-link" data-logout>${esc(t('chrome.logout'))}</button></p>`;
 
-// El usuario técnico del conector no tiene cliente: no hay nada que seleccionar
+// El usuario técnico del conector no tiene cliente: no hay nada que seleccionar.
+// El buzón va por brandSupport (ya escapa): esta pantalla es justo donde el usuario NO
+// puede entrar, así que publicar aquí el correo de otra marca es el peor sitio posible.
+// El <span> acota el repintado del refresco en segundo plano: el enlace de salir, con
+// su listener ya atado, queda fuera.
 const empty = () => `
-  <p class="cred-empty">${esc(t('credentials.none'))}
+  <p class="cred-empty"><span data-brand-support data-fallback="${esc(t('credentials.none'))}"
+    >${brandSupport(t('credentials.none'))}</span>
     <br><a href="#" data-logout>${esc(t('chrome.logout'))}</a></p>`;

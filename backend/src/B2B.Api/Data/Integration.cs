@@ -35,6 +35,15 @@ public class IntegrationSettings
     public string? BrandColor { get; set; }
     public string? BrandLogoUrl { get; set; }
 
+    // Marca configurable EXTENDIDA (theming multi-cliente, fase 2): JSON crudo con los
+    // tokens de diseño de la instancia (tipografía, radios, colores de papel/tinta,
+    // filtro de los heros, tagline…). Se guarda ya validado y con la lista CERRADA de
+    // tokens admitidos (IntegrationEndpoints.NormalizeBrandTokens); lo desconocido se
+    // descarta. null = SIN tokens → el portal luce exactamente el diseño por defecto
+    // (MITO PROJECTS, los valores codificados en app.css). Lo publica
+    // GET /api/portal/branding como `tokens` y lo edita PUT /api/admin/integration/branding.
+    public string? BrandTokensJson { get; set; }
+
     // Config de la cinta del catálogo (JSON crudo, editable desde /manage → Catálogo →
     // Cinta): {"attributes":[slugs de atributo que la alimentan],"entries":[overrides por
     // entrada: key, hidden, order, titles por idioma]}. null = cinta autogenerada (solo

@@ -155,9 +155,239 @@ function editChannel(main, ev, ch) {
   };
 }
 
+// ══════════ Tokens de estilo de la instancia (marca configurable extendida) ══════════
+// Contrato compartido con el portal y el backend:
+//   GET  /api/portal/branding            →  { …, "tokens": { … } | null }
+//   PUT  /api/admin/integration/branding →  acepta "tokens" (null o {} = limpiar)
+// CADA token es OPCIONAL y su ausencia significa «el valor que hoy trae app.css»: por eso
+// los campos vacíos NO se mandan y el portal de MITO se queda exactamente como está.
+const HERO_DEFAULT = 'grayscale(1) contrast(1.05)';
+
+// [clave, etiqueta, valor por defecto (app.css), ayuda en cristiano]
+const TOKEN_COLORS = [
+  ['paper', 'Fondo de página', '#f3f2f2', 'El papel sobre el que se apoya todo el portal.'],
+  ['surface', 'Fondo de bloques', '#eae9e9', 'Bandas y zonas destacadas: filtros, pies de sección, resúmenes.'],
+  ['ink', 'Texto principal', '#201e1d', 'El color de los textos y los titulares.'],
+  ['headerBg', 'Fondo de la cabecera', '#201e1d', 'La barra superior del portal (hoy, negra).'],
+  ['headerInk', 'Texto de la cabecera', '#f3f2f2', 'Nombre, menús e iconos sobre esa barra.'],
+];
+// Medidas con unidad: [clave, etiqueta, ejemplo, ayuda]
+const TOKEN_SIZES = [
+  ['radius', 'Redondeo general', '12px', 'Esquinas de tarjetas, campos y fotos. Hoy el portal va a 0px (esquina viva).'],
+  ['radiusButton', 'Redondeo de botones', '50px', 'Solo los botones. 50px los deja en forma de píldora.'],
+  ['tracking', 'Espaciado entre letras', '.06em', 'Separa las letras de titulares y botones. Admite px, rem, em o %.'],
+];
+// ── Espejo de la validación del servidor (IntegrationEndpoints.NormalizeBrandTokens) ──
+// Ni más laja ni más estricta: lo que pasa aquí lo acepta el PUT, y lo que aquí se rechaza
+// también lo rechazaría él. Si fuera más laja, el usuario vería el 400 crudo del servidor
+// en vez del mensaje del formulario (y sin que se le señale el campo); si fuera más
+// estricta, el back-office prohibiría valores que el portal sí sabe aplicar.
+const isHex = v => /^#[0-9a-f]{6}$/i.test(v);
+// Medida CSS de verdad: un solo punto decimal, al menos un dígito y unidad OBLIGATORIA.
+// Fuera «pt» (el servidor solo admite px|rem|em|%) y fuera el «0» pelado, que también
+// daba 400. Sin `i`, como el regex del servidor y el del portal.
+const isSize = v => v.length <= 20 && /^-?(\d+(\.\d+)?|\.\d+)(px|rem|em|%)$/.test(v);
+// URL de recurso (logo oscuro, favicon, hoja de la tipografía): acaba en un src/href y
+// dentro del url("…") de un @font-face, así que se cierran esquemas ejecutables y todo
+// lo que pueda romper esos dos contextos.
+const badScheme = v => /^(javascript|data|vbscript):/i.test(v.replace(/[\s\p{Cc}]/gu, ''));
+const badUrlChar = v => /[\s\p{Cc}"'()<>\\;{}]/u.test(v);
+// Valor que acaba DENTRO de una declaración CSS (heroFilter): no puede cerrarla, ni
+// escapar un carácter («\75rl(» era un url() válido en CSS), ni abrir un comentario.
+const badCss = v => /[;{}<\\]/.test(v) || v.includes('/*') || v.includes('*/')
+  || v.replace(/\s/g, '').toLowerCase().includes('url(');
+// Valor que acaba dentro de una cadena CSS entre comillas (fontFamily).
+const badCssString = v => /["'\\<>{};]/.test(v);
+// Correo: el patrón exacto de asEmail() del portal y de BrandEmail del servidor.
+const isEmail = v => /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(v);
+
+/** Nº de tokens con valor (para el chip del acordeón). */
+const countTokens = tk => Object.values(tk || {}).filter(v => v !== null && v !== '' && v !== false).length;
+
+/** Campo de color: selector + hexadecimal, como el acento de la marca. */
+const colorField = (key, label, def, hint, value) => `
+  <p class="acc-field"><label for="tk_${key}"><span>${esc(label)}</span></label>
+    <span class="brt-color">
+      <input type="color" id="tk_${key}_pick" data-tkpick="${key}" aria-label="Elegir ${esc(label.toLowerCase())}"
+        value="${esc(isHex(value) ? value : def)}">
+      <input id="tk_${key}" data-tkhex="${key}" value="${esc(isHex(value) ? value : '')}"
+        placeholder="${esc(def)}" spellcheck="false" inputmode="text">
+    </span>
+    <span class="acc-hint">${hint} Vacío = <code>${esc(def)}</code>, el de MITO.</span></p>`;
+
+// Estado del acordeón, a nivel de módulo: `saveBranding` repinta TODA la vista con
+// `connectionsView(main)`, así que sin recordarlo quien está afinando el estilo (varios
+// guardados seguidos) tenía que volver a abrir «Avanzado» y bajar hasta su campo cada vez.
+let brtOpen = false;
+
+/** Acordeón «Avanzado · estilo de la instancia», plegado la primera vez. */
+function tokensPanel(tk, open) {
+  const v = k => (tk[k] === null || tk[k] === undefined ? '' : String(tk[k]));
+  const heroRaw = v('heroFilter').trim();
+  const hero = !heroRaw || heroRaw === HERO_DEFAULT ? 'default'
+    : heroRaw.toLowerCase() === 'none' ? 'none' : 'custom';
+  const n = countTokens(tk);
+  return `
+    <div class="brt">
+      <button type="button" class="brt-toggle" id="brtToggle" aria-expanded="${open ? 'true' : 'false'}" aria-controls="brtPanel">
+        <span class="brt-caret">${icons.down(16)}</span>
+        <span class="brt-toggle-t">Avanzado · estilo de la instancia</span>
+        <span class="grid-chip ${n ? 'ok' : 'off'}">${n ? `${n} ajuste${n === 1 ? '' : 's'}` : 'Por defecto'}</span>
+      </button>
+      <div class="brt-panel" id="brtPanel" ${open ? '' : 'hidden'}>
+        <p class="acc-hint brt-intro">Tipografía, colores y formas de <b>esta</b> instancia, para clientes con
+          una estética propia. Todo es opcional: <b>lo que dejes vacío se queda como está hoy</b>. Se guarda con
+          el mismo botón «Guardar marca».</p>
+
+        <h3 class="brt-group">Tipografía</h3>
+        <p class="acc-field wide"><label><span>Hoja de la tipografía (URL)</span>
+          <input id="tk_fontUrl" value="${esc(v('fontUrl'))}" placeholder="https://fonts.googleapis.com/css2?family=…" spellcheck="false"></label>
+          <span class="brt-inline"><button type="button" class="btn-ghost" id="tkFontUp">${icons.upload(15)} Subir .woff2</button></span>
+          <span class="acc-hint">El enlace de la webfont (por ejemplo el CSS que da Google Fonts) o el fichero
+            <code>.woff2</code> ya alojado. Vacío = la tipografía de siempre del portal.</span></p>
+        <!-- Solo por extensión: Windows no registra MIME para .woff2 y el navegador la
+             manda como application/octet-stream (el servidor ya lo contempla y comprueba
+             la cabecera wOF2 del fichero), así que filtrar por «font/woff2» no casaría. -->
+        <input type="file" id="tkFontFile" accept=".woff2" hidden>
+        <div class="biz-grid">
+          <p class="acc-field"><label><span>Familia tipográfica</span>
+            <input id="tk_fontFamily" value="${esc(v('fontFamily'))}" placeholder="GillSansMTLight" spellcheck="false"></label>
+            <span class="acc-hint">El nombre de la familia tal y como la declara la webfont. Si no cuadra con la
+              hoja de arriba, no se verá el cambio.</span></p>
+          <p class="acc-field"><span>Mayúsculas</span>
+            <label class="mng-check"><input type="checkbox" id="tk_caps" ${tk.caps === true ? 'checked' : ''}>
+              <span>Titulares y botones en MAYÚSCULAS</span></label>
+            <span class="acc-hint">Estética de moda/lujo. Desactivado, los textos van tal y como se escriben.</span></p>
+        </div>
+
+        <h3 class="brt-group">Formas y espaciado</h3>
+        <div class="biz-grid">
+          ${TOKEN_SIZES.map(([key, label, ex, hint]) => `
+            <p class="acc-field"><label><span>${esc(label)}</span>
+              <input id="tk_${key}" value="${esc(v(key))}" placeholder="${esc(ex)}" spellcheck="false"></label>
+              <span class="acc-hint">${hint} <b>Con unidad</b> (p. ej. <code>${esc(ex)}</code>).</span></p>`).join('')}
+        </div>
+
+        <h3 class="brt-group">Colores del portal</h3>
+        <div class="biz-grid">
+          ${TOKEN_COLORS.map(([key, label, def, hint]) => colorField(key, label, def, hint, v(key))).join('')}
+        </div>
+
+        <h3 class="brt-group">Imágenes</h3>
+        <div class="biz-grid">
+          <p class="acc-field"><span>Logo para fondos oscuros</span>
+            <span id="tkDarkBox" class="brt-media"></span>
+            <input type="file" id="tkDarkFile" accept="image/*" hidden>
+            <span class="acc-hint">Versión clara del logo para la cabecera del portal cuando el fondo es
+              oscuro. Sobre fondo claro se sigue usando el logo de arriba. Sin esta versión se usa el de
+              siempre.</span></p>
+          <p class="acc-field"><span>Icono de pestaña (favicon)</span>
+            <span id="tkFavBox" class="brt-media"></span>
+            <input type="file" id="tkFavFile" accept="image/png,image/svg+xml,image/x-icon,.ico" hidden>
+            <span class="acc-hint">El iconito que sale en la pestaña del navegador. Cuadrado, PNG, SVG o ICO
+              (32×32 o mayor).</span></p>
+          <p class="acc-field"><label for="tk_heroMode"><span>Filtro de las fotos de portada</span></label>
+            <select id="tk_heroMode">
+              <option value="default" ${hero === 'default' ? 'selected' : ''}>Por defecto (gris)</option>
+              <option value="none" ${hero === 'none' ? 'selected' : ''}>Sin filtro (color original)</option>
+              <option value="custom" ${hero === 'custom' ? 'selected' : ''}>Personalizado…</option>
+            </select>
+            <!-- El <label for="tk_heroMode"> nombra al <select>, no a este campo: sin aria-label
+                 un lector de pantalla solo anunciaba «edición, en blanco» (WCAG 4.1.2). -->
+            <input id="tk_heroFilter" class="brt-sub" value="${esc(hero === 'custom' ? heroRaw : '')}"
+              aria-label="Filtro CSS personalizado de las fotos de portada"
+              placeholder="sepia(.3) contrast(1.1)" spellcheck="false" ${hero === 'custom' ? '' : 'hidden'}>
+            <span class="acc-hint">Las campañas en color se ven <b>grises</b> con el filtro por defecto. «Sin
+              filtro» las deja tal cual se subieron. Personalizado admite cualquier <code>filter</code> de CSS.</span></p>
+        </div>
+
+        <h3 class="brt-group">Textos del acceso</h3>
+        <div class="biz-grid">
+          <p class="acc-field wide"><label><span>Titular de la pantalla de acceso</span>
+            <input id="tk_tagline" value="${esc(v('tagline'))}" placeholder="Tu tienda mayorista, siempre abierta"></label>
+            <span class="acc-hint">Sustituye la frase grande del login. Vacío = la de siempre.</span></p>
+          <p class="acc-field"><label><span>Email de soporte</span>
+            <input id="tk_supportEmail" type="email" value="${esc(v('supportEmail'))}" placeholder="soporte@tudominio.com" spellcheck="false"></label>
+            <span class="acc-hint">El email al que se escribe desde el login. Vacío = el de siempre.</span></p>
+        </div>
+      </div>
+    </div>`;
+}
+
+/** Lee el acordeón → { tokens } | { error, key } (los campos vacíos NO viajan).
+    `media` trae las imágenes del panel (logo para fondos oscuros y favicon), que NO son
+    campos del DOM: viven en el estado de la vista. Sin ellas el PUT salía sin esos dos
+    tokens, así que subirlos no guardaba nada y, peor, CUALQUIER guardado posterior
+    —aunque solo cambiara el nombre— borraba los que ya hubiera, porque el servidor
+    reemplaza el JSON de tokens entero. */
+function readTokens(main, media) {
+  const t = {};
+  const val = id => (main.querySelector('#' + id)?.value || '').trim();
+  // La clave viaja con el error para que el guardado pueda señalar el campo culpable.
+  const bad = (key, error) => ({ key, error });
+  for (const [key, label, def] of TOKEN_COLORS) {
+    const v = val('tk_' + key);
+    if (!v) continue;
+    if (!isHex(v)) return bad(key, `«${label}» debe ser un color hexadecimal #rrggbb, p. ej. ${def}.`);
+    t[key] = v.toLowerCase();
+  }
+  for (const [key, label, ex] of TOKEN_SIZES) {
+    const v = val('tk_' + key);
+    if (!v) continue;
+    if (!isSize(v)) return bad(key, `«${label}» necesita una medida con unidad px, rem, em o %, p. ej. ${ex}.`);
+    t[key] = v;
+  }
+  // Las tres URLs: las dos imágenes del panel (subidas con api.uploadMedia, que devuelve
+  // siempre un nombre saneado) y la hoja de la tipografía, que sí se puede teclear.
+  for (const [key, label, raw] of [
+    ['logoUrlDark', 'Logo para fondos oscuros', media?.logoUrlDark],
+    ['faviconUrl', 'Icono de pestaña (favicon)', media?.faviconUrl],
+    ['fontUrl', 'Hoja de la tipografía', val('tk_fontUrl')],
+  ]) {
+    const v = (raw || '').trim();
+    if (!v) continue;
+    if (v.length > 500) return bad(key, `«${label}» es demasiado largo (máx. 500 caracteres).`);
+    if (badScheme(v)) return bad(key, `«${label}» no admite direcciones javascript: ni data:.`);
+    if (badUrlChar(v)) return bad(key, `«${label}» no admite espacios, comillas, paréntesis ni los signos < > ; { }.`);
+    t[key] = v;
+  }
+  const fontFamily = val('tk_fontFamily');
+  if (fontFamily) {
+    if (fontFamily.length > 60) return bad('fontFamily', '«Familia tipográfica» es demasiado larga (máx. 60 caracteres).');
+    if (badCssString(fontFamily)) return bad('fontFamily', '«Familia tipográfica» no admite comillas ni los signos ; { } < >.');
+    t.fontFamily = fontFamily;
+  }
+  if (main.querySelector('#tk_caps')?.checked) t.caps = true;   // false = el valor de siempre
+  const mode = main.querySelector('#tk_heroMode')?.value;
+  if (mode === 'none') t.heroFilter = 'none';
+  else if (mode === 'custom') {
+    const v = val('tk_heroFilter');
+    if (v.length > 120) return bad('heroFilter', 'El filtro de las fotos de portada es demasiado largo (máx. 120 caracteres).');
+    if (v && badCss(v)) return bad('heroFilter', 'El filtro de las fotos de portada no admite «url(», comentarios CSS ni los signos ; { } <.');
+    if (v) t.heroFilter = v;
+  }
+  const tagline = val('tk_tagline');
+  if (tagline) {
+    if (tagline.length > 120) return bad('tagline', '«Titular de la pantalla de acceso» es demasiado largo (máx. 120 caracteres).');
+    if (/[<>]/.test(tagline)) return bad('tagline', '«Titular de la pantalla de acceso» no admite «<» ni «>».');
+    t.tagline = tagline;
+  }
+  const email = val('tk_supportEmail');
+  if (email) {
+    if (email.length > 120 || !isEmail(email)) return bad('supportEmail', 'El email de soporte no parece un email válido.');
+    t.supportEmail = email;
+  }
+  return { tokens: t };
+}
+
 // ══════════ Conexiones ══════════
 export async function connectionsView(main) {
   const s = await api.intSettings();
+  // Tokens guardados: los trae ya `GET /api/admin/integration/settings` como `brandTokens`.
+  // (Antes se pedía además /api/portal/branding, un segundo viaje EN SERIE que retrasaba
+  // el pintado de toda la pantalla para leer lo mismo.)
+  let tk = s.brandTokens;
+  if (!tk || typeof tk !== 'object' || Array.isArray(tk)) tk = {};
   main.innerHTML = `
     <div class="mng-page-head"><div>
       <p class="crumbs">Integración · Conectividad</p>
@@ -203,12 +433,14 @@ export async function connectionsView(main) {
               <input id="brColor" value="${esc((s.brandColor || '').toLowerCase() === '#ec3013' ? '' : (s.brandColor || ''))}"
                 placeholder="#ec3013" style="flex:1" spellcheck="false"></span></p>
           <p class="acc-field wide"><span style="display:block;font-size:.78rem;font-weight:600;color:var(--hint);margin:0 0 .35rem">Logo</span>
-            <span id="brLogoBox" style="display:flex;gap:.8rem;align-items:center;min-height:2.4rem"></span>
+            <span id="brLogoBox" class="brt-media"></span>
             <input type="file" id="brLogoFile" accept="image/*" hidden>
             <span class="acc-hint" style="display:block;margin-top:.4rem">PNG o SVG con fondo transparente (se muestra a ~28 px de alto sobre la cabecera negra). Sin logo, se muestra el nombre en texto.</span></p>
         </div>
+        ${tokensPanel(tk, brtOpen)}
         <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.4rem">
           <button type="button" class="btn-primary" id="brandSave">Guardar marca</button>
+          <button type="button" class="btn-ghost" id="brandReset">${icons.left(15)} Restablecer estilo</button>
         </div>
       </div></section>
     <section class="biz-section"><header class="acc-head biz-head"><h2>${icons.send(20)}Diseño de email (marca)</h2></header>
@@ -241,43 +473,105 @@ export async function connectionsView(main) {
     catch (e) { flash(e.body?.error || e.message, 'err'); }
   };
 
-  // ── Marca del portal (nombre + color + logo) ────────────────────────────────
-  let brandLogo = s.brandLogoUrl || '';
-  const paintLogo = () => {
-    const box = main.querySelector('#brLogoBox');
-    box.innerHTML = brandLogo
-      ? `<img src="${esc(brandLogo)}" alt="Logo actual de la marca"
-           style="height:34px;max-width:220px;object-fit:contain;display:block;background:var(--header-bg);padding:.3rem .6rem">
-         <button type="button" class="btn-ghost" id="brLogoUp">Cambiar</button>
-         <button type="button" class="btn-ghost" id="brLogoOff">Quitar</button>`
-      : `<button type="button" class="btn-ghost" id="brLogoUp">${icons.upload(15)} Subir logo</button>`;
-    box.querySelector('#brLogoUp').onclick = () => main.querySelector('#brLogoFile').click();
-    const off = box.querySelector('#brLogoOff');
-    if (off) off.onclick = () => { brandLogo = ''; paintLogo(); };
+  // ── Marca del portal (nombre + color + logo) + tokens de estilo ─────────────
+  // Imágenes: mismo mecanismo para el logo, el logo oscuro y el favicon (api.uploadMedia).
+  const media = { logoUrl: s.brandLogoUrl || '', logoUrlDark: tk.logoUrlDark || '', faviconUrl: tk.faviconUrl || '' };
+  const mediaField = (key, boxId, fileId, cta, alt, preview) => {
+    const box = main.querySelector('#' + boxId);
+    if (!box) return;
+    const paint = () => {
+      box.innerHTML = media[key]
+        ? `<img src="${esc(media[key])}" alt="${esc(alt)}" style="${preview}">
+           <button type="button" class="btn-ghost" data-up>Cambiar</button>
+           <button type="button" class="btn-ghost" data-off>Quitar</button>`
+        : `<button type="button" class="btn-ghost" data-up>${icons.upload(15)} ${esc(cta)}</button>`;
+      box.querySelector('[data-up]').onclick = () => main.querySelector('#' + fileId).click();
+      const off = box.querySelector('[data-off]');
+      if (off) off.onclick = () => { media[key] = ''; paint(); };
+    };
+    main.querySelector('#' + fileId).onchange = async e => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      try { const r = await api.uploadMedia(file); media[key] = r.url; paint(); flash('Imagen subida. Pulsa «Guardar marca» para aplicarla.'); }
+      catch (err) { flash(err.body?.error || err.message, 'err'); }
+    };
+    paint();
   };
-  paintLogo();
-  main.querySelector('#brLogoFile').onchange = async e => {
-    const file = e.target.files[0];
-    e.target.value = '';
-    if (!file) return;
-    try { const r = await api.uploadMedia(file); brandLogo = r.url; paintLogo(); flash('Logo subido. Pulsa «Guardar marca» para aplicarlo.'); }
-    catch (err) { flash(err.body?.error || err.message, 'err'); }
-  };
+  const logoPreview = 'height:34px;max-width:220px;object-fit:contain;display:block;background:var(--header-bg);padding:.3rem .6rem';
+  mediaField('logoUrl', 'brLogoBox', 'brLogoFile', 'Subir logo', 'Logo actual de la marca', logoPreview);
+  mediaField('logoUrlDark', 'tkDarkBox', 'tkDarkFile', 'Subir logo claro', 'Logo para fondos oscuros', logoPreview);
+  mediaField('faviconUrl', 'tkFavBox', 'tkFavFile', 'Subir favicon', 'Icono de pestaña',
+    'height:32px;width:32px;object-fit:contain;display:block;background:#fff;border:1px solid var(--line);padding:.15rem');
+
   // El selector de color y el hex visible van de la mano en ambos sentidos.
   const brPick = main.querySelector('#brColorPick'), brHex = main.querySelector('#brColor');
   brPick.oninput = () => { brHex.value = brPick.value; };
   brHex.oninput = () => { const v = brHex.value.trim(); if (/^#[0-9a-f]{6}$/i.test(v)) brPick.value = v; };
-  main.querySelector('#brandSave').onclick = async () => {
+
+  // ── Acordeón «Avanzado · estilo de la instancia» (plegado por defecto) ──────
+  const brtToggle = main.querySelector('#brtToggle'), brtPanel = main.querySelector('#brtPanel');
+  brtToggle.onclick = () => {
+    const open = brtToggle.getAttribute('aria-expanded') === 'true';
+    brtToggle.setAttribute('aria-expanded', String(!open));
+    brtPanel.hidden = open;
+    brtOpen = !open;                  // sobrevive al repintado de connectionsView()
+  };
+  // Un campo marcado como inválido deja de estarlo en cuanto se toca.
+  brtPanel.addEventListener('input', e => e.target?.removeAttribute?.('aria-invalid'));
+  // Cada color del acordeón: mismo baile selector ↔ hexadecimal que el acento.
+  for (const [key] of TOKEN_COLORS) {
+    const pick = main.querySelector(`[data-tkpick="${key}"]`), hex = main.querySelector(`[data-tkhex="${key}"]`);
+    pick.oninput = () => { hex.value = pick.value; };
+    hex.oninput = () => { const v = hex.value.trim(); if (isHex(v)) pick.value = v; };
+  }
+  // El campo libre del filtro solo aparece con «Personalizado…».
+  const heroMode = main.querySelector('#tk_heroMode'), heroFree = main.querySelector('#tk_heroFilter');
+  heroMode.onchange = () => { heroFree.hidden = heroMode.value !== 'custom'; if (!heroFree.hidden) heroFree.focus(); };
+  // Subida de la tipografía (.woff2): rellena la URL de la hoja.
+  main.querySelector('#tkFontUp').onclick = () => main.querySelector('#tkFontFile').click();
+  main.querySelector('#tkFontFile').onchange = async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try { const r = await api.uploadMedia(file); main.querySelector('#tk_fontUrl').value = r.url; flash('Tipografía subida. Pulsa «Guardar marca» para aplicarla.'); }
+    catch (err) { flash(err.body?.error || err.message, 'err'); }
+  };
+
+  // Un único guardado para la marca y los tokens.
+  const saveBranding = async (tokens, done) => {
     const name = main.querySelector('#brName').value.trim();
     const color = brHex.value.trim();
     if (color && !/^#[0-9a-f]{6}$/i.test(color)) { flash('El color debe ser hexadecimal #rrggbb, p. ej. #ec3013.', 'err'); return; }
     try {
-      await api.intSaveBranding({ name, color, logoUrl: brandLogo });
-      // Aplica la marca en vivo (título, cabecera, acento) leyendo el efectivo público.
+      await api.intSaveBranding({ name, color, logoUrl: media.logoUrl, tokens });
+      // Aplica la marca en vivo (título, cabecera, acento, tokens) leyendo el efectivo público.
       try { setBrand(await (await fetch('/api/portal/branding')).json()); } catch { /* se aplicará al recargar */ }
-      flash('Marca guardada y aplicada. El portal la mostrará al recargar.');
+      flash(done);
       connectionsView(main);
     } catch (err) { flash(err.body?.error || err.message, 'err'); }
+  };
+  main.querySelector('#brandSave').onclick = () => {
+    const read = readTokens(main, media);
+    if (read.error) {
+      flash(read.error, 'err');
+      brtPanel.hidden = false; brtToggle.setAttribute('aria-expanded', 'true'); brtOpen = true;
+      // Con 13 campos validados repartidos en cinco grupos, el aviso no basta: se marca
+      // el campo, se lleva el foco y se trae a la vista (el flash se desvanece a los 6 s).
+      const field = read.key && main.querySelector('#tk_' + read.key);
+      if (field) { field.setAttribute('aria-invalid', 'true'); field.focus(); field.scrollIntoView({ block: 'center' }); }
+      return;
+    }
+    // Sin ningún token → null: la instancia vuelve al estilo por defecto del portal.
+    saveBranding(countTokens(read.tokens) ? read.tokens : null, 'Marca guardada y aplicada. El portal la mostrará al recargar.');
+  };
+  main.querySelector('#brandReset').onclick = () => {
+    if (!confirm('¿Restablecer el estilo? Se borran tipografía, colores, formas, favicon y textos de esta instancia; el portal vuelve a su estilo por defecto. El nombre, el color de acento y el logo se conservan.')) return;
+    // Se conserva lo que hay EN PANTALLA (nombre, color y logo, incluido lo cambiado sin
+    // guardar), que es lo que promete el aviso: `saveBranding` ya lee #brName, brHex y
+    // media.logoUrl. Antes se sobrescribían con los valores guardados y el PUT los
+    // persistía, tirando el trabajo a medio hacer sin decir nada.
+    saveBranding(null, 'Estilo restablecido: la instancia vuelve al diseño por defecto.');
   };
 
   // Diseño global del email (layout de marca) — guardado por su propio endpoint.

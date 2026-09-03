@@ -5,14 +5,15 @@ import { esc } from '../format.js';
 import { api } from '../api.js';
 import { state } from '../state.js';
 import { go, href } from '../router.js';
-import { brandMark, brandText } from '../branding.js';
+import { brandMarkOnBrand, brandText, brandTagline, brandSupport } from '../branding.js';
 
 export default function login(host) {
   host.innerHTML = `
     <div class="login-split">
       <aside class="login-hero">
-        <span class="brand">${brandMark()}</span>
-        <h1 class="login-display">${esc(t('login.display'))}</h1>
+        <span class="brand">${brandMarkOnBrand()}</span>
+        <h1 class="login-display" data-brand-tagline data-fallback="${esc(t('login.display'))}"
+          >${brandTagline(t('login.display'))}</h1>
       </aside>
       <div class="login-panel">
         <form class="card login-card" novalidate>
@@ -28,7 +29,7 @@ export default function login(host) {
           <p class="err" role="alert"></p>
 
           <h2>${esc(t('login.noAccountTitle'))}</h2>
-          <p>${esc(t('login.help'))}</p>
+          <p data-brand-support data-fallback="${esc(t('login.help'))}">${brandSupport(t('login.help'))}</p>
           <a class="create" href="#">${esc(t('login.create'))}</a>
           <p class="legal">${esc(brandText(t('login.legal')))}</p>
         </form>

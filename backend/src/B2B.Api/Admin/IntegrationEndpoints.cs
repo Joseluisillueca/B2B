@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using B2B.Api.Auth;
 using B2B.Api.Data;
 using B2B.Api.Integration;
@@ -27,6 +30,8 @@ public static class IntegrationEndpoints
                 ordersMode,
                 // Marca del despliegue (multi-cliente): nombre/color efectivos + logo (o null).
                 brandName = s.BrandNameOrDefault, brandColor = s.BrandColorOrDefault, brandLogoUrl = s.BrandLogoUrl,
+                // Tokens de diseño de la instancia (JSON parseado o null si no hay ninguno).
+                brandTokens = VisibilityEndpoints.ParseNode(s.BrandTokensJson),
                 // Config de la cinta del catálogo (JSON parseado o null; se guarda con
                 // PUT /api/admin/integration/ribbon, en VisibilityEndpoints).
                 catalogRibbon = VisibilityEndpoints.ParseNode(s.CatalogRibbonJson),
@@ -202,6 +207,8 @@ public static class IntegrationEndpoints
 
         // ── Marca del portal (multi-cliente): nombre, color de acento y logo ──
         // Endpoint dedicado para el bloque "Marca" de Conexiones, sin tocar la config de BC.
+        // `tokens` (opcional) lleva el resto del diseño de la instancia; ausente, null o {}
+        // limpian los tokens guardados y el portal vuelve al diseño por defecto.
         app.MapPut("/api/admin/integration/branding", async (BrandingBody body, AppDbContext db) =>
         {
             var color = body.Color?.Trim();
@@ -209,15 +216,23 @@ public static class IntegrationEndpoints
                 return Results.BadRequest(new { error = "El color debe ser hexadecimal (#rrggbb)." });
             var name = body.Name?.Trim();
             if (name?.Length > 60) return Results.BadRequest(new { error = "El nombre de marca es demasiado largo (máx. 60)." });
+            // Se valida ANTES de tocar nada: un token inválido no guarda media marca.
+            var (tokensJson, tokensError) = NormalizeBrandTokens(body.Tokens);
+            if (tokensError is not null) return Results.BadRequest(new { error = tokensError });
 
             var s = await db.IntegrationSettings.FindAsync(1);
             if (s is null) { s = new IntegrationSettings { Id = 1 }; db.IntegrationSettings.Add(s); }
             s.BrandName = string.IsNullOrWhiteSpace(name) ? null : name;
             s.BrandColor = string.IsNullOrWhiteSpace(color) ? null : color.ToLowerInvariant();
             s.BrandLogoUrl = string.IsNullOrWhiteSpace(body.LogoUrl) ? null : body.LogoUrl.Trim();
+            s.BrandTokensJson = tokensJson;
             s.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync();
-            return Results.Ok(new { ok = true, name = s.BrandNameOrDefault, color = s.BrandColorOrDefault, logoUrl = s.BrandLogoUrl });
+            return Results.Ok(new
+            {
+                ok = true, name = s.BrandNameOrDefault, color = s.BrandColorOrDefault, logoUrl = s.BrandLogoUrl,
+                tokens = VisibilityEndpoints.ParseNode(s.BrandTokensJson),
+            });
         }).RequireAdmin();
 
         // Marca PÚBLICA: la leen el portal y el back-office ANTES del login (cabecera, título,
@@ -230,9 +245,175 @@ public static class IntegrationEndpoints
                 name = s?.BrandNameOrDefault ?? "MITO PROJECTS",
                 color = s?.BrandColorOrDefault ?? "#ec3013",
                 logoUrl = s?.BrandLogoUrl,
+                // Resto del diseño de la instancia; null = diseño por defecto (MITO PROJECTS).
+                tokens = VisibilityEndpoints.ParseNode(s?.BrandTokensJson),
             });
         }).AllowAnonymous();
     }
+
+    // ── Tokens de marca (theming multi-cliente, fase 2) ───────────────────────
+    // Lista CERRADA de tokens de diseño: lo que no esté en ella se descarta EN SILENCIO
+    // (así el front puede mandar de más sin romper nada), pero un token conocido con un
+    // valor inválido devuelve 400 y no se guarda nada. Todos son opcionales y su ausencia
+    // significa "el valor por defecto de app.css": sin tokens el portal queda EXACTAMENTE
+    // como el de MITO PROJECTS. Los valores acaban en variables CSS de :root, en atributos
+    // src/href y dentro del url("…") de un @font-face, así que la validación es también la
+    // barrera anti-inyección. Se valida por el lado ESTRICTO: el servidor nunca es más laja
+    // que su espejo del portal (portal/js/branding.js), porque lo que él acepta y el portal
+    // descarta se guarda con éxito y luego no se aplica, sin aviso ninguno.
+    // Devuelve (JSON crudo a guardar | null para limpiar, error de validación | null).
+
+    private const int BrandTokensMaxChars = 4096;                 // 4 KB (sobre el JSON COMPACTO)
+    private const int BrandTokensRawMaxChars = 64 * 1024;         // corte barato del texto crudo
+    private const int BrandTokenUrlMax = 500;
+
+    private static readonly string[] BrandColorTokens = ["paper", "surface", "ink", "headerBg", "headerInk"];
+    private static readonly string[] BrandUrlTokens = ["logoUrlDark", "faviconUrl", "fontUrl"];
+    private static readonly string[] BrandLengthTokens = ["tracking", "radius", "radiusButton"];
+
+    private static readonly Regex BrandHexColor = new("^#[0-9a-fA-F]{6}$", RegexOptions.Compiled);
+    // Medida CSS de verdad: un solo punto decimal y al menos un dígito. "..px" y "1.2.3px"
+    // pasaban y dejaban el portal SIN radios (var() inválida → 0) sin ningún aviso.
+    private static readonly Regex BrandCssLength =
+        new(@"^-?(\d+(\.\d+)?|\.\d+)(px|rem|em|%)$", RegexOptions.Compiled);
+    // Correo: el mismo patrón que asEmail() del portal (exige dominio con punto).
+    private static readonly Regex BrandEmail =
+        new(@"^[^\s@<>""']+@[^\s@<>""']+\.[^\s@<>""']+$", RegexOptions.Compiled);
+
+    internal static (string? Json, string? Error) NormalizeBrandTokens(JsonElement? input)
+    {
+        // Ausente o null → se limpian los tokens guardados (vuelta al diseño por defecto).
+        if (input is not { } element || element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return (null, null);
+        if (element.ValueKind != JsonValueKind.Object)
+            return (null, "tokens debe ser un objeto (o null para limpiar).");
+        // El tope de verdad se mide al final sobre el JSON COMPACTO: la indentación con la
+        // que venga la petición no debe contar, y el error concreto de un token («tagline»
+        // es demasiado largo) tiene que ganar siempre al genérico. Aquí solo se corta lo
+        // absurdo, antes de recorrer nada.
+        if (element.GetRawText().Length > BrandTokensRawMaxChars)
+            return (null, "Los tokens de marca ocupan demasiado (máx. 4 KB).");
+
+        var tokens = new JsonObject();
+        foreach (var property in element.EnumerateObject())
+        {
+            var key = property.Name;
+            var value = property.Value;
+            if (value.ValueKind is JsonValueKind.Null) continue;   // null = ese token no se fija
+
+            if (key == "caps")
+            {
+                if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                    return (null, "«caps» debe ser un booleano (true | false).");
+                tokens["caps"] = value.GetBoolean();
+                continue;
+            }
+
+            var known = BrandColorTokens.Contains(key) || BrandUrlTokens.Contains(key)
+                || BrandLengthTokens.Contains(key)
+                || key is "heroFilter" or "fontFamily" or "tagline" or "supportEmail";
+            if (!known) continue;                                  // token desconocido: se ignora
+
+            if (value.ValueKind != JsonValueKind.String)
+                return (null, $"«{key}» debe ser una cadena de texto.");
+            var text = value.GetString()!.Trim();
+            if (text.Length == 0) continue;                        // vacío = ese token no se fija
+
+            string? error = null;
+            if (BrandColorTokens.Contains(key))
+            {
+                if (BrandHexColor.IsMatch(text)) text = text.ToLowerInvariant();
+                else error = $"«{key}» debe ser un color hexadecimal (#rrggbb).";
+            }
+            else if (BrandUrlTokens.Contains(key))
+            {
+                error = text.Length > BrandTokenUrlMax
+                    ? $"«{key}» es demasiado largo (máx. {BrandTokenUrlMax})."
+                    : HasDangerousScheme(text) ? $"«{key}» no admite URLs javascript: ni data:."
+                    : HasUnsafeUrlChars(text)
+                        ? $"«{key}» no admite espacios, comillas, paréntesis, «<», «>», «\\», «;» ni llaves."
+                        : null;
+            }
+            else if (BrandLengthTokens.Contains(key))
+            {
+                if (text.Length > 20 || !BrandCssLength.IsMatch(text))
+                    error = $"«{key}» debe ser una medida CSS con unidad (px, rem, em o %).";
+            }
+            else if (key == "heroFilter")
+            {
+                error = text.Length > 120 ? "«heroFilter» es demasiado largo (máx. 120)."
+                    : HasCssInjection(text)
+                        ? "«heroFilter» no admite «;», llaves, «<», «\\», comentarios CSS ni «url(»."
+                        : null;
+            }
+            else if (key == "fontFamily")
+            {
+                // Se emite entre comillas: --brand-font: "…". Fuera todo lo que pueda cerrarlas
+                // o escaparlas (el portal, asFamily(), borra esos mismos caracteres: si el
+                // servidor los dejara pasar, lo guardado y lo aplicado no coincidirían).
+                error = text.Length > 60 ? "«fontFamily» es demasiado largo (máx. 60)."
+                    : HasCssStringInjection(text)
+                        ? "«fontFamily» no admite «;», llaves, «<», «>», comillas ni «\\»."
+                        : null;
+            }
+            else if (key == "tagline")
+            {
+                // Texto plano: hoy el login lo pinta escapado, pero es un valor de administrador
+                // que se publica y que mañana puede acabar en un email o en un meta; nada de
+                // HTML crudo (coherente con el resto de tokens de texto).
+                error = text.Length > 120 ? "«tagline» es demasiado largo (máx. 120)."
+                    : text.Contains('<') || text.Contains('>') ? "«tagline» no admite «<» ni «>»." : null;
+            }
+            else if (key == "supportEmail")
+            {
+                error = text.Length > 120 ? "«supportEmail» es demasiado largo (máx. 120)."
+                    : !BrandEmail.IsMatch(text)
+                        ? "«supportEmail» debe ser una dirección de correo válida (o vacío)."
+                        : null;
+            }
+            if (error is not null) return (null, error);
+            tokens[key] = text;
+        }
+
+        // Tope de tamaño, ya con cada token validado: se mide el JSON COMPACTO de la petición
+        // (sin la indentación del cliente). Medirlo sobre el normalizado sería inalcanzable
+        // —con los topes por token el máximo posible ronda los 2 KB—, y lo que hay que acotar
+        // es lo que manda el cliente.
+        if (JsonSerializer.Serialize(element).Length > BrandTokensMaxChars)
+            return (null, "Los tokens de marca ocupan demasiado (máx. 4 KB).");
+
+        // {} (o un objeto entero de tokens desconocidos) también limpia: no configura nada.
+        return tokens.Count == 0 ? (null, null) : (tokens.ToJsonString(), null);
+    }
+
+    /// URLs de marca: se pintan en el portal, así que se cierran los esquemas ejecutables
+    /// (comparando sin espacios ni caracteres de control, que es como los lee el navegador).
+    private static bool HasDangerousScheme(string url)
+    {
+        var probe = new string([.. url.Where(c => !char.IsWhiteSpace(c) && !char.IsControl(c))]).ToLowerInvariant();
+        return probe.StartsWith("javascript:") || probe.StartsWith("data:") || probe.StartsWith("vbscript:");
+    }
+
+    /// URLs de marca: acaban en un atributo src/href del portal y dentro del url("…") del
+    /// @font-face que se inyecta. Además del esquema se cierran los caracteres que rompen esos
+    /// contextos, exactamente los mismos que rechaza asUrl() en el portal.
+    private static bool HasUnsafeUrlChars(string url) =>
+        url.Any(c => char.IsWhiteSpace(c) || char.IsControl(c)
+            || c is '"' or '\'' or '(' or ')' or '<' or '>' or '\\' or ';' or '{' or '}');
+
+    /// Valor que acaba dentro de una declaración CSS: no puede cerrarla, ni escapar un carácter
+    /// (en CSS «\75» es una «u», así que «\75rl(…)» era un url() válido que se colaba), ni abrir
+    /// un comentario, ni disparar peticiones.
+    private static bool HasCssInjection(string css)
+    {
+        if (css.Contains(';') || css.Contains('}') || css.Contains('{') || css.Contains('<')
+            || css.Contains('\\') || css.Contains("/*") || css.Contains("*/")) return true;
+        return new string([.. css.Where(c => !char.IsWhiteSpace(c))]).ToLowerInvariant().Contains("url(");
+    }
+
+    /// Valor que acaba DENTRO de una cadena CSS entre comillas (fontFamily).
+    private static bool HasCssStringInjection(string text) =>
+        text.Any(c => c is '"' or '\'' or '\\' or '<' or '>' or '{' or '}' or ';');
 
     private static object Project(NotificationChannel c) => new
     {
@@ -263,4 +444,4 @@ public sealed record TransformTest(string? Transformer, string? Input);
 public sealed record EmailPreview(string? EventKey, string? Subject, string? BodyHtml, string? Layout);
 public sealed record EmailLayoutBody(string? Layout);
 public sealed record OrdersModeBody(string? Mode);
-public sealed record BrandingBody(string? Name, string? Color, string? LogoUrl);
+public sealed record BrandingBody(string? Name, string? Color, string? LogoUrl, JsonElement? Tokens = null);

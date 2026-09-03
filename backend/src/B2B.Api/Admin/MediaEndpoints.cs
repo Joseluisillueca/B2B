@@ -26,13 +26,20 @@ public static class MediaEndpoints
         [".svg"] = ["image/svg+xml"],
         // Vídeo para el hero de la portada (autoplay/muted/loop en el portal)
         [".mp4"] = ["video/mp4"],
-        [".webm"] = ["video/webm"]
+        [".webm"] = ["video/webm"],
+        // Marca de la instancia (theming): la tipografía .woff2 y el favicon .ico que el
+        // back-office ya ofrece subir. Ni el navegador ni Windows saben siempre su tipo
+        // (llegan a menudo como application/octet-stream), así que se admite el genérico
+        // y, a cambio, se comprueba la CABECERA del fichero antes de escribirlo: ninguno
+        // de los dos se sirve como algo ejecutable (font/woff2 e image/x-icon).
+        [".woff2"] = ["font/woff2", "application/font-woff2", "application/octet-stream"],
+        [".ico"] = ["image/x-icon", "image/vnd.microsoft.icon", "image/ico", "application/octet-stream"]
     };
 
     // El listado sí enseña los SVG que van con el producto (la portada de demo):
     // están en la carpeta, y el CMS tiene que poder verlos y borrarlos.
     private static readonly string[] Listable =
-        [".jpg", ".jpeg", ".png", ".webp", ".avif", ".gif", ".svg", ".mp4", ".webm"];
+        [".jpg", ".jpeg", ".png", ".webp", ".avif", ".gif", ".svg", ".mp4", ".webm", ".woff2", ".ico"];
 
     public static string MediaRoot(IConfiguration config, IWebHostEnvironment env) =>
         config["Media:Root"] is { Length: > 0 } configured
@@ -68,19 +75,29 @@ public static class MediaEndpoints
                     error = $"El contenido dice ser \"{contentType}\" y la extensión {extension}: no cuadran."
                 });
 
-            // El SVG es el único formato que el navegador ejecuta: se lee entero y se
-            // rechaza si trae script en vez de dibujo.
-            byte[]? svg = null;
-            if (extension.Equals(".svg", StringComparison.OrdinalIgnoreCase))
+            // Dos casos se leen ENTEROS antes de escribirlos: el SVG, único formato que el
+            // navegador ejecuta (se rechaza si trae script en vez de dibujo), y los binarios
+            // que se admiten con MIME genérico (.woff2/.ico), de los que se comprueba la
+            // cabecera para que "application/octet-stream" no sea una rendija.
+            var isSvg = extension.Equals(".svg", StringComparison.OrdinalIgnoreCase);
+            var checksSignature = Signatures.ContainsKey(extension);
+            byte[]? content = null;
+            if (isSvg || checksSignature)
             {
                 using var buffer = new MemoryStream();
                 await file.CopyToAsync(buffer);
-                svg = buffer.ToArray();
-                if (!IsSafeSvg(svg))
+                content = buffer.ToArray();
+                if (isSvg && !IsSafeSvg(content))
                     return Results.BadRequest(new
                     {
                         error = "El SVG lleva script o enlaces ejecutables: súbelo sin <script>, "
                                 + "sin atributos on… y sin javascript:."
+                    });
+                if (checksSignature && !HasExpectedSignature(extension, content))
+                    return Results.BadRequest(new
+                    {
+                        error = $"El contenido no es un {extension.TrimStart('.')} de verdad: "
+                                + "la cabecera del fichero no cuadra con la extensión."
                     });
             }
 
@@ -90,8 +107,8 @@ public static class MediaEndpoints
             var name = UniqueName(file.FileName ?? "imagen", extension);
             await using (var stream = File.Create(Path.Combine(root, name)))
             {
-                if (svg is not null)
-                    await stream.WriteAsync(svg);
+                if (content is not null)
+                    await stream.WriteAsync(content);
                 else
                     await file.CopyToAsync(stream);
             }
@@ -129,6 +146,21 @@ public static class MediaEndpoints
             return Results.NoContent();
         }).RequireAdmin();
     }
+
+    // Cabeceras de los binarios que se aceptan con MIME genérico. Se comparan tal cual:
+    //   .woff2 → "wOF2" (firma del WOFF 2.0)
+    //   .ico   → ICONDIR 00 00 01 00, o un PNG (los favicon "PNG con nombre .ico" corren
+    //            por ahí y los navegadores los aceptan)
+    private static readonly Dictionary<string, byte[][]> Signatures = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [".woff2"] = [[0x77, 0x4F, 0x46, 0x32]],
+        [".ico"] = [[0x00, 0x00, 0x01, 0x00], [0x89, 0x50, 0x4E, 0x47]]
+    };
+
+    private static bool HasExpectedSignature(string extension, byte[] bytes) =>
+        !Signatures.TryGetValue(extension, out var signatures)
+        || signatures.Any(signature => bytes.Length >= signature.Length
+            && bytes.Take(signature.Length).SequenceEqual(signature));
 
     // Lista negra corta y explícita: lo que convierte un SVG en una página ejecutable
     // (script, manejadores on…, javascript: y documentos embebidos).

@@ -81,7 +81,9 @@ export const api = {
   intPreviewEmail: b => request('POST', '/api/admin/integration/preview-email', b),
   intSaveEmailLayout: layout => request('PUT', '/api/admin/integration/email-layout', { layout }),
   intSaveOrdersMode: mode => request('PUT', '/api/admin/integration/orders-mode', { mode }),
-  // Marca del portal (nombre + color + logo). Vacíos = volver a la marca por defecto.
+  // Marca del portal: { name, color, logoUrl, tokens }. Vacíos = volver a la marca por
+  // defecto. `tokens` es el estilo extendido de la instancia (tipografía, colores, formas,
+  // favicon, textos); null o {} lo limpia y cada token ausente = el valor de siempre.
   intSaveBranding: b => request('PUT', '/api/admin/integration/branding', b),
 
   // Visibilidad de catálogo por sujeto (client|agent): fila bc (solo lectura, la

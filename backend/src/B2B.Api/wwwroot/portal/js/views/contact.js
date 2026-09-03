@@ -13,8 +13,12 @@ import { esc } from '../format.js';
 import { state } from '../state.js';
 import { icons } from '../ui/icons.js';
 import { pageHead } from '../ui/chrome.js';
+import { brandSupportEmail } from '../branding.js';
 
+// Buzón por defecto; la instancia lo cambia con el token `supportEmail` de la marca
+// (si no, un despliegue con su propia marca publicaría aquí un mailto: a un tercero).
 const INBOX = 'tiendas@lejanbrand.com';
+const inbox = () => brandSupportEmail(INBOX);
 
 export default function contact(host) {
   let notice = null;   // { tone: 'ok' | 'error', text }
@@ -33,7 +37,7 @@ export default function contact(host) {
         ${pageHead(t('nav.contact'), [t('nav.contact')])}
 
         <p class="ct-lead">${t('contact.lead', {
-          email: `<a class="link" href="mailto:${INBOX}">${INBOX}</a>`
+          email: `<a class="link" href="mailto:${esc(inbox())}">${esc(inbox())}</a>`
         })}</p>
 
         ${notice ? `
