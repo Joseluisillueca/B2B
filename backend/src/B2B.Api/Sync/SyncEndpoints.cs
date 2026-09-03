@@ -4,6 +4,7 @@ using B2B.Api.Auth;
 using B2B.Api.Data;
 using B2B.Api.Notifications;
 using B2B.Api.Portal;
+using B2B.Api.Shop;
 using Microsoft.EntityFrameworkCore;
 
 namespace B2B.Api.Sync;
@@ -268,5 +269,6 @@ public static class SyncEndpoints
         // Crudo y normalizado se guardan en el mismo SaveChanges: nunca divergen
         CatalogNormalizer.Normalize(db, entityType, externalId, payload);
         await ClientIdentity.ApplyAsync(db, entityType, externalId, payload);
+        await VisibilityStore.ProjectFromPayloadAsync(db, entityType, externalId, payload);
     }
 }
