@@ -54,7 +54,11 @@ export default function checkout(host) {
   // carrito (ir a una ficha sugerida y volver no obliga a re-marcar). Se limpia
   // al terminar el pedido o al vaciar el carrito (sessionStorage: muere con la
   // pestaña, nunca se arrastra a un pedido de mañana).
-  const ACCEPTED_KEY = 'ck_accepted';
+  // Por CLIENTE, como el carrito: un agente que acepta las condiciones de un cliente
+  // y salta al siguiente encontraba la casilla ya marcada sobre un pedido distinto.
+  const ACCEPTED_KEY = `ck_accepted:${String(
+    state.acting?.client?.id || state.acting?.client?.clientId || credential.clientId || '-'
+  ).toLowerCase()}`;
   const readAccepted = () => { try { return sessionStorage.getItem(ACCEPTED_KEY) === '1'; } catch { return false; } };
   let accepted = readAccepted();
   const setAccepted = value => {
@@ -165,7 +169,7 @@ export default function checkout(host) {
             ${card()}
 
             <div class="ck-lines-head">
-              <h2>${esc(t('checkout.products', { n: units }))}</h2>
+              <h2 tabindex="-1">${esc(t('checkout.products', { n: units }))}</h2>
               <button type="button" class="btn-ghost" id="favorite">
                 ${icons.heart(16)} ${esc(t('checkout.saveFavorite'))}</button>
             </div>
@@ -384,7 +388,12 @@ export default function checkout(host) {
       blockedIds = new Set();
       error = '';
       render();
-      host.querySelector('#submit')?.focus({ preventScroll: true });
+      // Si al quitarlos el carrito se queda vacío, TERMINAR PEDIDO está deshabilitado y
+      // no puede recibir el foco: se lleva a la cabecera de las líneas, que es lo que
+      // acaba de cambiar.
+      const submit = host.querySelector('#submit');
+      (submit && !submit.disabled ? submit : host.querySelector('.ck-lines-head h2'))
+        ?.focus({ preventScroll: true });
     });
 
     // Vaciar el carrito no tiene vuelta atrás: se confirma en el diálogo del portal

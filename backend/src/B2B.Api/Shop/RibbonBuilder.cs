@@ -8,7 +8,13 @@ namespace B2B.Api.Shop;
 /// CRUDO de BC (lo que el front manda tal cual en a.{clave}=), `Label` la etiqueta ya con
 /// los overrides de títulos de /manage aplicados.
 public sealed record RibbonEntry(
-    string Key, string Kind, string? AttributeId, string? Value, string Raw, string Label, int Count);
+    string Key, string Kind, string? AttributeId, string? Value, string Raw, string Label, int Count,
+    // Clave CRUDA del atributo en BC ("Grupo de edad"), no su slug: es la que compara el
+    // filtro `a.{clave}=`. La cinta es estable y sus pestañas siguen ahí aunque las facetas
+    // de esa respuesta vengan recortadas por otro filtro, así que el front no siempre puede
+    // deducirla del vocabulario de facetas — y con el slug ("grupo-de-edad") el filtro no
+    // casaba y el catálogo se quedaba vacío en silencio.
+    string? RawKey = null);
 
 // Las entradas de la cinta, COMPUTADAS EN SERVIDOR para el actor: nacen de las facetas
 // del SURTIDO COMPLETO del actor (CatalogPage.Ribbon: post-visibilidad, sin filtros de
@@ -42,7 +48,7 @@ public static class RibbonBuilder
                     candidates.Add(new($"attr:{facet.KeySlug}:{value.Slug}", "attr", facet.KeySlug, value.Slug,
                         // Raw = el valor CRUDO de BC (Value/Label de la faceta, ANTES de los
                         // overrides de títulos): es lo que el filtro a.{clave}= compara tal cual.
-                        Raw: value.Value, value.Label, value.Count));
+                        Raw: value.Value, value.Label, value.Count, RawKey: facet.Key));
             }
 
         // Overrides por entrada: hidden → fuera; order → delante (los sin order al

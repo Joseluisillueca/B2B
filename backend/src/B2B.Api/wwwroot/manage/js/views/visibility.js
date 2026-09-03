@@ -89,8 +89,12 @@ export async function loadVocabulary() {
     }
   }
 
-  // Lo observado en el catálogo real: claves/valores de model.attributes + familyId
+  // Lo observado en el catálogo real: claves/valores de model.attributes + familyId.
+  // Los modelos dados de baja en BC (active:false) NO están en el catálogo del portal
+  // (CatalogService filtra por Active), así que tampoco cuentan aquí: el recuento debe
+  // decir lo que el cliente vería, no cuántos documentos hay sincronizados.
   for (const m of models) {
+    if (m.payload?.active === false) continue;
     const fid = visSlug(m.payload?.familyId || '');
     if (fid && !family.values.has(fid)) family.values.set(fid, cap(fid));
     // Cuántos modelos tiene HOY cada valor: el editor lo enseña junto a la casilla
@@ -154,10 +158,15 @@ export async function mountVisibility(host, type, id, subjectNoun = 'el cliente'
 
   // Chip bajo el título de la ficha: "Surtido restringido · BC|manual" (UX-M6). Se ve
   // sin bajar hasta la sección, y coincide con el chip de la fila del listado.
+  // La sección se monta con peticiones por delante: si el usuario ya ha navegado, este
+  // host está desconectado y el chip iría a parar a la cabecera de OTRA ficha. Por eso
+  // se exige que el host siga vivo y el título se busca DENTRO de su misma página.
   function headChip() {
-    document.querySelector('.mng-page-head .vis-head-chip')?.remove();
+    if (!host.isConnected) return;
+    const page = host.closest('#main') || host.ownerDocument;
+    page.querySelector('.mng-page-head .vis-head-chip')?.remove();
     const source = locked ? 'BC' : (Array.isArray(data.manualRules) && data.manualRules.length ? 'manual' : '');
-    const title = document.querySelector('.mng-page-head .title');
+    const title = page.querySelector('.mng-page-head .title');
     if (source && title) title.insertAdjacentHTML('afterend',
       `<span class="grid-chip warn vis-head-chip">${icons.eye(12)} Surtido restringido · ${source}</span>`);
   }
@@ -233,6 +242,9 @@ export async function mountVisibility(host, type, id, subjectNoun = 'el cliente'
       const n = counts.get(vid) || 0;
       return n ? `${n} modelo${n === 1 ? '' : 's'}` : 'sin modelos ahora';
     };
+    // El recuento sale del vocabulario (modelos activos sincronizados, con el techo de
+    // paginación que avisa `clippedNote`), no de una consulta al catálogo: es una guía
+    // para elegir, no el surtido exacto que verá el cliente.
 
     return `
       <div class="vis-rule" data-rule="${index}">

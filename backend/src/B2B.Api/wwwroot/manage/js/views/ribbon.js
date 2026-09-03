@@ -267,12 +267,18 @@ export default async function ribbonView(main) {
   function orphanRows() {
     const list = orphans();
     if (!list.length) return '';
-    // Clave legible ("Silueta -> Fantasma"); la técnica se queda al lado, para soporte
+    // Clave legible ("Silueta → Fantasma"); la técnica se queda al lado, para soporte.
+    // El slug conserva los ':' (Slug solo mapea espacio, / \ _ . y -), así que un valor
+    // como "Talla: L" deja la clave "attr:talla:talla:-l": se parte por los DOS primeros
+    // separadores y el resto es el valor entero.
     const pretty = key => {
-      const [kind, a, v] = String(key).split(':');
-      if (kind === 'family') return `Familia → ${vocab.family.values.get(visSlug(a)) || a}`;
+      const parts = String(key).split(':');
+      const kind = parts[0];
+      const a = parts[1] ?? '';
+      const v = parts.slice(2).join(':');
+      if (kind === 'family') return `Familia → ${vocab.family.values.get(visSlug(parts.slice(1).join(':'))) || parts.slice(1).join(':')}`;
       const attr = vocab.attrs.get(visSlug(a));
-      return `${attr?.label || a} → ${attr?.values.get(visSlug(v ?? '')) || v || ''}`;
+      return `${attr?.label || a} → ${attr?.values.get(visSlug(v)) || v}`;
     };
     const summary = st => [
       st.hidden ? 'oculta' : '',
@@ -552,7 +558,9 @@ export default async function ribbonView(main) {
       flash(e.body?.error || e.message || 'No se pudo restaurar la cinta.', 'err');
     } finally {
       busy = false;
-      if (here()) setBusy(false);
+      // syncDirty() también aquí: setBusy(true) escondió el aviso de "cambios sin
+      // guardar" y, si la restauración falla, los cambios SIGUEN sin guardarse.
+      if (here()) { setBusy(false); syncDirty(); }
     }
   }
 

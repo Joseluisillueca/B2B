@@ -36,13 +36,17 @@ const scopeKey = base => {
   const client = acting?.client?.id || acting?.client?.clientId || credential?.clientId || '-';
   return `${base}:${String(user).toLowerCase()}:${String(client).toLowerCase()}`;
 };
-// Migración única de la clave global antigua: la adopta el primer ámbito que la lee
+// Migración única de la clave global antigua. Solo la adopta un ámbito CON cliente:
+// el agente sin suplantar no tiene cliente ('-') y su ámbito no se lee jamás desde el
+// catálogo ni el checkout, así que dejarle ahí el carrito heredado equivalía a perderlo.
+// Mientras no aparezca un ámbito con cliente, la clave antigua se queda donde está.
 const readScoped = base => {
-  const own = read(localStorage, scopeKey(base), null);
+  const key = scopeKey(base);
+  const own = read(localStorage, key, null);
   if (own) return own;
   const legacy = read(localStorage, base, null);
-  if (legacy && Object.keys(legacy).length) {
-    write(localStorage, scopeKey(base), legacy);
+  if (legacy && Object.keys(legacy).length && !key.endsWith(':-')) {
+    write(localStorage, key, legacy);
     localStorage.removeItem(base);
     return legacy;
   }

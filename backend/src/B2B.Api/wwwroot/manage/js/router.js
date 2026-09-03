@@ -33,6 +33,9 @@ async function loadCounts() {
 
 export async function resolve() {
   if (restoring) { restoring = false; return; }   // hashchange del propio retorno: nada que pintar
+  // Con la sesión ya cerrada (el botón Salir hace auth.clear() antes de navegar) no hay
+  // nada que guardar y preguntar sería una trampa: el usuario ya no puede volver.
+  if (!auth.token) leaveGuard = null;
   if (leaveGuard && location.hash !== lastHash && !leaveGuard()) {
     restoring = true;
     location.hash = lastHash;

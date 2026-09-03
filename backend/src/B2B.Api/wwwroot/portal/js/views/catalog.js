@@ -225,15 +225,17 @@ export default async function catalog(host) {
     }
   };
 
-  // slug de servidor → { key, value } crudos para query.attributes. Prioridad del
-  // valor: el vocabulario de facetas; si no lo conoce (facetas recortadas por otro
-  // filtro), `entry.raw` — el valor CRUDO que la propia cinta trae del servidor y
-  // que el filtro compara tal cual (fix de revisión: el slug no casaba y dejaba el
-  // catálogo vacío en silencio); el slug queda de último recurso (cintas antiguas).
+  // slug de servidor → { key, value } CRUDOS para query.attributes. Clave y valor
+  // siguen la misma escalera: el vocabulario de facetas primero; si no lo conoce
+  // (facetas recortadas por otro filtro, o un deep-link cuyo PRIMER catálogo ya viene
+  // filtrado), lo que la propia cinta trae del servidor (`entry.rawKey`/`entry.raw`),
+  // que es lo que el filtro compara tal cual; el slug queda de último recurso.
+  // Sin `rawKey` una clave con espacios ("Grupo de edad" → "grupo-de-edad") no casaba
+  // y el catálogo se quedaba vacío con la pestaña encendida.
   const resolveEntry = entry => {
     const rec = ribbonVocab.get(entry.attributeId);
     return {
-      key: rec?.key || entry.attributeId,
+      key: rec?.key || entry.rawKey || entry.attributeId,
       value: rec?.values.get(entry.value) ?? entry.raw ?? entry.value
     };
   };
@@ -350,7 +352,18 @@ export default async function catalog(host) {
     // se retira aunque el usuario nunca redimensione — sin acumulación de listeners.
     const onResize = () => (ribbon.isConnected ? update() : dispose());
     const watchdog = setInterval(() => { if (!ribbon.isConnected) dispose(); }, 15_000);
-    function dispose() { removeEventListener('resize', onResize); clearInterval(watchdog); }
+    // El ancho del raíl también cambia sin que se redimensione la ventana: al salir del
+    // modo sin distracciones (el ojo del header oculta la cinta) el raíl pasa de 0 a su
+    // ancho real, y sin recalcular las flechas se quedaban con el estado de cuando no
+    // se veía. Un observador de tamaño lo cubre; si el navegador no lo trae, queda el
+    // listener de resize de siempre.
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => update()) : null;
+    observer?.observe(rail);
+    function dispose() {
+      removeEventListener('resize', onResize);
+      clearInterval(watchdog);
+      observer?.disconnect();
+    }
     addEventListener('resize', onResize);
 
     // El estado activo puede llegar por deep-link: el chip encendido se centra
@@ -415,6 +428,10 @@ export default async function catalog(host) {
     } catch {
       list.removeAttribute('aria-busy');
       list.classList.remove('is-loading');
+      // Sin catálogo no habrá cinta: el hueco reservado se retira o deja una regla
+      // suelta y un salto de 62px cuando el usuario reintenta.
+      ribbon.classList.remove('is-pending');
+      if (!ribbonBuilt) ribbon.hidden = true;
       count.textContent = '';
       list.innerHTML = `<div class="panel"><b>${esc(t('catalog.errorTitle'))}</b>${esc(t('catalog.errorBody'))}</div>`;
       return;

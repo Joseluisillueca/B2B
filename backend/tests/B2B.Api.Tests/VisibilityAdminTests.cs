@@ -450,6 +450,10 @@ public class VisibilityAdminTests : IClassFixture<TestWebApplicationFactory>
             Assert.Equal("attr", attr.GetProperty("kind").GetString());
             Assert.Equal("marcar6b", attr.GetProperty("attributeId").GetString());
             Assert.Equal("VISAD6BADIDAS", attr.GetProperty("raw").GetString());
+            // rawKey = la clave CRUDA de BC, no su slug: es la que compara el filtro
+            // `a.{clave}=` y la que el portal necesita cuando las facetas de esa
+            // respuesta vienen recortadas y no puede deducirla del vocabulario.
+            Assert.Equal("MarcaR6B", attr.GetProperty("rawKey").GetString());
             Assert.Equal(1, attr.GetProperty("count").GetInt32());
 
             var open = await (await Send(HttpMethod.Get, "/api/shop/catalog?q=VISAD6B", openToken))
