@@ -1,24 +1,24 @@
-using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using B2B.Api.Auth;
 using B2B.Api.Data;
-using B2B.Api.Portal;
 using B2B.Api.Shop;
 using Microsoft.EntityFrameworkCore;
 
 namespace B2B.Api.Admin;
 
-// Tarea 7: administración de la visibilidad del catálogo + cinta (ribbon).
+// Tarea 7: administración de la visibilidad del catálogo + config de la cinta (ribbon).
 // - GET/PUT /api/admin/visibility/{type}/{id}: las dos filas de CatalogVisibility a la
 //   vez (bc = la fija el sync, solo lectura; manual = editable en /manage). El PUT solo
 //   toca la manual y normaliza a slug (la moneda canónica de VisibilityScope).
 // - PUT /api/admin/integration/ribbon: config cruda en IntegrationSettings.CatalogRibbonJson
 //   (el GET de settings de IntegrationEndpoints la devuelve como catalogRibbon).
-// - GET /api/shop/ribbon: las entradas de la cinta COMPUTADAS EN SERVIDOR para el actor,
-//   sobre las facetas ya filtradas por su VisibilityScope (cero fugas de valores prohibidos).
+// La cinta computada por actor vive en Shop: GET /api/shop/ribbon (ShopEndpoints).
 public static class VisibilityEndpoints
 {
+    private const int MaxRules = 200;
+    private const int MaxValueIds = 500;
+
     public static void MapVisibilityEndpoints(this IEndpointRouteBuilder app)
     {
         // ── Visibilidad por sujeto (cliente o agente) ──────────────────────────
@@ -36,8 +36,7 @@ public static class VisibilityEndpoints
             var (normalized, error) = Normalize(body.Rules);
             if (error is not null) return Results.BadRequest(new { error });
 
-            var manual = await db.CatalogVisibilities.FirstOrDefaultAsync(v =>
-                v.SubjectType == type && v.SubjectId == id && v.Source == "manual");
+            var (_, manual) = await VisibilityStore.RowsForAsync(db, type, id);
 
             if (normalized!.Count == 0)
             {
@@ -82,80 +81,16 @@ public static class VisibilityEndpoints
             await db.SaveChangesAsync();
             return Results.Ok(new { ok = true, catalogRibbon = ParseNode(json) });
         }).RequireAdmin();
-
-        // ── La cinta computada para el actor (la llama el portal) ──────────────
-
-        app.MapGet("/api/shop/ribbon", async (HttpRequest request, ClaimsPrincipal principal, AppDbContext db) =>
-        {
-            var actor = await PortalScope.ActorAsync(principal, db);
-            var visibility = await VisibilityStore.ScopeForAsync(db, actor?.ClientId, actor?.User.AgentExternalId);
-            var locale = DocumentProjections.Locale(request.Query["locale"]);
-
-            // Take = 1: las facetas (Families/AttributeFacets) se computan sobre TODO el
-            // catálogo filtrado por visibilidad ("all" en CatalogService.QueryAsync); Take
-            // solo recorta Rows, que aquí no se usan.
-            var prices = actor is null
-                ? PortalActorPrices.Anonymous
-                : new PortalActorPrices(actor.ClientId, actor.GroupIds);
-            var page = await CatalogService.QueryAsync(db, prices,
-                new CatalogQuery { Take = 1, Locale = locale }, DateTimeOffset.UtcNow, visibility);
-
-            var settings = await db.IntegrationSettings.FindAsync(1);
-            var config = ParseNode(settings?.CatalogRibbonJson) as JsonObject;
-
-            // Candidatas: SIEMPRE nacidas de las facetas filtradas — jamás una entrada
-            // que el actor no pueda ver. Sin config → solo familias (cinta autogenerada).
-            var candidates = new List<RibbonCandidate>();
-            foreach (var family in page.Families)
-                candidates.Add(new("family:" + family.Id, "family", null, null, family.Label, family.Count));
-
-            if (config?["attributes"] is JsonArray attributes)
-                foreach (var wanted in attributes)
-                {
-                    var slug = CatalogVocabulary.Slug(Text(wanted));
-                    if (slug.Length == 0) continue;
-                    var facet = page.AttributeFacets.FirstOrDefault(f =>
-                        string.Equals(f.KeySlug, slug, StringComparison.OrdinalIgnoreCase));
-                    if (facet is null) continue;
-                    foreach (var value in facet.Values)
-                        candidates.Add(new($"attr:{facet.KeySlug}:{value.Slug}", "attr",
-                            facet.KeySlug, value.Slug, value.Label, value.Count));
-                }
-
-            // Overrides por entrada: hidden → fuera; order → delante (los sin order al
-            // final, en el orden natural de las facetas); titles → etiqueta del locale.
-            var overrides = Overrides(config);
-            var entries = candidates
-                .Select((candidate, index) => (candidate, index,
-                    over: overrides.GetValueOrDefault(candidate.Key.ToLowerInvariant())))
-                .Where(x => x.over?.Hidden != true)
-                .OrderBy(x => x.over?.Order ?? int.MaxValue)
-                .ThenBy(x => x.index)
-                .Select(x => new
-                {
-                    key = x.candidate.Key,
-                    kind = x.candidate.Kind,
-                    attributeId = x.candidate.AttributeId,
-                    value = x.candidate.Value,
-                    label = Title(x.over, locale) ?? x.candidate.Label,
-                    count = x.candidate.Count,
-                });
-
-            return Results.Ok(new { locale, entries });
-        }).RequireAuthorization();
     }
 
     // ── Proyección GET/PUT de visibilidad ──────────────────────────────────────
-    // rules = las EFECTIVAS (misma precedencia que VisibilityStore.RulesForAsync: bc si
-    // existe, si no manual, si no []); bcRules/manualRules = cada fila si existe, como
-    // JSON parseado (la UI enseña "lo fija BC" y a la vez edita lo manual).
+    // rules = las EFECTIVAS (misma precedencia que el runtime, resuelta en
+    // VisibilityStore.RowsForAsync: bc si existe, si no manual, si no []);
+    // bcRules/manualRules = cada fila si existe, como JSON parseado (la UI enseña
+    // "lo fija BC" y a la vez edita lo manual).
     private static async Task<object> ProjectAsync(AppDbContext db, string type, string id)
     {
-        var rows = await db.CatalogVisibilities
-            .Where(v => v.SubjectType == type && v.SubjectId == id)
-            .ToListAsync();
-        var bc = rows.FirstOrDefault(r => r.Source == "bc");
-        var manual = rows.FirstOrDefault(r => r.Source == "manual");
+        var (bc, manual) = await VisibilityStore.RowsForAsync(db, type, id);
         var effective = bc ?? manual;
         return new
         {
@@ -177,6 +112,8 @@ public static class VisibilityEndpoints
     {
         if (rules is not { ValueKind: JsonValueKind.Array } array)
             return (null, "rules debe ser un array de reglas [{attributeId, valueIds[]}].");
+        if (array.GetArrayLength() > MaxRules)
+            return (null, $"Demasiadas reglas (máx. {MaxRules}).");
 
         var normalized = new JsonArray();
         foreach (var item in array.EnumerateArray())
@@ -189,6 +126,8 @@ public static class VisibilityEndpoints
                 return (null, "Cada regla necesita un attributeId (texto no vacío).");
             if (!item.TryGetProperty("valueIds", out var values) || values.ValueKind != JsonValueKind.Array)
                 return (null, $"La regla de \"{attribute.GetString()}\" necesita valueIds como array de textos.");
+            if (values.GetArrayLength() > MaxValueIds)
+                return (null, $"Demasiados valueIds en \"{attribute.GetString()}\" (máx. {MaxValueIds}).");
 
             var slugs = new JsonArray();
             foreach (var value in values.EnumerateArray())
@@ -204,43 +143,10 @@ public static class VisibilityEndpoints
         return (normalized, null);
     }
 
-    // ── Utilidades de la cinta ─────────────────────────────────────────────────
-
-    private sealed record RibbonCandidate(
-        string Key, string Kind, string? AttributeId, string? Value, string Label, int Count);
-
-    private sealed record RibbonOverride(bool Hidden, int? Order, JsonObject? Titles);
-
-    private static Dictionary<string, RibbonOverride> Overrides(JsonObject? config)
-    {
-        var result = new Dictionary<string, RibbonOverride>();
-        if (config?["entries"] is not JsonArray entries) return result;
-        foreach (var entry in entries)
-        {
-            var key = Text(entry?["key"]).ToLowerInvariant();
-            if (key.Length == 0) continue;
-            int? order = null;
-            try { order = entry?["order"]?.GetValue<int>(); } catch { /* no numérico → sin orden */ }
-            result[key] = new RibbonOverride(
-                Hidden: (entry?["hidden"] as JsonValue)?.TryGetValue<bool>(out var hidden) == true && hidden,
-                Order: order,
-                Titles: entry?["titles"] as JsonObject);
-        }
-        return result;
-    }
-
-    /// Título del locale pedido, si está configurado; si no, null (cae al de la faceta)
-    private static string? Title(RibbonOverride? over, string locale)
-    {
-        if (over?.Titles is not { } titles) return null;
-        var title = Text(titles[locale]);
-        return title.Length > 0 ? title : null;
-    }
-
-    private static string Text(JsonNode? node) =>
-        (node as JsonValue)?.TryGetValue<string>(out var text) == true ? text : "";
-
-    private static JsonNode? ParseNode(string? json)
+    /// Parse defensivo compartido (settings/reglas guardados): JSON roto o vacío → null.
+    /// Lo usan también IntegrationEndpoints (catalogRibbon del GET settings) y
+    /// ShopEndpoints (la config de la cinta en /api/shop/ribbon).
+    internal static JsonNode? ParseNode(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return null;
         try { return JsonNode.Parse(json); }

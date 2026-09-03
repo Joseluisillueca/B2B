@@ -230,6 +230,20 @@ public class VisibilityAdminTests : IClassFixture<TestWebApplicationFactory>
         var badTypeGet = await Send(HttpMethod.Get, $"/api/admin/visibility/banana/{clientId}", admin);
         Assert.Equal(HttpStatusCode.BadRequest, badTypeGet.StatusCode);
 
+        // Topes: más de 200 reglas o más de 500 valueIds en una regla → 400.
+        var tooManyRules = await Send(HttpMethod.Put, $"/api/admin/visibility/client/{clientId}", admin, new
+        {
+            rules = Enumerable.Range(0, 201)
+                .Select(i => new { attributeId = $"attr{i}", valueIds = new[] { "x" } }).ToArray()
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, tooManyRules.StatusCode);
+
+        var tooManyValues = await Send(HttpMethod.Put, $"/api/admin/visibility/client/{clientId}", admin, new
+        {
+            rules = new[] { new { attributeId = "marca", valueIds = Enumerable.Range(0, 501).Select(i => $"v{i}").ToArray() } }
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, tooManyValues.StatusCode);
+
         // Nada se guardó por el camino.
         Assert.Empty(await RowsAsync("client", clientId));
     }
@@ -307,39 +321,75 @@ public class VisibilityAdminTests : IClassFixture<TestWebApplicationFactory>
         await PutModel(beta, "VISAD6 BETA", "VA6-B-REF", "visad6fam", """{"MarcaR6":"BETA"}""");
         await PutModel(gamma, "VISAD6 GAMMA", "VA6-C-REF", "visad6fam", """{"MarcaR6":"GAMMA"}""");
         await PutClientVisibility(clientId, """[{"attributeId":"marcar6","valueIds":["alfa","beta"]}]""");
-        await SetRibbonAsync("""
-            {"attributes":["marcar6"],
-             "entries":[{"key":"attr:marcar6:beta","order":1,"titles":{"en":"Beta EN"}},
-                        {"key":"attr:marcar6:alfa","order":2},
-                        {"key":"family:visad6fam","hidden":true}]}
-            """);
         var token = await ClientTokenAsync(clientId);
 
-        var response = await Send(HttpMethod.Get, "/api/shop/ribbon?locale=en", token);
-        response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        // Limpieza garantizada: la config de la cinta es global (IntegrationSettings) y no
+        // debe contaminar a las demás pruebas ni aunque los asserts fallen.
+        try
+        {
+            await SetRibbonAsync("""
+                {"attributes":["marcar6"],
+                 "entries":[{"key":"attr:marcar6:beta","order":1,"titles":{"en":"Beta EN"}},
+                            {"key":"attr:marcar6:alfa","order":2},
+                            {"key":"family:visad6fam","hidden":true}]}
+                """);
 
-        var entries = body.GetProperty("entries").EnumerateArray().ToList();
-        Assert.Equal(2, entries.Count);
+            var response = await Send(HttpMethod.Get, "/api/shop/ribbon?locale=en", token);
+            response.EnsureSuccessStatusCode();
+            var body = await response.Content.ReadFromJsonAsync<JsonElement>();
 
-        // Orden respetado (order 1 y 2) y título del locale pedido.
-        Assert.Equal("attr:marcar6:beta", entries[0].GetProperty("key").GetString());
-        Assert.Equal("attr", entries[0].GetProperty("kind").GetString());
-        Assert.Equal("marcar6", entries[0].GetProperty("attributeId").GetString());
-        Assert.Equal("beta", entries[0].GetProperty("value").GetString());
-        Assert.Equal("Beta EN", entries[0].GetProperty("label").GetString());
-        Assert.Equal(1, entries[0].GetProperty("count").GetInt32());
+            var entries = body.GetProperty("entries").EnumerateArray().ToList();
+            Assert.Equal(2, entries.Count);
 
-        // Sin título configurado → label de la faceta (el valor tal cual llega de BC).
-        Assert.Equal("attr:marcar6:alfa", entries[1].GetProperty("key").GetString());
-        Assert.Equal("ALFA", entries[1].GetProperty("label").GetString());
+            // Orden respetado (order 1 y 2) y título del locale pedido.
+            Assert.Equal("attr:marcar6:beta", entries[0].GetProperty("key").GetString());
+            Assert.Equal("attr", entries[0].GetProperty("kind").GetString());
+            Assert.Equal("marcar6", entries[0].GetProperty("attributeId").GetString());
+            Assert.Equal("beta", entries[0].GetProperty("value").GetString());
+            Assert.Equal("Beta EN", entries[0].GetProperty("label").GetString());
+            Assert.Equal(1, entries[0].GetProperty("count").GetInt32());
 
-        // GAMMA (fuera del scope) JAMÁS aparece; la familia hidden tampoco.
-        Assert.DoesNotContain(entries, e => (e.GetProperty("key").GetString() ?? "").Contains("gamma"));
-        Assert.DoesNotContain(entries, e => (e.GetProperty("key").GetString() ?? "").StartsWith("family:"));
+            // Sin título configurado → label de la faceta (el valor tal cual llega de BC).
+            Assert.Equal("attr:marcar6:alfa", entries[1].GetProperty("key").GetString());
+            Assert.Equal("ALFA", entries[1].GetProperty("label").GetString());
 
-        // Limpieza: la config de la cinta es global (IntegrationSettings) y no debe
-        // contaminar a la prueba de la cinta autogenerada.
-        await SetRibbonAsync("null");
+            // GAMMA (fuera del scope) JAMÁS aparece; la familia hidden tampoco.
+            Assert.DoesNotContain(entries, e => (e.GetProperty("key").GetString() ?? "").Contains("gamma"));
+            Assert.DoesNotContain(entries, e => (e.GetProperty("key").GetString() ?? "").StartsWith("family:"));
+        }
+        finally { await SetRibbonAsync("null"); }
+    }
+
+    // ── 7. Config con entries basura: el endpoint no revienta y aplica lo válido ──
+    // (fix de revisión: un elemento de entries que no sea objeto —"oops", 5— hacía
+    // saltar InvalidOperationException al indexarlo → 500 para TODOS los actores).
+
+    [Fact]
+    public async Task ShopRibbon_ConfigConEntriesBasura_NoRevienta()
+    {
+        const string clientId = "VISAD7CL-0000-4000-9000-000000000012";
+        const string one = "visad7a0-0000-4000-9000-000000000013";
+        const string two = "visad7b0-0000-4000-9000-000000000014";
+
+        await PutModel(one, "VISAD7 UNO", "VA7-A-REF", "visad7fam", """{"Marca":"VISAD7X"}""");
+        await PutModel(two, "VISAD7 DOS", "VA7-B-REF", "visad7otra", """{"Marca":"VISAD7X"}""");
+        await PutClientVisibility(clientId, """[{"attributeId":"marca","valueIds":["visad7x"]}]""");
+        var token = await ClientTokenAsync(clientId);
+
+        try
+        {
+            // Dos elementos basura y un override válido: 200 y solo el válido aplica.
+            await SetRibbonAsync("""{"entries":["oops",5,{"key":"family:visad7fam","hidden":true}]}""");
+
+            var response = await Send(HttpMethod.Get, "/api/shop/ribbon", token);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+            var keys = body.GetProperty("entries").EnumerateArray()
+                .Select(e => e.GetProperty("key").GetString()).ToList();
+            Assert.Contains("family:visad7otra", keys);
+            Assert.DoesNotContain("family:visad7fam", keys);
+        }
+        finally { await SetRibbonAsync("null"); }
     }
 }

@@ -29,7 +29,7 @@ public static class IntegrationEndpoints
                 brandName = s.BrandNameOrDefault, brandColor = s.BrandColorOrDefault, brandLogoUrl = s.BrandLogoUrl,
                 // Config de la cinta del catálogo (JSON parseado o null; se guarda con
                 // PUT /api/admin/integration/ribbon, en VisibilityEndpoints).
-                catalogRibbon = ParseRibbon(s.CatalogRibbonJson),
+                catalogRibbon = VisibilityEndpoints.ParseNode(s.CatalogRibbonJson),
                 bcConfigured = s.BcConfigured, hasSecret = !string.IsNullOrEmpty(s.BcClientSecret),
             });
         }).RequireAdmin();
@@ -232,13 +232,6 @@ public static class IntegrationEndpoints
                 logoUrl = s?.BrandLogoUrl,
             });
         }).AllowAnonymous();
-    }
-
-    private static System.Text.Json.Nodes.JsonNode? ParseRibbon(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json)) return null;
-        try { return System.Text.Json.Nodes.JsonNode.Parse(json); }
-        catch (System.Text.Json.JsonException) { return null; }
     }
 
     private static object Project(NotificationChannel c) => new

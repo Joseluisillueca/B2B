@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Text.Json.Nodes;
+using B2B.Api.Admin;
 using B2B.Api.Data;
 using B2B.Api.Portal;
 using Microsoft.EntityFrameworkCore;
@@ -93,6 +95,68 @@ public static class ShopEndpoints
                 card = CardItem(byId[id], favorites),
             });
             return Results.Ok(new { window = page.Window, locale = page.Locale, items });
+        }).RequireAuthorization();
+
+        // ── Cinta del catálogo (ribbon) ────────────────────────────────────────
+        // Las entradas de la banda bajo CATÁLOGO|LOOKBOOK, COMPUTADAS EN SERVIDOR para
+        // el actor: nacen de las facetas del pipeline del catálogo ya filtradas por su
+        // VisibilityScope (cero fugas de valores prohibidos) y se les aplica la config
+        // de /manage (IntegrationSettings.CatalogRibbonJson: atributos que la alimentan
+        // + overrides hidden/order/titles por entrada). Sin config → solo familias.
+        app.MapGet("/api/shop/ribbon", async (HttpRequest request, ClaimsPrincipal principal, AppDbContext db) =>
+        {
+            var actor = await PortalScope.ActorAsync(principal, db);
+            var visibility = await VisibilityStore.ScopeForAsync(db, actor?.ClientId, actor?.User.AgentExternalId);
+            var locale = DocumentProjections.Locale(request.Query["locale"]);
+
+            // Take = 1: las facetas (Families/AttributeFacets) se computan sobre TODO el
+            // catálogo filtrado por visibilidad ("all" en CatalogService.QueryAsync); Take
+            // solo recorta Rows, que aquí no se usan.
+            var page = await CatalogService.QueryAsync(db, Prices(actor),
+                new CatalogQuery { Take = 1, Locale = locale }, DateTimeOffset.UtcNow, visibility);
+
+            var settings = await db.IntegrationSettings.FindAsync(1);
+            var config = VisibilityEndpoints.ParseNode(settings?.CatalogRibbonJson) as JsonObject;
+
+            // Candidatas: SIEMPRE nacidas de las facetas filtradas — jamás una entrada
+            // que el actor no pueda ver. Sin config → solo familias (cinta autogenerada).
+            var candidates = new List<RibbonCandidate>();
+            foreach (var family in page.Families)
+                candidates.Add(new("family:" + family.Id, "family", null, null, family.Label, family.Count));
+
+            if (config?["attributes"] is JsonArray attributes)
+                foreach (var wanted in attributes)
+                {
+                    var slug = CatalogVocabulary.Slug(Text(wanted));
+                    if (slug.Length == 0) continue;
+                    var facet = page.AttributeFacets.FirstOrDefault(f =>
+                        string.Equals(f.KeySlug, slug, StringComparison.OrdinalIgnoreCase));
+                    if (facet is null) continue;
+                    foreach (var value in facet.Values)
+                        candidates.Add(new($"attr:{facet.KeySlug}:{value.Slug}", "attr",
+                            facet.KeySlug, value.Slug, value.Label, value.Count));
+                }
+
+            // Overrides por entrada: hidden → fuera; order → delante (los sin order al
+            // final, en el orden natural de las facetas); titles → etiqueta del locale.
+            var overrides = Overrides(config);
+            var entries = candidates
+                .Select((candidate, index) => (candidate, index,
+                    over: overrides.GetValueOrDefault(candidate.Key.ToLowerInvariant())))
+                .Where(x => x.over?.Hidden != true)
+                .OrderBy(x => x.over?.Order ?? int.MaxValue)
+                .ThenBy(x => x.index)
+                .Select(x => new
+                {
+                    key = x.candidate.Key,
+                    kind = x.candidate.Kind,
+                    attributeId = x.candidate.AttributeId,
+                    value = x.candidate.Value,
+                    label = Title(x.over, locale) ?? x.candidate.Label,
+                    count = x.candidate.Count,
+                });
+
+            return Results.Ok(new { locale, entries });
         }).RequireAuthorization();
 
         // Botón "Desc. Stock" de la toolbar: el listado que se está viendo, con los
@@ -240,6 +304,46 @@ public static class ShopEndpoints
             return false;
         }
     }
+
+    // ── Helpers de la cinta ────────────────────────────────────────────────────
+
+    private sealed record RibbonCandidate(
+        string Key, string Kind, string? AttributeId, string? Value, string Label, int Count);
+
+    private sealed record RibbonOverride(bool Hidden, int? Order, JsonObject? Titles);
+
+    private static Dictionary<string, RibbonOverride> Overrides(JsonObject? config)
+    {
+        var result = new Dictionary<string, RibbonOverride>();
+        if (config?["entries"] is not JsonArray entries) return result;
+        foreach (var entry in entries)
+        {
+            // Config guardada con basura ("oops", 5 en entries): un elemento que no sea
+            // objeto se IGNORA — indexarlo lanzaría InvalidOperationException y tumbaría
+            // la cinta de TODOS los actores (fix de revisión).
+            if (entry is not JsonObject over) continue;
+            var key = Text(over["key"]).ToLowerInvariant();
+            if (key.Length == 0) continue;
+            int? order = null;
+            try { order = over["order"]?.GetValue<int>(); } catch { /* no numérico → sin orden */ }
+            result[key] = new RibbonOverride(
+                Hidden: (over["hidden"] as JsonValue)?.TryGetValue<bool>(out var hidden) == true && hidden,
+                Order: order,
+                Titles: over["titles"] as JsonObject);
+        }
+        return result;
+    }
+
+    /// Título del locale pedido, si está configurado; si no, null (cae al de la faceta)
+    private static string? Title(RibbonOverride? over, string locale)
+    {
+        if (over?.Titles is not { } titles) return null;
+        var title = Text(titles[locale]);
+        return title.Length > 0 ? title : null;
+    }
+
+    private static string Text(JsonNode? node) =>
+        (node as JsonValue)?.TryGetValue<string>(out var text) == true ? text : "";
 
     private static PortalActorPrices Prices(PortalActor? actor) =>
         actor is null ? PortalActorPrices.Anonymous : new PortalActorPrices(actor.ClientId, actor.GroupIds);

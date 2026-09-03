@@ -11,10 +11,20 @@ public static class VisibilityStore
     public static async Task<string?> RulesForAsync(AppDbContext db, string subjectType, string? subjectId)
     {
         if (string.IsNullOrEmpty(subjectId)) return null;
+        var (bc, manual) = await RowsForAsync(db, subjectType, subjectId);
+        return (bc ?? manual)?.RulesJson;
+    }
+
+    // Las dos filas de un sujeto, con la precedencia escrita UNA sola vez (bc manda
+    // sobre manual): de aquí derivan RulesForAsync (runtime) y el GET/PUT del admin
+    // (VisibilityEndpoints.ProjectAsync).
+    internal static async Task<(CatalogVisibility? Bc, CatalogVisibility? Manual)> RowsForAsync(
+        AppDbContext db, string subjectType, string subjectId)
+    {
         var rows = await db.CatalogVisibilities
             .Where(v => v.SubjectType == subjectType && v.SubjectId == subjectId)
             .ToListAsync();
-        return (rows.FirstOrDefault(r => r.Source == "bc") ?? rows.FirstOrDefault())?.RulesJson;
+        return (rows.FirstOrDefault(r => r.Source == "bc"), rows.FirstOrDefault(r => r.Source == "manual"));
     }
 
     public static async Task<VisibilityScope> ScopeForAsync(AppDbContext db, string? clientId, string? agentId)
