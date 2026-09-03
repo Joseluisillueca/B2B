@@ -15,8 +15,9 @@ public static class ShopEndpoints
         app.MapGet("/api/shop/catalog", async (HttpRequest request, ClaimsPrincipal principal, AppDbContext db) =>
         {
             var actor = await PortalScope.ActorAsync(principal, db);
+            var visibility = await VisibilityStore.ScopeForAsync(db, actor?.ClientId, actor?.User.AgentExternalId);
             var query = CatalogQuery.From(request.Query);
-            var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow);
+            var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow, visibility);
             var favorites = await FavoritesAsync(db, actor);
 
             return Results.Ok(new
@@ -49,6 +50,7 @@ public static class ShopEndpoints
         app.MapGet("/api/shop/related", async (HttpRequest request, ClaimsPrincipal principal, AppDbContext db) =>
         {
             var actor = await PortalScope.ActorAsync(principal, db);
+            var visibility = await VisibilityStore.ScopeForAsync(db, actor?.ClientId, actor?.User.AgentExternalId);
             var baseQuery = CatalogQuery.From(request.Query);
             // Misma forma de respuesta en TODOS los retornos (con o sin relacionados).
             var empty = new { window = baseQuery.Window, locale = baseQuery.Locale, items = Array.Empty<object>() };
@@ -76,7 +78,7 @@ public static class ShopEndpoints
                 Attributes = new Dictionary<string, IReadOnlySet<string>>(),
                 Ids = wanted.ToHashSet(StringComparer.OrdinalIgnoreCase),
             };
-            var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow);
+            var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow, visibility);
             var favorites = await FavoritesAsync(db, actor);
             var upSet = up.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -98,9 +100,10 @@ public static class ShopEndpoints
         app.MapGet("/api/shop/stock-export.csv", async (HttpRequest request, ClaimsPrincipal principal, AppDbContext db) =>
         {
             var actor = await PortalScope.ActorAsync(principal, db);
+            var visibility = await VisibilityStore.ScopeForAsync(db, actor?.ClientId, actor?.User.AgentExternalId);
             var query = CatalogQuery.From(request.Query);
             var page = await CatalogService.QueryAsync(db, Prices(actor), query with { Skip = 0, Take = CatalogQuery.ExportTake },
-                DateTimeOffset.UtcNow);
+                DateTimeOffset.UtcNow, visibility);
 
             var rows = page.Rows.SelectMany(row => row.Variants.Select(variant => new object?[]
             {

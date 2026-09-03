@@ -31,9 +31,10 @@ public static class PdfEndpoints
             AppDbContext db, IWebHostEnvironment env, IHttpClientFactory httpFactory) =>
         {
             var actor = await PortalScope.ActorAsync(principal, db);
+            var visibility = await VisibilityStore.ScopeForAsync(db, actor?.ClientId, actor?.User.AgentExternalId);
             var locale = DocumentProjections.Locale(request.Query["locale"]);
             var query = CatalogQuery.From(request.Query) with { Search = reference, Skip = 0, Take = 60, Locale = locale };
-            var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow);
+            var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow, visibility);
 
             var row = page.Rows.FirstOrDefault(r =>
                           string.Equals(r.Model.ExternalReference, reference, StringComparison.OrdinalIgnoreCase))
@@ -57,6 +58,7 @@ public static class PdfEndpoints
             AppDbContext db, IWebHostEnvironment env, IHttpClientFactory httpFactory) =>
         {
             var actor = await PortalScope.ActorAsync(principal, db);
+            var visibility = await VisibilityStore.ScopeForAsync(db, actor?.ClientId, actor?.User.AgentExternalId);
             var locale = DocumentProjections.Locale(request.Query["locale"]);
             var refs = request.Query["refs"].ToString()
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -64,7 +66,7 @@ public static class PdfEndpoints
             if (refs.Count == 0) return Results.BadRequest(new { error = "Indica al menos un producto (refs)." });
 
             var query = CatalogQuery.From(request.Query) with { Search = "", Skip = 0, Take = 300, Locale = locale };
-            var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow);
+            var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow, visibility);
             var byRef = page.Rows
                 .GroupBy(r => r.Model.ExternalReference ?? "", StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
@@ -89,9 +91,10 @@ public static class PdfEndpoints
             AppDbContext db, IWebHostEnvironment env, IHttpClientFactory httpFactory) =>
         {
             var actor = await PortalScope.ActorAsync(principal, db);
+            var visibility = await VisibilityStore.ScopeForAsync(db, actor?.ClientId, actor?.User.AgentExternalId);
             var locale = DocumentProjections.Locale(request.Query["locale"]);
             var query = CatalogQuery.From(request.Query) with { Skip = 0, Take = 300, Locale = locale };
-            var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow);
+            var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow, visibility);
             var rows = page.Rows;
             if (rows.Count == 0) return Results.NotFound();
 

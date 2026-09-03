@@ -158,9 +158,15 @@ public static class CatalogService
         ["grupo de edad", "silueta", "colección", "coleccion", "temporada"];
 
     public static async Task<CatalogPage> QueryAsync(
-        AppDbContext db, PortalActorPrices prices, CatalogQuery query, DateTimeOffset now)
+        AppDbContext db, PortalActorPrices prices, CatalogQuery query, DateTimeOffset now,
+        VisibilityScope? visibility = null)
     {
         var models = await db.CatalogModels.Where(m => m.Active).ToListAsync();
+        // Visibilidad por actor ANTES de todo (incluido el recorte por Ids de relacionados):
+        // así catálogo, facetas/cinta, búsqueda, ficha, relacionados, PDFs y CSV quedan
+        // filtrados en un único punto.
+        if (visibility is { IsRestricted: true })
+            models = models.Where(visibility.Visible).ToList();
         // Con filtro por Ids (relacionados) no tiene sentido tarificar el catálogo entero:
         // se recorta ANTES de Build. Las facetas del resultado quedan referidas al recorte,
         // lo cual es correcto para ese uso (el endpoint de relacionados las ignora).
