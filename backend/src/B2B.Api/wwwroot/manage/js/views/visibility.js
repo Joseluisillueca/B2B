@@ -64,13 +64,13 @@ export async function loadVocabulary() {
 
   const attrs = new Map();
   const ensure = (slugId, text) => {
-    if (!attrs.has(slugId)) attrs.set(slugId, { label: text, values: new Map() });
+    if (!attrs.has(slugId)) attrs.set(slugId, { label: text, values: new Map(), counts: new Map() });
     else if (text && !attrs.get(slugId).label) attrs.get(slugId).label = text;
     return attrs.get(slugId);
   };
 
   // Familia (Líneas): siempre presente, valores = docs family ∪ familyId de los modelos
-  const family = { label: 'Familia (Líneas)', values: new Map() };
+  const family = { label: 'Familia (Líneas)', values: new Map(), counts: new Map() };
   for (const f of famDocs) {
     const id = visSlug(f.payload?.code || f.id);
     if (id) family.values.set(id, label(f.payload?.name) || cap(id));
@@ -93,6 +93,8 @@ export async function loadVocabulary() {
   for (const m of models) {
     const fid = visSlug(m.payload?.familyId || '');
     if (fid && !family.values.has(fid)) family.values.set(fid, cap(fid));
+    // Cuántos modelos tiene HOY cada valor: el editor lo enseña junto a la casilla
+    if (fid) family.counts.set(fid, (family.counts.get(fid) || 0) + 1);
     const bag = m.payload?.attributes;
     if (!bag || typeof bag !== 'object' || Array.isArray(bag)) continue;
     for (const [key, value] of Object.entries(bag)) {
@@ -102,6 +104,7 @@ export async function loadVocabulary() {
       const entry = ensure(id, key);
       const vid = visSlug(value);
       if (vid && !entry.values.has(vid)) entry.values.set(vid, value);
+      if (vid) entry.counts.set(vid, (entry.counts.get(vid) || 0) + 1);
     }
   }
 
@@ -146,7 +149,18 @@ export async function mountVisibility(host, type, id, subjectNoun = 'el cliente'
   const render = () => {
     host.innerHTML = sectionShell(locked ? bcHtml() : manualHtml());
     if (!locked) wire();
+    headChip();
   };
+
+  // Chip bajo el título de la ficha: "Surtido restringido · BC|manual" (UX-M6). Se ve
+  // sin bajar hasta la sección, y coincide con el chip de la fila del listado.
+  function headChip() {
+    document.querySelector('.mng-page-head .vis-head-chip')?.remove();
+    const source = locked ? 'BC' : (Array.isArray(data.manualRules) && data.manualRules.length ? 'manual' : '');
+    const title = document.querySelector('.mng-page-head .title');
+    if (source && title) title.insertAdjacentHTML('afterend',
+      `<span class="grid-chip warn vis-head-chip">${icons.eye(12)} Surtido restringido · ${source}</span>`);
+  }
 
   function sectionShell(inner) {
     return `
@@ -182,9 +196,9 @@ export async function mountVisibility(host, type, id, subjectNoun = 'el cliente'
   // ── Modo manual: editor ──
   function manualHtml() {
     return `
-      <p class="biz-hint">${icons.alert(16)}<span>Lista blanca: ${esc(subjectNoun)} solo
-        <b>${type === 'agent' ? 've y vende' : 've y compra'}</b> lo permitido.
-        Sin restricciones = catálogo completo.</span></p>
+      <p class="biz-hint">${icons.alert(16)}<span>${esc(cap(subjectNoun))} solo
+        <b>${type === 'agent' ? 'verá y venderá' : 'verá y comprará'}</b> lo que se marque aquí.
+        Sin reglas, ve el catálogo completo.</span></p>
       ${vocab.clippedNote ? `<p class="biz-hint">${icons.alert(16)}<span>${esc(vocab.clippedNote)}</span></p>` : ''}
       <div data-vis-rules>${rules.length
         ? rules.map((r, i) => ruleEditor(r, i)).join('')
@@ -192,7 +206,7 @@ export async function mountVisibility(host, type, id, subjectNoun = 'el cliente'
              <span>${esc(cap(subjectNoun))} ve el catálogo completo.</span></div>`}</div>
       <div class="vis-actions">
         <button type="button" class="btn-ghost" data-vis-add>${icons.plus(15)} Añadir restricción</button>
-        <button type="button" class="btn-primary" data-vis-save>Guardar visibilidad</button>
+        <button type="button" class="btn-ghost vis-save" data-vis-save>Guardar visibilidad</button>
       </div>
       <p class="acc-hint">La visibilidad se guarda aparte del resto de la ficha, con su propio botón.</p>`;
   }
@@ -211,6 +225,14 @@ export async function mountVisibility(host, type, id, subjectNoun = 'el cliente'
     const source = rule.attributeId === FAMILY_ATTR ? vocab.family : vocab.attrs.get(rule.attributeId);
     const values = new Map(source ? source.values : []);
     for (const v of rule.valueIds) if (!values.has(v)) values.set(v, v);
+    // Por etiqueta (el orden de aparición en los modelos no significa nada para quien
+    // configura) y con cuántos modelos hay hoy detrás de cada valor (D-B2).
+    const counts = source?.counts || new Map();
+    const sorted = [...values.entries()].sort((x, y) => String(x[1]).localeCompare(String(y[1]), 'es'));
+    const countText = vid => {
+      const n = counts.get(vid) || 0;
+      return n ? `${n} modelo${n === 1 ? '' : 's'}` : 'sin modelos ahora';
+    };
 
     return `
       <div class="vis-rule" data-rule="${index}">
@@ -219,11 +241,12 @@ export async function mountVisibility(host, type, id, subjectNoun = 'el cliente'
             <select data-vis-attr>${options.map(([k, l]) =>
               `<option value="${esc(k)}"${k === rule.attributeId ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
           </label>
-          <button type="button" class="btn-ghost nc-remove" data-vis-del>${icons.close(14)} Quitar</button>
+          <button type="button" class="btn-ghost nc-remove vis-del" data-vis-del aria-label="Quitar esta restricción">
+            ${icons.close(14)}<span class="vis-del-text">Quitar</span></button>
         </div>
         ${values.size ? `
-          <div class="mng-multi" data-vis-values>${[...values.entries()].map(([vid, text]) =>
-            `<label><input type="checkbox" value="${esc(vid)}"${rule.valueIds.includes(vid) ? ' checked' : ''}> ${esc(text)}</label>`).join('')}
+          <div class="mng-multi" data-vis-values>${sorted.map(([vid, text]) =>
+            `<label><input type="checkbox" value="${esc(vid)}"${rule.valueIds.includes(vid) ? ' checked' : ''}> ${esc(text)}<small class="vis-n">${esc(countText(vid))}</small></label>`).join('')}
           </div>
           <span class="acc-hint">${rule.attributeId === FAMILY_ATTR
             ? 'Valores permitidos. Solo se verán los modelos de las familias marcadas.'
@@ -252,16 +275,25 @@ export async function mountVisibility(host, type, id, subjectNoun = 'el cliente'
       for (const input of block.querySelectorAll('[data-vis-values] input'))
         input.onchange = () => {
           rules[index].valueIds = [...block.querySelectorAll('[data-vis-values] input:checked')].map(i => i.value);
+          block.classList.remove('is-invalid');
         };
     }
   }
 
   async function save() {
     const withoutValues = rules.find(r => !r.valueIds.length);
-    if (withoutValues)
+    if (withoutValues) {
+      // La regla incompleta se señala y recibe el foco: el aviso flotante solo no basta
+      // para saber CUÁL de tres reglas falta por completar.
+      const block = host.querySelector(`.vis-rule[data-rule="${rules.indexOf(withoutValues)}"]`);
+      block?.classList.add('is-invalid');
+      (block?.querySelector('[data-vis-values] input') || block?.querySelector('[data-vis-attr]'))?.focus();
       return flash(`Marca al menos un valor en «${attrLabel(vocab, withoutValues.attributeId)}» o quita esa restricción.`, 'err');
+    }
     const btn = host.querySelector('[data-vis-save]');
     btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    btn.textContent = 'Guardando…';
     try {
       data = await api.putVisibility(type, id, rules);
       rules = (Array.isArray(data.manualRules) ? data.manualRules : [])
@@ -271,6 +303,8 @@ export async function mountVisibility(host, type, id, subjectNoun = 'el cliente'
       render();
     } catch (e) {
       btn.disabled = false;
+      btn.removeAttribute('aria-busy');
+      btn.textContent = 'Guardar visibilidad';
       flash(e.body?.error || e.message || 'No se pudo guardar la visibilidad.', 'err');
     }
   }
@@ -306,7 +340,7 @@ export async function mountClientAgents(host, clientId) {
           <div class="mng-rel-chips" role="list">${mine.map(a => `
             <div role="listitem"><a class="mng-rel-chip" href="#/agents/edit/${encodeURIComponent(a.id)}"
               title="Abrir la ficha de este agente">
-              <b>${esc(a.payload?.name || a.id)}</b>${a.payload?.email ? `<span>${esc(a.payload.email)}</span>` : ''}</a></div>`).join('')}
+              <b>${esc(a.payload?.name || a.id)}</b>${a.payload?.email ? `<span>${esc(a.payload.email)}</span>` : ''}<i class="mng-rel-go" aria-hidden="true">↗</i></a></div>`).join('')}
           </div>`
           : '<p class="mng-rel-none">Ningún agente lleva este cliente en su cartera.</p>'}
         ${page.truncated ? `<p class="acc-hint">Lista basada en los últimos ${page.rows.length}

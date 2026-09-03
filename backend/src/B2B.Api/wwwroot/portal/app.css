@@ -25,6 +25,9 @@
   /* --blue* = ahora el ROJO de marca (acento único). Rojo a tamaño de párrafo
      usa --accent-deep (#c94b39 ≈ accent-700), no el base, por contraste. */
   --blue:#ec3013; --blue-deep:#dd2b0f; --blue-soft:#ffe0d9;
+  /* Rojo para TEXTO PEQUENO (pestanas activas, recuentos, lookups): #b8230c da >=4,5:1
+     sobre --paper; --blue-deep se queda para fondos y texto grande (D-M7). */
+  --blue-text:#b8230c;
   --accent:#e15b47; --accent-deep:#ae1800; --accent-soft:#fff2ef;
   --ok:#1f7a45; --low:#b07d18; --out:#ec3013;
   --r:0px; --r-sm:0px;
@@ -469,6 +472,9 @@ body[data-chrome="credentials"] { background:var(--ink); }
 .notice b { display:block; font-size:.92rem; }
 .notice span { font-size:.85rem; }
 .notice svg { flex:none; margin-top:.1rem; }
+/* La columna de texto del aviso puede llevar un botón (p. ej. "Quitar artículos no
+   disponibles"): sin min-width:0 el hijo ancho empujaba el aviso fuera del panel. */
+.notice > div { min-width:0; }
 .notice-error { background:#fdeceb; color:#8f2019; }
 .notice-ok { background:#e8f6ed; color:#0f6b34; }
 
@@ -623,8 +629,8 @@ body[data-focus="on"] .cat-count::before { content:none; }
 .cat-lookup > summary::-webkit-details-marker { display:none; }
 .cat-lookup > summary:hover { border-color:var(--ink); }
 .cat-lookup[open] > summary { border-color:var(--blue); }
-.cat-lookup.active > summary { border-color:var(--blue); color:var(--blue-deep); font-weight:600; }
-.cat-lookup .lk-count { color:var(--blue-deep); font-weight:700; }
+.cat-lookup.active > summary { border-color:var(--blue); color:var(--blue-text); font-weight:600; }
+.cat-lookup .lk-count { color:var(--blue-text); font-weight:700; }
 .cat-lookup > summary svg { color:var(--muted); transition:rotate .15s var(--ease); }
 .cat-lookup[open] > summary svg { rotate:180deg; }
 .cat-lookup > summary:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
@@ -633,7 +639,7 @@ body[data-focus="on"] .cat-count::before { content:none; }
 .cat-lookup-panel.scroll { max-height:19rem; overflow-y:auto; overscroll-behavior:contain; }
 .lk-line { display:block; width:100%; text-align:left; padding:.44rem .6rem; font-size:.9rem; color:var(--ink-2); }
 .lk-line:hover { background:var(--surface); color:var(--ink); }
-.lk-line.on { color:var(--blue-deep); font-weight:700; }
+.lk-line.on { color:var(--blue-text); font-weight:700; }
 .cat-check { display:flex; align-items:center; gap:.55rem; padding:.36rem .6rem; cursor:pointer; font-size:.9rem; color:var(--ink-2); }
 .cat-check:hover { background:var(--surface); color:var(--ink); }
 .cat-check input { appearance:none; width:1.1rem; height:1.1rem; flex:none; border:1.5px solid var(--line-control);
@@ -673,8 +679,11 @@ body[data-focus="on"] .cat-filters { display:none; }
    peso por debajo: la cinta es sub-navegación, no compite con CATÁLOGO|LOOKBOOK).
    El recuento va como numeral diminuto y apagado, a lo índice de revista. */
 /* gap:0 — la regla inferior del raíl y la de las flechas forman UNA línea continua */
-.cat-ribbon { display:flex; align-items:stretch; gap:0; margin:-.6rem 0 1.9rem; }
+.cat-ribbon { position:relative; display:flex; align-items:stretch; gap:0; margin:-.6rem 0 1.9rem; }
 .cat-ribbon[hidden] { display:none; }
+/* Hueco reservado mientras llega el catálogo, con la altura exacta de la cinta ya
+   pintada: al aparecer no empuja nada de lo que hay debajo (UX-M4). */
+.cat-ribbon.is-pending { min-height:2.6rem; border-bottom:1px solid var(--line); }
 .rib-rail { flex:1; min-width:0; display:flex; align-items:stretch; gap:1.9rem;
   overflow-x:auto; scroll-snap-type:x proximity; overscroll-behavior-x:contain;
   scrollbar-width:none; border-bottom:1px solid var(--line); }
@@ -684,30 +693,61 @@ body[data-focus="on"] .cat-filters { display:none; }
   color:var(--ink-2); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap;
   transition:color .12s var(--ease), border-color .12s var(--ease); }
 .rib-chip:hover { color:var(--ink); }
-.rib-chip:focus-visible { outline:2px solid var(--blue); outline-offset:-2px; }
-.rib-chip.on { color:var(--blue-deep); border-bottom-color:var(--blue); }
-.rib-count { font-size:.64rem; font-weight:600; color:var(--muted); letter-spacing:.02em; translate:0 -.32em; }
-.rib-chip.on .rib-count { color:var(--blue); }
-/* Cambio de plano (familias → valores de atributo de /manage): separador fino */
+/* offset positivo: el anillo no se come la regla de 2px de la pestaña activa */
+.rib-chip:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+.rib-chip.on { color:var(--blue-text); border-bottom-color:var(--blue); }
+.rib-count { font-size:.68rem; font-weight:600; color:var(--muted); letter-spacing:.02em; translate:0 -.32em; }
+.rib-chip.on .rib-count { color:var(--blue-text); }
+/* Cambio de plano (familias, y luego cada atributo de /manage): separador fino */
 .rib-sep { flex:none; width:1px; background:var(--line); margin:.55rem 0 .7rem; }
-/* Flechas: solo existen si el raíl desborda (patrón del raíl de relacionados) */
+/* Flechas: solo si el raíl desborda, SUPERPUESTAS a los extremos — así no roban
+   ancho y "TODO" queda a plomo con el H1 (D-M1). El desvanecido del propio raíl es
+   lo que insinúa que hay más; la flecha anterior no existe hasta que hace falta. */
 .rib-arrow { display:none; }
-.cat-ribbon.has-nav .rib-arrow { display:inline-flex; align-items:center; justify-content:center;
-  flex:none; width:2.6rem; border-bottom:1px solid var(--line); color:var(--ink-2);
-  transition:color .12s var(--ease); }
-/* El icono se arrima al borde exterior: aire hacia los chips SIN romper la línea base */
-.cat-ribbon.has-nav .rib-prev { justify-content:flex-start; }
-.cat-ribbon.has-nav .rib-next { justify-content:flex-end; }
+.cat-ribbon.has-nav .rib-arrow { position:absolute; top:0; bottom:1px; z-index:1;
+  display:inline-flex; align-items:center; justify-content:center; width:1.75rem;
+  color:var(--ink); transition:color .12s var(--ease); }
+.cat-ribbon.has-nav .rib-prev { left:0; justify-content:flex-start; }
+.cat-ribbon.has-nav .rib-next { right:0; justify-content:flex-end; }
+.cat-ribbon.has-nav .rib-prev[disabled] { display:none; }
+.cat-ribbon.has-nav .rib-rail {
+  -webkit-mask-image:linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
+  mask-image:linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent); }
+.cat-ribbon.has-nav.at-start .rib-rail {
+  -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+  mask-image:linear-gradient(to right, #000 calc(100% - 2rem), transparent); }
+.cat-ribbon.has-nav.at-end .rib-rail {
+  -webkit-mask-image:linear-gradient(to right, transparent, #000 2rem);
+  mask-image:linear-gradient(to right, transparent, #000 2rem); }
+.cat-ribbon.has-nav.at-start.at-end .rib-rail { -webkit-mask-image:none; mask-image:none; }
 .rib-arrow:hover:not([disabled]) { color:var(--blue); }
-.rib-arrow[disabled] { opacity:.3; cursor:default; }
+.rib-arrow[disabled] { opacity:.45; cursor:default; }
 .rib-arrow svg { flex:none; }
+/* Línea de contexto (<=1 entrada): "Tu surtido: Calzado · 38 artículos", mismo hueco */
+.cat-context { flex:1; min-width:0; display:flex; align-items:center; gap:.45rem; margin:0; padding:.62rem 0;
+  font-size:.8rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-2);
+  border-bottom:1px solid var(--line); }
+.cat-context svg { flex:none; color:var(--muted); }
+.cat-context span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* "Catálogo adaptado a tu cuenta": junto al recuento, en cuanto hay reglas que aplicar */
+.cat-adapted { display:inline-flex; align-items:center; gap:.3rem; margin-left:.7rem; vertical-align:middle;
+  font-size:.7rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--hint);
+  border:1px solid var(--line-control); padding:.14rem .5rem; white-space:nowrap; }
+.cat-adapted[hidden] { display:none; }
+.cat-adapted svg { flex:none; }
+/* Huecos reservados de la barra de herramientas y de los filtros mientras carga (UX-M4) */
+.cat-bar #tools:empty { min-height:2.6rem; }
+.cat-filters:empty { min-height:2.8rem; }
 /* Vista sin distracciones (ojo del header): la cinta se va con los filtros */
 body[data-focus="on"] .cat-ribbon { display:none; }
 @media (max-width:48rem) {
   .cat-ribbon { margin:-.4rem 0 1.5rem; }
   .cat-ribbon.has-nav .rib-arrow { display:none; }   /* táctil: dedo + snap */
+  .cat-ribbon.has-nav .rib-rail, .cat-ribbon.has-nav.at-start .rib-rail,
+  .cat-ribbon.has-nav.at-end .rib-rail { -webkit-mask-image:none; mask-image:none; }
   .rib-rail { gap:1.4rem; scroll-snap-type:x mandatory; }
   .rib-chip { padding:.72rem .1rem; }                /* área táctil más generosa */
+  .cat-adapted { margin-left:0; margin-top:.3rem; }
 }
 
 /* Fila de artículo */
@@ -2238,3 +2278,19 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 /* Las cards compactas del checkout son más estrechas: tres líneas de nombre para
    no amputar referencias largas (y se reservan las tres, alineación intacta). */
 .related-compact .related-rail .pcard-name { -webkit-line-clamp:3; min-height:3.6em; }
+
+/* ── 14c: suplantación, líneas bloqueadas, agente en pedidos, surtido del selector ── */
+.ck-managed { display:flex; align-items:center; gap:.4rem; margin:-.6rem 0 1.1rem; font-size:.84rem; color:var(--muted); }
+.ck-managed svg { flex:none; color:var(--hint); }
+/* Grupo que el servidor rechazó: se ve cuál es sin leer el aviso lateral */
+.ck-group.is-blocked { border-color:#e6b6b0; background:#fdf6f5; }
+.ck-blocked { display:inline-flex; align-items:center; gap:.3rem; margin-left:.6rem; vertical-align:middle;
+  font-size:.68rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--accent-deep); background:var(--accent-soft); border:1px solid #e6b6b0; padding:.14rem .5rem; }
+.ck-drop-blocked { margin-top:.55rem; max-width:100%; white-space:normal; text-align:left; }
+.ck-pay-note { display:block; margin-top:.35rem; font-size:.76rem; line-height:1.45; color:var(--hint);
+  font-weight:400; text-transform:none; letter-spacing:0; }
+.doc-agent { display:block; margin-top:.15rem; font-size:.72rem; font-weight:400; color:var(--muted); }
+.mp-scope { display:inline-flex; align-items:center; gap:.3rem; font-size:.7rem; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--hint);
+  border:1px solid var(--line-control); padding:.14rem .5rem; }

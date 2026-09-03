@@ -19,6 +19,7 @@ import { api } from '../api.js';
 import { icons } from '../icons.js';
 import { esc, flash } from '../util.js';
 import { loadVocabulary, visSlug } from './visibility.js';
+import { setLeaveGuard } from '../router.js';
 
 const LANGS = [['es', 'ES'], ['en', 'EN'], ['fr', 'FR'], ['it', 'IT']];
 // "Todo" de la cinta real por idioma. DUPLICA la clave `ribbon.all` de los i18n del
@@ -177,6 +178,19 @@ export default async function ribbonView(main) {
   let baseline = JSON.stringify(buildConfig());
   const isDirty = () => JSON.stringify(buildConfig()) !== baseline;
 
+  // Salir con cambios sin guardar: aviso al cambiar de vista (guardia del router) y al
+  // cerrar o recargar la pestaña (beforeunload) — UX-M7. Los oyentes se retiran al salir.
+  setLeaveGuard(() => !isDirty()
+    || confirm('Tienes cambios sin guardar en la cinta.\n\n¿Salir sin guardarlos?'));
+  const onBeforeUnload = event => { if (here() && isDirty()) { event.preventDefault(); event.returnValue = ''; } };
+  const unhook = () => {
+    if (here()) return;
+    removeEventListener('beforeunload', onBeforeUnload);
+    removeEventListener('hashchange', unhook);
+  };
+  addEventListener('beforeunload', onBeforeUnload);
+  addEventListener('hashchange', unhook);
+
   let previewLang = 'es';
   let busy = false;               // Guardar y Restaurar comparten el candado
   const openTitles = new Set();   // entradas con el editor de idiomas desplegado
@@ -194,11 +208,14 @@ export default async function ribbonView(main) {
       list = list.sort((a, b) => ((pos.get(a.lower) ?? BIG) - (pos.get(b.lower) ?? BIG)) || (a.natural - b.natural));
     }
     const chips = [`<span class="rb-chip on">${esc(ALL_LABEL[previewLang])}</span>`];
-    let lastKind = 'family';
+    let lastGroup = 'family';
     for (const c of list) {
       const st = overrides.get(c.lower);
       if (st?.hidden) continue;
-      if (c.kind !== lastKind) { chips.push('<span class="rb-psep" aria-hidden="true"></span>'); lastKind = c.kind; }
+      // Separador en cada cambio de plano (familias, atributo A, atributo B): la misma
+      // regla que aplica el portal, para que la vista previa no mienta.
+      const group = c.kind === 'family' ? 'family' : `attr:${c.group}`;
+      if (group !== lastGroup) { chips.push('<span class="rb-psep" aria-hidden="true"></span>'); lastGroup = group; }
       chips.push(`<span class="rb-chip">${esc(st?.titles?.[previewLang] || c.label)}${
         c.count ? `<span class="rb-pcount">${c.count}</span>` : ''}</span>`);
     }
@@ -250,6 +267,13 @@ export default async function ribbonView(main) {
   function orphanRows() {
     const list = orphans();
     if (!list.length) return '';
+    // Clave legible ("Silueta -> Fantasma"); la técnica se queda al lado, para soporte
+    const pretty = key => {
+      const [kind, a, v] = String(key).split(':');
+      if (kind === 'family') return `Familia → ${vocab.family.values.get(visSlug(a)) || a}`;
+      const attr = vocab.attrs.get(visSlug(a));
+      return `${attr?.label || a} → ${attr?.values.get(visSlug(v ?? '')) || v || ''}`;
+    };
     const summary = st => [
       st.hidden ? 'oculta' : '',
       ...LANGS.filter(([lang]) => st.titles?.[lang]).map(([lang, tag]) => `${tag} «${esc(st.titles[lang])}»`),
@@ -261,7 +285,7 @@ export default async function ribbonView(main) {
           stock, atributo desmarcado…). Se conservan por si vuelven; quítalas si ya no las quieres.</p>
         <div class="rb-orphan-list">${list.map(([lower, st]) => `
           <div class="rb-orphan" data-orphan="${esc(lower)}">
-            <code>${esc(st.key)}</code><span>${summary(st)}</span>
+            <b>${esc(pretty(st.key))}</b><code>${esc(st.key)}</code><span>${summary(st)}</span>
             <button type="button" class="btn-ghost" data-rb-orphan-del aria-label="Quitar los ajustes de ${esc(st.key)}">
               ${icons.close(13)} Quitar</button>
           </div>`).join('')}
@@ -367,10 +391,18 @@ export default async function ribbonView(main) {
 
   function setBusy(on) {
     busy = on;
-    for (const sel of ['[data-rb-save]', '[data-rb-reset]']) {
-      const btn = main.querySelector(sel);
-      if (btn) btn.disabled = on;
+    // El botón dice lo que está pasando (no solo se apaga) y el aviso de "sin guardar"
+    // se retira mientras se guarda: si no, conviven "Guardando…" y "cambios sin guardar".
+    const save = main.querySelector('[data-rb-save]');
+    if (save) {
+      save.disabled = on;
+      save.setAttribute('aria-busy', String(on));
+      save.textContent = on ? 'Guardando…' : 'Guardar la cinta';
     }
+    const reset = main.querySelector('[data-rb-reset]');
+    if (reset) reset.disabled = on;
+    const tag = main.querySelector('#rbDirty');
+    if (tag && on) tag.hidden = true;   // syncDirty() lo vuelve a valorar al terminar
   }
 
   // Facetas del idioma de la vista previa (una petición por idioma, cacheada).

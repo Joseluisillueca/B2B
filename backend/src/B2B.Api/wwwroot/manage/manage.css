@@ -56,6 +56,10 @@
 .mng-link.on .mng-badge { color:#fff; background:rgba(255,255,255,.22); }
 
 .mng-main { min-width:0; padding:clamp(1.5rem,3vw,2.8rem) clamp(1.25rem,4vw,3.5rem) 4rem; max-width:72rem; }
+/* El router lleva el foco a <main> en cada vista (para lectores de pantalla y para
+   que el teclado siga el hilo). Eso NO debe pintar un anillo rojo alrededor de toda
+   la página: el foco se ve en los CONTROLES, no en la región. */
+.mng-main:focus, .mng-main:focus-visible { outline:none; }
 /* Vistas de tabla ancha (Notificaciones, Comunicación BC, Pedidos): más ancho para que la
    tabla quepa sin barra horizontal cuando hay hueco de ventana. Los formularios siguen a 72rem. */
 .mng-main.mng-wide { max-width:96rem; }
@@ -432,31 +436,47 @@ a.mng-rel-chip:hover b { color:var(--blue); }
 .vis-empty span { font-size:.84rem; }
 .vis-actions { display:flex; align-items:center; justify-content:space-between; gap:.8rem;
   flex-wrap:wrap; margin-top:1rem; }
+/* "Guardar visibilidad" es SECUNDARIO: el primario de la ficha es "Guardar cambios",
+   y dos botones rojos compitiendo hacían dudar de cuál guardaba qué. */
+.vis-save { border-color:var(--ink); color:var(--ink); font-weight:700; }
+.vis-save:hover:not([disabled]) { background:var(--ink); color:#fff; }
+.vis-del { position:relative; display:inline-flex; align-items:center; gap:.35rem; }
+.vis-n { margin-left:.35rem; font-size:.72rem; color:var(--muted); font-weight:400; }
+.vis-rule.is-invalid { border-color:var(--out); box-shadow:inset 3px 0 0 var(--out); }
+.vis-head-chip { display:inline-flex; margin:.45rem 0 0; }
+.vis-row-chip { margin-left:.5rem; vertical-align:middle; font-weight:600; }
+/* El chip de agente ES un enlace: se anuncia con la flecha y el subrayado al pasar */
+.mng-rel-go { font-style:normal; color:var(--muted); margin-left:.15rem; }
+a.mng-rel-chip:hover .mng-rel-go { color:var(--blue); }
+a.mng-rel-chip:hover b { text-decoration:underline; text-underline-offset:.15em; }
 
 /* ── Cinta del catálogo (Tarea 10): editor + vista previa ── */
 .rb-preview-card { padding:1.3rem 1.6rem 1.35rem; }
 .rb-prevbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin:0 0 .8rem; }
-.rb-prevnote { font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--hint); }
+.rb-prevnote { font-size:.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--hint); }
 .rb-langs { display:flex; gap:.3rem; }
 .rb-lang { border:1px solid var(--line-control); background:none; border-radius:0; cursor:pointer;
-  font:inherit; font-size:.66rem; font-weight:800; letter-spacing:.1em; padding:.32rem .6rem; color:var(--ink-2); }
+  font:inherit; font-size:.72rem; font-weight:800; letter-spacing:.1em; padding:.32rem .6rem; color:var(--ink-2); }
 .rb-lang:hover { border-color:var(--ink); color:var(--ink); }
-.rb-lang.on { background:var(--ink); border-color:var(--ink); color:#fff; }
+.rb-lang.on { background:var(--blue); border-color:var(--blue); color:#fff; }
 /* Maqueta: mismo lenguaje que la cinta real del portal (.rib-*): pestañas uppercase
    sobre un raíl con regla, la activa en rojo de marca. Solo lectura (spans). */
 .rb-mock { border:1px solid var(--line); background:var(--card); padding:.85rem 1.3rem 0; }
-.rb-mock-top { display:flex; gap:1.1rem; font-size:.62rem; font-weight:700; letter-spacing:.16em;
+.rb-mock-top { display:flex; gap:1.1rem; font-size:.75rem; font-weight:700; letter-spacing:.16em;
   text-transform:uppercase; color:var(--hint); padding:0 0 .8rem; }
 .rb-mock-top b { color:var(--ink); font-weight:800; }
 .rb-band { display:flex; align-items:stretch; gap:1.7rem; overflow-x:auto; scrollbar-width:none;
   border-bottom:1px solid var(--line); }
 .rb-band::-webkit-scrollbar { display:none; }
+/* Desvanecido por la derecha: la maqueta insinúa que la cinta sigue, como en el portal */
+.rb-band { -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+  mask-image:linear-gradient(to right, #000 calc(100% - 2rem), transparent); }
 .rb-chip { flex:none; display:inline-flex; align-items:baseline; gap:.32rem; padding:.58rem .1rem;
   font-size:.78rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
   color:var(--ink-2); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }
-.rb-chip.on { color:var(--blue-deep); border-bottom-color:var(--blue); }
-.rb-pcount { font-size:.62rem; font-weight:600; color:var(--muted); letter-spacing:.02em; translate:0 -.32em; }
-.rb-chip.on .rb-pcount { color:var(--blue); }
+.rb-chip.on { color:var(--blue-text); border-bottom-color:var(--blue); }
+.rb-pcount { font-size:.68rem; font-weight:600; color:var(--muted); letter-spacing:.02em; translate:0 -.32em; }
+.rb-chip.on .rb-pcount { color:var(--blue-text); }
 .rb-psep { flex:none; width:1px; background:var(--line); margin:.5rem 0 .65rem; }
 
 /* Listado de entradas */
@@ -464,21 +484,21 @@ a.mng-rel-chip:hover b { color:var(--blue); }
 .rb-entry + .rb-entry { border-top:1px solid var(--line); }
 .rb-row { display:flex; align-items:center; gap:1rem; padding:.7rem .15rem; }
 .rb-move { display:flex; flex-direction:column; gap:.18rem; }
-.rb-move button { width:1.55rem; height:1.3rem; display:grid; place-items:center; padding:0;
+.rb-move button { width:1.75rem; height:1.5rem; display:grid; place-items:center; padding:0;
   border:1px solid var(--line-control); background:var(--card); color:var(--ink-2); cursor:pointer; border-radius:0; }
 .rb-move button:hover:not([disabled]) { border-color:var(--ink); color:var(--ink); }
-.rb-move button[disabled] { opacity:.32; cursor:default; }
+.rb-move button[disabled] { opacity:.45; border-style:dashed; cursor:default; }
 .rb-main { flex:1; min-width:0; }
 .rb-name { font-size:.95rem; font-weight:700; color:var(--ink); }
 .rb-meta { display:flex; align-items:center; flex-wrap:wrap; gap:.55rem; margin-top:.3rem;
   font-size:.78rem; color:var(--muted); }
 .rb-orig { font-size:.74rem; color:var(--hint); font-style:italic; }
 .rb-tools { display:flex; align-items:center; gap:.5rem; flex:none; }
-.rb-langbtn { padding:.4rem .65rem; font-size:.74rem; }
+.rb-langbtn { padding:.4rem .65rem; font-size:.78rem; }
 .rb-langbtn.on { border-color:var(--ink); color:var(--ink); background:var(--paper); }
 /* Conmutador mostrar/ocultar: estado explícito con texto, no solo color */
 .rb-vis { display:inline-flex; align-items:center; gap:.4rem; border:1px solid var(--line-control);
-  background:var(--card); cursor:pointer; font:inherit; font-size:.74rem; font-weight:700;
+  background:var(--card); cursor:pointer; font:inherit; font-size:.78rem; font-weight:700;
   padding:.4rem .65rem; color:var(--ok); border-radius:0; }
 .rb-vis:hover { border-color:var(--ink); }
 .rb-vis.off { color:var(--muted); background:var(--surface); }
@@ -490,7 +510,7 @@ a.mng-rel-chip:hover b { color:var(--blue); }
   border:1px solid var(--line); border-radius:var(--r-sm); }
 .rb-titles-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem 1.1rem; margin-bottom:.35rem; }
 .rb-titles label { display:flex; align-items:center; gap:.55rem; }
-.rb-titles label span { flex:none; width:1.5rem; font-size:.64rem; font-weight:800; letter-spacing:.1em; color:var(--hint); }
+.rb-titles label span { flex:none; width:1.5rem; font-size:.72rem; font-weight:800; letter-spacing:.1em; color:var(--hint); }
 .rb-titles input { flex:1; min-width:0; border:1px solid var(--line-control); border-radius:var(--r-sm);
   padding:.45rem .6rem; font:inherit; font-size:.85rem; background:var(--card); }
 .rb-titles input:focus-visible { border-color:var(--blue); outline:2px solid var(--blue); outline-offset:-1px; }
@@ -503,17 +523,28 @@ a.mng-rel-chip:hover b { color:var(--blue); }
   background:var(--paper); border:1px solid var(--line); font-size:.8rem; color:var(--muted); }
 .rb-orphan code { font:.76rem/1 ui-monospace,Consolas,monospace; color:var(--ink); background:var(--card);
   border:1px solid var(--line); padding:.2rem .45rem; }
+.rb-orphan > b { color:var(--ink); font-weight:700; }
 .rb-orphan > span { flex:1; min-width:8rem; }
 .rb-orphan .btn-ghost { padding:.35rem .6rem; font-size:.72rem; }
 
 /* Barra de acciones */
 .rb-actions { display:flex; align-items:center; gap:.9rem; margin-top:1.5rem; flex-wrap:wrap; }
 .rb-actions .spacer { flex:1; }
-.rb-dirty { display:inline-flex; align-items:center; gap:.35rem; font-size:.78rem; font-weight:700; color:var(--low); }
+/* #7d5710: el ámbar de --low a este tamaño no llegaba a 4,5:1 sobre --paper */
+.rb-dirty { display:inline-flex; align-items:center; gap:.35rem; font-size:.78rem; font-weight:700; color:#7d5710; }
 .rb-foot { margin-top:.7rem; }
 @media (max-width: 640px) {
   .rb-row { flex-wrap:wrap; }
-  .rb-tools { margin-left:2.55rem; }
+  /* Los botones bajan a su propia línea alineados con el nombre, no partidos a media fila */
+  .rb-tools { flex:0 0 100%; margin-left:2.55rem; }
+  .rb-move button { width:2.75rem; height:2.25rem; }
   .rb-titles { margin-left:0; }
   .rb-titles-grid { grid-template-columns:1fr; }
+  /* Táctil: objetivos de 44px (D-B5) */
+  .rb-lang, .rb-langbtn, .rb-vis, .mng-multi label { min-height:2.75rem; }
+  /* Cabecera de regla en una sola línea: el selector manda y "Quitar" queda en icono */
+  .vis-rule-head { flex-wrap:nowrap; align-items:flex-end; }
+  .vis-rule-attr { min-width:0; flex:1; }
+  .vis-del { width:2.75rem; min-height:2.75rem; padding:0; justify-content:center; }
+  .vis-del-text { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
 }

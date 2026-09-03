@@ -10,6 +10,8 @@ export function flash(message, kind = 'ok') {
   let box = document.getElementById('mng-flash');
   if (!box) { box = document.createElement('div'); box.id = 'mng-flash'; document.body.append(box); }
   box.className = kind;
+  // Lectores de pantalla: los errores interrumpen (alert), las confirmaciones no (status)
+  box.setAttribute('role', kind === 'ok' ? 'status' : 'alert');
   box.textContent = message;
   // Reflow para reiniciar la transición si ya estaba visible
   void box.offsetWidth;
