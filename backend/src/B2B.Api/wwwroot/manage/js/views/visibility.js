@@ -13,7 +13,7 @@
 // publicado el maestro, lo que existe en el catálogo sigue siendo elegible.
 import { api } from '../api.js';
 import { icons } from '../icons.js';
-import { esc, flash, loadRows } from '../util.js';
+import { esc, flash } from '../util.js';
 
 export const FAMILY_ATTR = 'familyid';   // pseudo-atributo "familyId" ya en slug
 
@@ -29,13 +29,36 @@ const label = name => {
 };
 const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 
+// ── Lectura PAGINADA de un maestro (el endpoint clampa take a 200 y ordena por
+// LastReceivedAt desc): se recorre con skip hasta agotar el total o llegar al techo.
+// Si el techo corta, `truncated` lo dice y la UI avisa (nunca se capa en silencio).
+const PAGE = 200, CAP = 1000;
+async function pagedRows(type) {
+  const rows = [];
+  let total = 0;
+  for (let skip = 0; skip < CAP; skip += PAGE) {
+    const data = await api.get(`/api/admin/sync-documents?entityType=${encodeURIComponent(type)}`
+      + `&skip=${skip}&take=${PAGE}&includePayload=true`);
+    total = data.total ?? 0;
+    for (const d of (data.items || [])) {
+      let payload = {}; try { payload = JSON.parse(d.payload); } catch {}
+      if (Array.isArray(payload)) payload = payload[0] ?? {};
+      rows.push({ id: d.externalId, parentId: d.parentId, payload });
+    }
+    if ((data.items || []).length < PAGE || rows.length >= total) break;
+  }
+  return { rows, total, truncated: rows.length < total };
+}
+const emptyPage = () => ({ rows: [], total: 0, truncated: false });
+
 // ── Vocabulario: attrSlug → { label, values: Map(valueSlug → etiqueta) } ─────────
 async function loadVocabulary() {
-  const [models, attrDocs, famDocs] = await Promise.all([
-    loadRows('model').catch(() => []),
-    loadRows('attribute').catch(() => []),
-    loadRows('family').catch(() => []),
+  const [modelPage, attrPage, famPage] = await Promise.all([
+    pagedRows('model').catch(emptyPage),
+    pagedRows('attribute').catch(emptyPage),
+    pagedRows('family').catch(emptyPage),
   ]);
+  const models = modelPage.rows, attrDocs = attrPage.rows, famDocs = famPage.rows;
 
   const attrs = new Map();
   const ensure = (slugId, text) => {
@@ -81,7 +104,14 @@ async function loadVocabulary() {
   }
 
   const sorted = new Map([...attrs.entries()].sort((x, y) => x[1].label.localeCompare(y[1].label, 'es')));
-  return { family, attrs: sorted };
+
+  // Fuentes cortadas por el techo de paginación → aviso visible en el editor
+  const clipped = [
+    ['modelos', modelPage], ['atributos', attrPage], ['familias', famPage],
+  ].filter(([, page]) => page.truncated)
+    .map(([noun, page]) => `los últimos ${page.rows.length} de ${page.total} ${noun}`);
+  return { family, attrs: sorted, clippedNote: clipped.length
+    ? `Vocabulario basado en ${clipped.join(', ')} sincronizados; puede faltar algún valor antiguo.` : '' };
 }
 
 const attrLabel = (vocab, attributeId) =>
@@ -153,6 +183,7 @@ export async function mountVisibility(host, type, id, subjectNoun = 'el cliente'
       <p class="biz-hint">${icons.alert(16)}<span>Lista blanca: ${esc(subjectNoun)} solo
         <b>${type === 'agent' ? 've y vende' : 've y compra'}</b> lo permitido.
         Sin restricciones = catálogo completo.</span></p>
+      ${vocab.clippedNote ? `<p class="biz-hint">${icons.alert(16)}<span>${esc(vocab.clippedNote)}</span></p>` : ''}
       <div data-vis-rules>${rules.length
         ? rules.map((r, i) => ruleEditor(r, i)).join('')
         : `<div class="vis-empty">${icons.eye(20)}<b>Sin restricciones</b>
@@ -169,6 +200,11 @@ export async function mountVisibility(host, type, id, subjectNoun = 'el cliente'
     const options = [[FAMILY_ATTR, vocab.family.label],
       ...[...vocab.attrs.entries()].map(([k, v]) => [k, v.label])]
       .filter(([k]) => !used.has(k) || k === rule.attributeId);
+    // Regla guardada sobre un atributo que ya no está en el vocabulario: se añade su
+    // option igualmente (mismo criterio que con los valores — nada se pierde ni se
+    // pinta como si fuera OTRO atributo).
+    if (!options.some(([k]) => k === rule.attributeId))
+      options.push([rule.attributeId, attrLabel(vocab, rule.attributeId)]);
     // Valores elegibles = vocabulario ∪ los ya marcados en la regla (nada se pierde)
     const source = rule.attributeId === FAMILY_ATTR ? vocab.family : vocab.attrs.get(rule.attributeId);
     const values = new Map(source ? source.values : []);
@@ -243,15 +279,25 @@ export async function mountVisibility(host, type, id, subjectNoun = 'el cliente'
 // ── "Agentes de este cliente" (solo ficha de cliente): informativo, con enlace ──
 export async function mountClientAgents(host, clientId) {
   if (!host || !clientId) return;
-  let agents = [];
-  try { agents = await loadRows('agent'); } catch { agents = []; }
-  const mine = agents.filter(a => (Array.isArray(a.payload?.clientIds) ? a.payload.clientIds : [])
-    .some(cid => String(cid).toLowerCase() === String(clientId).toLowerCase()));
-
-  host.innerHTML = `
+  const shell = inner => `
     <section class="biz-section" data-vis-agents>
       <header class="acc-head biz-head"><h2>${icons.user(20)}Agentes de este cliente</h2></header>
-      <div class="biz-card">
+      <div class="biz-card">${inner}</div>
+    </section>`;
+
+  let page;
+  try { page = await pagedRows('agent'); }
+  catch (e) {
+    // Fallo de red/servidor ≠ "no hay agentes": el error se enseña, nunca un vacío falso
+    host.innerHTML = shell(`
+      <div class="notice notice-error" role="alert">${icons.alert(18)}<div><span>
+        No se pudo cargar la lista de agentes: ${esc(e.body?.error || e.message)}</span></div></div>`);
+    return;
+  }
+  const mine = page.rows.filter(a => (Array.isArray(a.payload?.clientIds) ? a.payload.clientIds : [])
+    .some(cid => String(cid).toLowerCase() === String(clientId).toLowerCase()));
+
+  host.innerHTML = shell(`
         <p class="mng-rel-note">Informativo: la cartera se asigna en la ficha de cada agente
           («Cartera de clientes»). Estos agentes pueden operar en nombre de este cliente.</p>
         ${mine.length ? `
@@ -261,6 +307,6 @@ export async function mountClientAgents(host, clientId) {
               <b>${esc(a.payload?.name || a.id)}</b>${a.payload?.email ? `<span>${esc(a.payload.email)}</span>` : ''}</a></div>`).join('')}
           </div>`
           : '<p class="mng-rel-none">Ningún agente lleva este cliente en su cartera.</p>'}
-      </div>
-    </section>`;
+        ${page.truncated ? `<p class="acc-hint">Lista basada en los últimos ${page.rows.length}
+          de ${page.total} agentes sincronizados.</p>` : ''}`);
 }

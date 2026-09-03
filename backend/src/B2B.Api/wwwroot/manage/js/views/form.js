@@ -6,6 +6,7 @@ import { icons } from '../icons.js';
 import { api } from '../api.js';
 import { esc, dig, setPath, delPath, slugify, i18nObject, fkOptions, flash, invalidateOptions, showJson, loadRows } from '../util.js';
 import { go } from '../router.js';
+import { mountVisibility } from './visibility.js';
 
 const SLUG = { model: 'models', product: 'products', offer: 'offers', inventory: 'inventory',
   'service-window': 'service-windows', category: 'categories', family: 'families', attribute: 'attributes',
@@ -156,10 +157,11 @@ export default async function form(main, type, id) {
   // Imagen del modelo (solo al editar; para uno nuevo se añade desde «Imágenes» tras crearlo)
   if (editing && type === 'model') { await mountModelImage(); await mountRelatedBc(); }
 
-  // Visibilidad de catálogo del AGENTE (misma sección que en la ficha de cliente;
-  // patrón mountRelatedBc: host propio dentro del form, guarda por su cuenta).
+  // Visibilidad de catálogo del AGENTE: misma sección compartida que en la ficha de
+  // cliente — se monta en un host propio dentro del form y guarda con su propio botón
+  // (PUT aparte), sin pasar por el submit del formulario.
   if (editing && type === 'agent')
-    (await import('./visibility.js')).mountVisibility(main.querySelector('#visHost'), 'agent', id, 'el agente');
+    mountVisibility(main.querySelector('#visHost'), 'agent', id, 'el agente');
 
   async function mountModelImage() {
     const host = main.querySelector('#imgHost');

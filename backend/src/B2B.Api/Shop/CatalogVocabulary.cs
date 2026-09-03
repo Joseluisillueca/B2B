@@ -77,6 +77,7 @@ public sealed class CatalogVocabulary
     // "/", "\", "_" y "." a "-"; sin guiones repetidos ni en los extremos. Es la clave
     // estable con la que el portal puede traducir por su cuenta el vocabulario que BC
     // manda igual en los cuatro idiomas.
+    // Ojo: replicado en wwwroot/manage/js/views/visibility.js (visSlug) — si cambia esto, cambiar allí.
     public static string Slug(string value)
     {
         var slug = new StringBuilder(value.Length);
