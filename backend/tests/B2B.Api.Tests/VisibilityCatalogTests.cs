@@ -188,6 +188,36 @@ public class VisibilityCatalogTests : IClassFixture<TestWebApplicationFactory>
         Assert.Empty(body.GetProperty("items").EnumerateArray());
     }
 
+    // ── 3b. Favoritos (14a-6, BAJO): el corazón valida que el modelo exista y esté en el
+    // scope del actor (400 si no) — no se guardan favoritos fantasma ni de lo oculto.
+
+    [Fact]
+    public async Task Favoritos_ModeloInexistenteOFueraDeScope_400()
+    {
+        const string clientId = "VISCA3BC-0000-4000-9000-000000000031";
+        const string a = "visca3ba-0000-4000-9000-000000000032";
+        const string b = "visca3bb-0000-4000-9000-000000000033";
+
+        await PutModel(a, "VISCAT3B ADIDAS", "VC3B-A-REF", "calzado", """{"Marca":"ADIDAS"}""");
+        await PutModel(b, "VISCAT3B NIKE", "VC3B-B-REF", "ropa", """{"Marca":"NIKE"}""");
+        await PutClientVisibility(clientId, """[{"attributeId":"marca","valueIds":["adidas"]}]""");
+        var token = await ClientTokenAsync(clientId);
+
+        async Task<HttpResponseMessage> Fav(string modelId)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Put, $"/api/portal/favorites/{modelId}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            return await _client.SendAsync(request);
+        }
+
+        Assert.Equal(System.Net.HttpStatusCode.NoContent, (await Fav(a)).StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, (await Fav(b)).StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, (await Fav("no-existe-0000")).StatusCode);
+
+        var list = await (await GetAsync("/api/portal/favorites", token)).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal([a], list.GetProperty("items").EnumerateArray().Select(i => i.GetString()).ToArray());
+    }
+
     // ── 4. Sin reglas de visibilidad, el cliente ve todo ───────────────────────
 
     [Fact]
@@ -211,6 +241,34 @@ public class VisibilityCatalogTests : IClassFixture<TestWebApplicationFactory>
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
 
         Assert.Equal(2, body.GetProperty("total").GetInt32());
+    }
+
+    // ── 4b. C1 (revisión AL, 14a-6): paridad de claves de atributo. El doc `attribute`
+    // {code:"marca", name:{es_ES:"Marca del producto"}} hace que el modelo con la clave
+    // "Marca del producto" (Item Attribute.Name) case con la regla marca=[...] (B2B Code).
+
+    [Fact]
+    public async Task ParidadDeClaves_NombreDelAtributoCasaConElCodigoDeLaRegla()
+    {
+        const string visibleClient = "VISCA4BC-0000-4000-9000-000000000041";
+        const string hiddenClient = "VISCA4BD-0000-4000-9000-000000000042";
+        const string model = "visca4bm-0000-4000-9000-000000000043";
+        const string tag = "VISCAT4BTAG";
+
+        await Put("/api/catalog/attributes/ATTR-VISCA4B-MARCA",
+            """{"code":"marca","name":{"es_ES":"Marca del producto","en_EN":"Product brand"},"values":[]}""");
+        await PutModel(model, $"{tag} ADIDAS", "VC4B-REF", "calzado", """{"Marca del producto":"ADIDAS"}""");
+        await PutOffer("visca4bo-0000-4000-9000-000000000044", model, 40m);
+        await PutClientVisibility(visibleClient, """[{"attributeId":"marca","valueIds":["adidas"]}]""");
+        await PutClientVisibility(hiddenClient, """[{"attributeId":"marca","valueIds":["nike"]}]""");
+
+        var visible = await (await GetAsync($"/api/shop/catalog?q={tag}", await ClientTokenAsync(visibleClient)))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, visible.GetProperty("total").GetInt32());
+
+        var hidden = await (await GetAsync($"/api/shop/catalog?q={tag}", await ClientTokenAsync(hiddenClient)))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(0, hidden.GetProperty("total").GetInt32());
     }
 
     // ── 5. La descarga de stock (CSV) también queda filtrada ───────────────────

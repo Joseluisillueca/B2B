@@ -33,10 +33,18 @@ public static class VisibilityStore
         return (rows.FirstOrDefault(r => r.Source == "bc"), rows.FirstOrDefault(r => r.Source == "manual"));
     }
 
+    // El scope del actor. C1 (14a-6): las claves de atributo se canonicalizan con el
+    // vocabulario (docs `attribute`: alias Name → B2B Code) para que las reglas casen con
+    // las claves con las que BC emite los atributos del modelo. El vocabulario solo se
+    // carga si hay alguna regla (el caso común —sin restricción— no paga la consulta).
     public static async Task<VisibilityScope> ScopeForAsync(AppDbContext db, string? clientId, string? agentId)
-        => VisibilityScope.FromRules([
-            await RulesForAsync(db, "client", clientId),
-            await RulesForAsync(db, "agent", agentId)]);
+    {
+        var client = await RulesForAsync(db, "client", clientId);
+        var agent = await RulesForAsync(db, "agent", agentId);
+        if (client is null && agent is null) return VisibilityScope.Unrestricted;
+        var vocabulary = await CatalogVocabulary.LoadAsync(db);
+        return VisibilityScope.FromRules([client, agent], vocabulary.CanonicalAttributeKey);
+    }
 
     // Hook de ingesta: proyecta visibleAttributes del payload de un doc client/agent.
     // AUSENTE (clave no presente o no-array) → no tocar nada. PRESENTE y no vacío →

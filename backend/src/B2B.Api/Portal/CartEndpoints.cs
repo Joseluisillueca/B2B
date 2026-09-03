@@ -173,6 +173,15 @@ public static class CartEndpoints
             var actor = await PortalScope.ActorAsync(principal, db);
             if (actor is null) return Unknown();
 
+            // 14a-6: solo se marca lo que existe, está activo y el actor puede ver — no se
+            // guardan favoritos fantasma ni de modelos ocultos para su cuenta.
+            var model = await db.CatalogModels.SingleOrDefaultAsync(m => m.ExternalId == modelId);
+            if (model is null || !model.Active)
+                return Results.BadRequest(new { error = "El modelo no existe en el catálogo." });
+            var visibility = await Shop.VisibilityStore.ScopeForAsync(db, actor.ClientId, actor.User.AgentExternalId);
+            if (visibility.IsRestricted && !visibility.Visible(model))
+                return Results.BadRequest(new { error = "Este modelo no está disponible para tu cuenta." });
+
             var exists = await db.PortalFavorites
                 .AnyAsync(f => f.UserId == actor.UserId && f.ModelId == modelId);
             if (!exists)

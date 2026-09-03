@@ -101,6 +101,22 @@ public class VisibilityScopeTests
         Assert.True(s.Visible(Model(family: "zapatos de agua")));
     }
 
+    // C1 (revisión AL, 14a-6): BC emite los atributos mapeados del modelo con el NAME del
+    // atributo ("Marca del producto") y las reglas con slug(B2B Code) ("marca"). Sin un
+    // canonicalizador la regla no casaba y el catálogo salía VACÍO. El scope acepta un
+    // alias→code (el de CatalogVocabulary) y lo aplica a las claves del modelo Y a las
+    // de las reglas.
+    [Fact] public void ClavesDeAtributo_SeCanonicalizanConElVocabulario()
+    {
+        static string Canonical(string key) => CatalogVocabulary.Slug(key) == "marca-del-producto" ? "marca" : CatalogVocabulary.Slug(key);
+        var s = VisibilityScope.FromRules(["""[{"attributeId":"marca","valueIds":["adidas"]}]"""], Canonical);
+        Assert.True(s.Visible(Model(attrsJson: """{"Marca del producto":"ADIDAS"}""")));
+        Assert.False(s.Visible(Model(attrsJson: """{"Marca del producto":"NIKE"}""")));
+        // Y al revés: la regla escrita con la etiqueta también casa con la clave corta.
+        var byLabel = VisibilityScope.FromRules(["""[{"attributeId":"Marca del producto","valueIds":["adidas"]}]"""], Canonical);
+        Assert.True(byLabel.Visible(Model(attrsJson: """{"marca":"adidas"}""")));
+    }
+
     [Fact] public void IsRestricted_ReflejaSiHayReglas()
     {
         Assert.False(VisibilityScope.Unrestricted.IsRestricted);

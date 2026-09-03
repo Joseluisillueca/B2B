@@ -18,14 +18,19 @@ public sealed class CatalogVocabulary
 {
     private readonly Dictionary<string, JsonNode?> _families;
     private readonly Dictionary<string, JsonNode?> _attributes;
+    // C1 (revisión AL): alias (slug) → código canónico (slug del B2B Code) del atributo.
+    private readonly Dictionary<string, string> _attributeCodes;
 
-    private CatalogVocabulary(Dictionary<string, JsonNode?> families, Dictionary<string, JsonNode?> attributes)
+    private CatalogVocabulary(
+        Dictionary<string, JsonNode?> families, Dictionary<string, JsonNode?> attributes,
+        Dictionary<string, string> attributeCodes)
     {
         _families = families;
         _attributes = attributes;
+        _attributeCodes = attributeCodes;
     }
 
-    public static readonly CatalogVocabulary Empty = new([], []);
+    public static readonly CatalogVocabulary Empty = new([], [], []);
 
     public static async Task<CatalogVocabulary> LoadAsync(AppDbContext db)
     {
@@ -35,6 +40,7 @@ public sealed class CatalogVocabulary
 
         var families = new Dictionary<string, JsonNode?>(StringComparer.OrdinalIgnoreCase);
         var attributes = new Dictionary<string, JsonNode?>(StringComparer.OrdinalIgnoreCase);
+        var attributeCodes = new Dictionary<string, string>(StringComparer.Ordinal);
 
         foreach (var doc in docs)
         {
@@ -49,9 +55,35 @@ public sealed class CatalogVocabulary
                         target.TryAdd(label, name);
 
             target.TryAdd(Slug(doc.ExternalId), name);
+
+            if (doc.EntityType == "attribute")
+            {
+                // Código canónico = slug del B2B Code (`code`), o del id del doc si no viene.
+                // Alias: el propio id y cada etiqueta de `name` (Item Attribute.Name en cada
+                // idioma) — es la clave con la que BC emite los atributos MAPEADOS del modelo.
+                var codeText = DocumentProjections.Text(payload?["code"]);
+                var code = Slug(codeText.Length > 0 ? codeText : doc.ExternalId);
+                if (code.Length == 0) continue;
+                attributeCodes.TryAdd(code, code);
+                attributeCodes.TryAdd(Slug(doc.ExternalId), code);
+                if (name is JsonObject labels)
+                    foreach (var (_, value) in labels)
+                        if (Slug(DocumentProjections.Text(value)) is { Length: > 0 } alias)
+                            attributeCodes.TryAdd(alias, code);
+            }
         }
 
-        return new CatalogVocabulary(families, attributes);
+        return new CatalogVocabulary(families, attributes, attributeCodes);
+    }
+
+    /// Clave canónica de un atributo para comparar reglas de visibilidad con las claves
+    /// de los modelos: el slug del B2B Code del doc `attribute` cuando la clave (o su slug)
+    /// es un alias conocido (id del doc o etiqueta en cualquier idioma); si no, su slug.
+    /// Así "Marca del producto" (Name) y "marca" (B2B Code) son la MISMA clave.
+    public string CanonicalAttributeKey(string key)
+    {
+        var slug = Slug(key);
+        return _attributeCodes.TryGetValue(slug, out var code) ? code : slug;
     }
 
     /// Etiqueta de la familia; sin documento publicado, el id capitalizado de siempre
