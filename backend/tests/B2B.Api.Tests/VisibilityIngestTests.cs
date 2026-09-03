@@ -94,6 +94,70 @@ public class VisibilityIngestTests : IClassFixture<TestWebApplicationFactory>
         Assert.Contains("manual-brand", manualRow.RulesJson);
     }
 
+    // ── 2b. Dos PUTs consecutivos con reglas distintas: sigue habiendo UNA fila bc
+    // y refleja el ÚLTIMO envío (BC re-sincroniza, no acumula) ─────────────────
+
+    [Fact]
+    public async Task IngestaActualiza_FilaBcConNuevosValores()
+    {
+        const string clientId = "VISCLI0C-0000-4000-9000-000000000010";
+
+        await Put($"/api/clients/{clientId}",
+            """{"name":"Cliente","visibleAttributes":[{"attributeId":"marca","valueIds":["adidas"]}]}""");
+        await Put($"/api/clients/{clientId}",
+            """{"name":"Cliente","visibleAttributes":[{"attributeId":"marca","valueIds":["nike"]}]}""");
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var rows = db.CatalogVisibilities
+            .Where(v => v.SubjectType == "client" && v.SubjectId == clientId)
+            .ToList();
+
+        var row = Assert.Single(rows);
+        Assert.Equal("bc", row.Source);
+        Assert.Contains("nike", row.RulesJson);
+        Assert.DoesNotContain("adidas", row.RulesJson);
+    }
+
+    // ── 2c. visibleAttributes:[] (PRESENTE y vacío) levanta la restricción bc: BORRA
+    // la fila bc si existía; una fila manual pre-sembrada queda intacta y vuelve a mandar ──
+
+    [Fact]
+    public async Task IngestaConArrayVacio_LevantaLaRestriccionBc()
+    {
+        const string clientId = "VISCLI0D-0000-4000-9000-000000000011";
+
+        await Put($"/api/clients/{clientId}",
+            """{"name":"Cliente","visibleAttributes":[{"attributeId":"marca","valueIds":["adidas"]}]}""");
+
+        using (var seedScope = _factory.Services.CreateScope())
+        {
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            seedDb.CatalogVisibilities.Add(new CatalogVisibility
+            {
+                SubjectType = "client",
+                SubjectId = clientId,
+                RulesJson = """[{"attributeId":"marca","valueIds":["manual-brand"]}]""",
+                Source = "manual"
+            });
+            await seedDb.SaveChangesAsync();
+        }
+
+        await Put($"/api/clients/{clientId}", """{"name":"Cliente","visibleAttributes":[]}""");
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var rows = db.CatalogVisibilities
+            .Where(v => v.SubjectType == "client" && v.SubjectId == clientId)
+            .ToList();
+
+        var row = Assert.Single(rows);
+        Assert.Equal("manual", row.Source);
+        Assert.Contains("manual-brand", row.RulesJson);
+
+        Assert.Contains("manual-brand", await VisibilityStore.RulesForAsync(db, "client", clientId));
+    }
+
     // ── 3. Ingesta de agente proyecta una fila bc con SubjectType="agent" ──────
 
     [Fact]

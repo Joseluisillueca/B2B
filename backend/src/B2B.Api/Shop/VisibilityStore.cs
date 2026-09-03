@@ -23,16 +23,27 @@ public static class VisibilityStore
             await RulesForAsync(db, "agent", agentId)]);
 
     // Hook de ingesta: proyecta visibleAttributes del payload de un doc client/agent.
-    // Solo escribe si el array viene NO vacío (BC vacío/ausente no toca nada); las
-    // filas manual nunca se pisan desde aquí.
+    // AUSENTE (clave no presente o no-array) → no tocar nada. PRESENTE y no vacío →
+    // upsert de la fila bc. PRESENTE y vacío ([]) → BORRAR la fila bc si existe: BC
+    // levanta la restricción y la resolución cae a la manual si la hay (sin este
+    // trinquete, BC jamás podría deshacer una restricción ya proyectada). Las filas
+    // manual nunca se escriben ni se borran desde aquí.
     public static async Task ProjectFromPayloadAsync(
         AppDbContext db, string entityType, string externalId, System.Text.Json.Nodes.JsonNode? payload)
     {
         if (entityType is not ("client" or "agent")) return;
-        if (payload?["visibleAttributes"] is not System.Text.Json.Nodes.JsonArray arr || arr.Count == 0) return;
-        var rules = arr.ToJsonString();
+        if (payload?["visibleAttributes"] is not System.Text.Json.Nodes.JsonArray arr) return;
+
         var row = await db.CatalogVisibilities.FirstOrDefaultAsync(v =>
             v.SubjectType == entityType && v.SubjectId == externalId && v.Source == "bc");
+
+        if (arr.Count == 0)
+        {
+            if (row is not null) db.CatalogVisibilities.Remove(row);
+            return;
+        }
+
+        var rules = arr.ToJsonString();
         if (row is null)
             db.CatalogVisibilities.Add(new CatalogVisibility
                 { SubjectType = entityType, SubjectId = externalId, RulesJson = rules, Source = "bc" });
