@@ -170,11 +170,11 @@ export default async function catalog(host) {
 
   host.innerHTML = `
     <div class="page catalog-top">
-      <nav class="cat-ribbon" id="ribbon" hidden aria-label="${esc(t('ribbon.label'))}"></nav>
+      <nav class="cat-ribbon is-pending" id="ribbon" aria-label="${esc(t('ribbon.label'))}"></nav>
       <div class="cat-bar">
         <div class="cat-title">
           ${pageHead(t('nav.catalog'), [t('nav.catalog')],
-            '<span class="cat-count" id="count" role="status"></span>')}
+            '<span class="cat-count" id="count" role="status"></span><span class="cat-adapted" id="adapted" hidden></span>')}
         </div>
         <div id="tools"></div>
       </div>
@@ -190,6 +190,9 @@ export default async function catalog(host) {
   const list = host.querySelector('#list');
   const tools = host.querySelector('#tools');
   const count = host.querySelector('#count');
+  // "Catalogo adaptado a tu cuenta": aparece en cuanto el servidor dice `restricted`
+  const adapted = host.querySelector('#adapted');
+  adapted.innerHTML = `${icons.eye(13)}<span>${esc(t('ribbon.adapted'))}</span>`;
   const pagerHost = host.querySelector('#pager');
 
   const itemsById = {};
@@ -201,13 +204,12 @@ export default async function catalog(host) {
   // diccionario del rail. La cinta NO es otra fuente de filtros: cada clic muta
   // el MISMO `query` que los desplegables y syncRibbon() lee ese `query` de
   // vuelta — estado único, cinta y desplegables siempre coherentes.
-  // Se pide en paralelo con el primer catálogo y se pinta EN LA MISMA pasada que
-  // sustituye los esqueletos (lección CLS: nada empuja el grid una vez legible).
+  // Viaja DENTRO de la respuesta del catálogo (`ribbon`, 14a-4/14a-8: estable, sin
+  // filtros de query) y se pinta EN LA MISMA pasada que sustituye los esqueletos: sin
+  // segunda petición y sin salto de layout (el hueco .is-pending ya reserva su altura).
   let ribbonEntries = null;                 // null = aún no llegó; [] = sin cinta
+  let ribbonTotal = 0;                      // modelos del surtido completo (recuento de TODO)
   let ribbonBuilt = false;
-  const ribbonFetch = api.get(`/api/shop/ribbon?locale=${lang()}`)
-    .then(payload => payload?.entries || [])
-    .catch(() => []);
 
   // El filtro de atributo viaja con clave y valor CRUDOS de BC ("Silueta",
   // "Melrose"); la cinta trae slugs de servidor ("silueta", "melrose"). Este mapa
@@ -258,17 +260,33 @@ export default async function catalog(host) {
       : vocab('attrValue', entry.value, entry.label, entry.label);
   };
 
-  // Con UNA sola entrada la cinta se queda: para un cliente restringido es la
-  // etiqueta de SU catálogo ("Calzado"), y que exista para todos los actores
-  // evita que la interfaz cambie de anatomía entre cuentas.
+  // Con 0 o 1 entrada no hay nada que navegar: una cinta de una sola pestaña parece
+  // un filtro roto. En su lugar, y en el MISMO hueco, una línea de contexto que dice
+  // cuál es el surtido de la cuenta — "Tu surtido: Calzado · 38 artículos" (UX-M1).
   function buildRibbon() {
-    if (ribbonBuilt || !ribbonEntries?.length) return;
+    if (ribbonBuilt) return;
     ribbonBuilt = true;
-    const chips = [`<button type="button" class="rib-chip" data-rib="all" aria-pressed="false">${esc(t('ribbon.all'))}</button>`];
-    let lastKind = 'family';
-    ribbonEntries.forEach((entry, index) => {
-      // Cambio de plano (familias → valores de atributo): separador fino
-      if (entry.kind !== lastKind) { chips.push('<span class="rib-sep" aria-hidden="true"></span>'); lastKind = entry.kind; }
+    ribbon.classList.remove('is-pending');
+    const entries = ribbonEntries || [];
+    if (entries.length <= 1) {
+      if (!entries.length) { ribbon.hidden = true; return; }
+      const [only] = entries;
+      ribbon.classList.add('is-context');
+      ribbon.removeAttribute('aria-label');
+      ribbon.setAttribute('role', 'presentation');
+      ribbon.innerHTML = `<p class="cat-context">${icons.list(14)}<span>${esc(t('ribbon.yourRange',
+        { label: ribbonText(only), n: only.count ?? ribbonTotal }))}</span></p>`;
+      return;
+    }
+    // TODO lleva el recuento del surtido completo, como cada pestaña lleva el suyo (D-B2)
+    const chips = [`<button type="button" class="rib-chip" data-rib="all" aria-pressed="false">${esc(t('ribbon.all'))}${
+      ribbonTotal ? `<span class="rib-count">${ribbonTotal}</span>` : ''}</button>`];
+    // Separador en CADA cambio de plano: familias -> atributo A -> atributo B (D-M2).
+    // Antes solo se separaba familia/atributo y dos atributos seguidos se leían como uno.
+    let lastGroup = 'family';
+    entries.forEach((entry, index) => {
+      const group = entry.kind === 'family' ? 'family' : `attr:${entry.attributeId}`;
+      if (group !== lastGroup) { chips.push('<span class="rib-sep" aria-hidden="true"></span>'); lastGroup = group; }
       chips.push(`<button type="button" class="rib-chip" data-rib="${index}" aria-pressed="false">${esc(ribbonText(entry))}${
         entry.count ? `<span class="rib-count">${entry.count}</span>` : ''}</button>`);
     });
@@ -276,7 +294,6 @@ export default async function catalog(host) {
       <button type="button" class="rib-arrow rib-prev" aria-label="${esc(t('ribbon.prev'))}">${icons.left(16)}</button>
       <div class="rib-rail">${chips.join('')}</div>
       <button type="button" class="rib-arrow rib-next" aria-label="${esc(t('ribbon.next'))}">${icons.right(16)}</button>`;
-    ribbon.hidden = false;
     wireRibbon();
   }
 
@@ -321,6 +338,9 @@ export default async function catalog(host) {
       ribbon.classList.toggle('has-nav', max > 4);
       prev.disabled = rail.scrollLeft <= 1;
       next.disabled = rail.scrollLeft >= max - 1;
+      // El desvanecido del raíl solo por el lado que todavía esconde pestañas
+      ribbon.classList.toggle('at-start', prev.disabled);
+      ribbon.classList.toggle('at-end', next.disabled);
     };
     prev.onclick = () => rail.scrollBy({ left: -step(), behavior: reduced ? 'auto' : 'smooth' });
     next.onclick = () => rail.scrollBy({ left: step(), behavior: reduced ? 'auto' : 'smooth' });
@@ -344,7 +364,8 @@ export default async function catalog(host) {
   // Relee `query` y enciende lo que toque (llamado en cada load, venga el cambio
   // de la cinta o de los desplegables — una sola fuente de verdad).
   function syncRibbon() {
-    if (!ribbonBuilt) return;
+    // Con la línea de contexto (<=1 entrada) no hay chips que sincronizar
+    if (!ribbonBuilt || !ribbon.querySelector('[data-rib="all"]')) return;
     let any = false;
     ribbon.querySelectorAll('.rib-chip').forEach(chipEl => {
       if (chipEl.dataset.rib === 'all') return;
@@ -405,14 +426,18 @@ export default async function catalog(host) {
     windows = data.windows || [];
     if (!knew && windowId() && data.window !== windowId()) return load({ keepScroll: true });
 
-    // La cinta llega en paralelo con el primer catálogo y se pinta en ESTA misma
-    // pasada (los esqueletos aún están: nada legible se mueve al aparecer).
-    if (ribbonEntries === null) ribbonEntries = await ribbonFetch;
     // Tras el await el usuario puede haber navegado: si la vista ya no está
     // conectada, no se pinta nada encima de la siguiente (patrón del checkout).
     if (!list.isConnected) return;
+    // La cinta viene DENTRO de la primera respuesta (es estable: no cambia al filtrar)
+    // y se pinta en esta misma pasada, con los esqueletos todavía en pantalla.
+    if (ribbonEntries === null) {
+      ribbonEntries = data.ribbon?.entries || [];
+      ribbonTotal = Number(data.ribbon?.total) || 0;
+    }
     feedRibbonVocab();
     buildRibbon();
+    adapted.hidden = !data.restricted;
 
     list.removeAttribute('aria-busy');
     list.classList.remove('is-loading');
@@ -652,7 +677,7 @@ export default async function catalog(host) {
     if (!items.length) {
       list.innerHTML = `
         <div class="panel">
-          <b>${esc(t('catalog.emptyTitle'))}</b>${esc(t('catalog.emptyBody'))}
+          <b>${esc(t('catalog.emptyTitle'))}</b>${esc(t(data.restricted ? 'catalog.emptyBodyRestricted' : 'catalog.emptyBody'))}
           <div><button type="button" class="link" id="clearFilters">${esc(t('catalog.clear'))}</button></div>
         </div>`;
       list.querySelector('#clearFilters').onclick = () => {

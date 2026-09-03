@@ -265,6 +265,10 @@ export default async function modelSelectionAdd(host) {
       } catch { grid.innerHTML = `<p class="mp-error">${esc(t('selection.errorBody'))}</p>`; return; }
 
       const items = data.items || [];
+      // Agente con surtido restringido: el selector solo trae SU surtido, y lo dice (UX-M1)
+      dialog.querySelector('.mp-scope')?.remove();
+      if (data.restricted) dialog.querySelector('.mp-head h2')?.insertAdjacentHTML('afterend',
+        `<span class="mp-scope">${icons.eye(13)} ${esc(t('selection.scopeNote'))}</span>`);
       grid.innerHTML = items.length ? items.map(m => `
         <article class="mp-card${chosen.has(m.id) ? ' on' : ''}" data-id="${esc(m.id)}">
           <div class="mp-img">${m.image

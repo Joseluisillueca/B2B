@@ -541,4 +541,49 @@ public class VisibilityAdminTests : IClassFixture<TestWebApplicationFactory>
         }
         finally { await SetRibbonAsync("null"); }
     }
+
+    // ── 6d. Recuento de la pestaña TODO (14b): `ribbon.total` son los modelos del
+    // SURTIDO del actor (post-visibilidad, sin filtros de query) — el mismo criterio
+    // que las entradas, para que "TODO 38" y la suma de las pestañas cuadren ────
+
+    [Fact]
+    public async Task ShopCatalog_RibbonTotal_EsElSurtidoDelActorYNoCambiaAlFiltrar()
+    {
+        const string restrictedClient = "VISAD6DC-0000-4000-9000-000000000041";
+        const string openClient = "VISAD6DO-0000-4000-9000-000000000042";
+        const string visible = "visad6da-0000-4000-9000-000000000043";
+        const string hidden = "visad6db-0000-4000-9000-000000000044";
+
+        await PutModel(visible, "VISAD6D ADIDAS", "VA6D-A-REF", "visad6dcalz", """{"MarcaR6D":"VISAD6DADIDAS"}""");
+        await PutModel(hidden, "VISAD6D NIKE", "VA6D-B-REF", "visad6dropa", """{"MarcaR6D":"VISAD6DNIKE"}""");
+        await PutClientVisibility(restrictedClient, """[{"attributeId":"marcar6d","valueIds":["visad6dadidas"]}]""");
+        await Put($"/api/clients/{openClient}", """{"name":"Cliente abierto 6d"}""");
+        var restrictedToken = await ClientTokenAsync(restrictedClient);
+        var openToken = await ClientTokenAsync(openClient);
+
+        async Task<JsonElement> CatalogAsync(string query, string token) =>
+            await (await Send(HttpMethod.Get, "/api/shop/catalog" + query, token))
+                .Content.ReadFromJsonAsync<JsonElement>();
+
+        // Restringido: su surtido es EXACTAMENTE el único modelo con ese valor de atributo.
+        var restricted = await CatalogAsync("", restrictedToken);
+        Assert.Equal(1, restricted.GetProperty("ribbon").GetProperty("total").GetInt32());
+
+        // Filtrar y buscar recortan `total` (el listado) pero NUNCA el recuento de TODO.
+        foreach (var query in new[] { "?q=VISAD6D%20ADIDAS", "?family=visad6dcalz", "?q=nada-que-coincida-xyz" })
+            Assert.Equal(1, (await CatalogAsync(query, restrictedToken))
+                .GetProperty("ribbon").GetProperty("total").GetInt32());
+
+        // Sin restricciones y sin filtros, el recuento de TODO ES el total del listado.
+        var open = await CatalogAsync("", openToken);
+        var openTotal = open.GetProperty("ribbon").GetProperty("total").GetInt32();
+        Assert.Equal(open.GetProperty("total").GetInt32(), openTotal);
+        Assert.True(openTotal > 1);
+        // Y el mismo número lo da el endpoint autónomo que consume /manage.
+        var standalone = await (await Send(HttpMethod.Get, "/api/shop/ribbon", openToken))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(openTotal, standalone.GetProperty("total").GetInt32());
+        // El surtido del restringido es menor que el abierto: la cinta no miente.
+        Assert.True(openTotal > restricted.GetProperty("ribbon").GetProperty("total").GetInt32());
+    }
 }

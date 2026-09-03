@@ -113,8 +113,15 @@ export default function checkout(host) {
     notes: ''
   };
 
-  const clientName = credential.name || client.name || '';
-  const clientNumber = credential.clientNumber || client.number || '';
+  // Suplantando, la credencial elegida es la del AGENTE: el nombre y el número del
+  // encabezado son los del cliente suplantado (state.acting), nunca los del comercial.
+  const acting = state.acting;
+  const clientName = acting?.client?.name || client.name || credential.name || '';
+  const clientNumber = acting?.client?.number || acting?.client?.clientNumber || client.number || credential.clientNumber || '';
+  const agentName = state.isAgent ? (credential.name || me.email || '') : '';
+  // Modelos que el servidor rechazó en el último envío (400 con blockedModelIds): sus
+  // grupos se marcan y un botón los quita de golpe, sin buscarlos a mano (UX-M3).
+  let blockedIds = new Set();
 
   function render() {
     // El checkout se repinta entero a menudo (condiciones, porte, líneas): el raíl
@@ -152,6 +159,8 @@ export default function checkout(host) {
                   ${icons.fileDown(16)} ${esc(t('checkout.excel'))}</button>
               </div>
             </div>
+            ${agentName && acting ? `<p class="ck-managed">${icons.user(14)}<span>${esc(t('checkout.managedBy',
+              { client: clientName, agent: agentName }))}</span></p>` : ''}
 
             ${card()}
 
@@ -167,7 +176,9 @@ export default function checkout(host) {
           <aside class="ck-side">
             ${error ? `
               <div class="notice notice-error" role="alert">
-                ${icons.alert(18)}<div><span>${esc(error)}</span></div>
+                ${icons.alert(18)}<div><span>${esc(error)}</span>${blockedIds.size ? `
+                  <span>${esc(t('checkout.blockedHint'))}</span>
+                  <button type="button" class="btn-ghost ck-drop-blocked" id="dropBlocked">${icons.trash(14)} ${esc(t('checkout.dropBlocked'))}</button>` : ''}</div>
               </div>` : ''}
             ${sent ? sentNotice() : blocked ? blockedNotice(blocked) : ''}
 
@@ -263,8 +274,8 @@ export default function checkout(host) {
           ${field(t('checkout.payMethod'), editing
             ? `<select id="payMethod" aria-label="${esc(t('checkout.payMethod'))}">${payOptions(client).map(option =>
                 `<option value="${esc(option.value)}"${option.value === form.payMethod ? ' selected' : ''}>
-                   ${esc(option.label)}</option>`).join('')}</select>`
-            : esc(payLabel(client, form.payMethod)) || '—', true)}
+                   ${esc(option.label)}</option>`).join('')}</select>${cardNote()}`
+            : (esc(payLabel(client, form.payMethod)) || '—') + cardNote(), true)}
           ${field(t('checkout.type'), t(`window.${state.prefs.window}`).toUpperCase())}
         </dl>
 
@@ -287,6 +298,10 @@ export default function checkout(host) {
       </div>`;
   }
 
+  // Agente pagando con tarjeta: la pasarela se abre en SU sesión, no en la del cliente (UX-M5)
+  const cardNote = () => form.payMethod === CARD && state.isAgent
+    ? `<span class="ck-pay-note">${esc(t('checkout.cardAgentNote'))}</span>` : '';
+
   const field = (label, value, raw = false) => `
     <div class="ck-field"><dt>${esc(label)}</dt><dd>${raw ? value : esc(value)}</dd></div>`;
 
@@ -297,10 +312,13 @@ export default function checkout(host) {
   };
 
   function groups(lines) {
-    return `<div class="ck-lines">${groupLines(lines).map(group => `
-      <section class="ck-group">
+    return `<div class="ck-lines">${groupLines(lines).map(group => {
+      const blocked = blockedIds.has(String(group.modelId ?? ''));
+      return `
+      <section class="ck-group${blocked ? ' is-blocked' : ''}">
         <header>
-          <h3>${esc(group.name || '')}</h3>
+          <h3>${esc(group.name || '')}${blocked
+            ? `<span class="ck-blocked">${icons.lock(12)} ${esc(t('checkout.blockedLine'))}</span>` : ''}</h3>
           <p>${esc(t('catalog.reference'))} <b>${esc(group.reference || '')}</b></p>
           <span class="ck-group-total">${esc(t('checkout.units', { n: group.units }))} · ${esc(eur(group.total))}</span>
         </header>
@@ -319,7 +337,7 @@ export default function checkout(host) {
                 aria-label="${esc(t('cart.remove'))}">${icons.close(14)}</button></td>
             </tr>`).join('')}</tbody>
         </table>
-      </section>`).join('')}</div>`;
+      </section>`; }).join('')}</div>`;
   }
 
   function bind() {
@@ -340,13 +358,33 @@ export default function checkout(host) {
 
     if (editing) {
       $('reference')?.addEventListener('input', e => { form.reference = e.target.value; });
-      $('payMethod')?.addEventListener('change', e => { form.payMethod = e.target.value; });
+      $('payMethod')?.addEventListener('change', e => {
+        form.payMethod = e.target.value;
+        render();   // el aviso de la tarjeta aparece y desaparece con la forma de pago
+        host.querySelector('#payMethod')?.focus({ preventScroll: true });
+      });
       $('shipTo')?.addEventListener('change', e => { form.shippingAddressId = e.target.value; render(); });
       $('notes')?.addEventListener('input', e => { form.notes = e.target.value; });
     }
 
     host.querySelectorAll('.ck-drop').forEach(button => {
-      button.onclick = () => { state.removeCartLine(button.dataset.key); render(); };
+      button.onclick = () => {
+        state.removeCartLine(button.dataset.key);
+        // Quitando a mano el último bloqueado, el aviso que lo pedía deja de tener sentido
+        if (blockedIds.size) {
+          blockedIds = new Set([...blockedIds].filter(id => state.cartLines().some(line => String(line.modelId) === id)));
+          if (!blockedIds.size) error = '';
+        }
+        render();
+      };
+    });
+    host.querySelector('#dropBlocked')?.addEventListener('click', () => {
+      for (const line of state.cartLines())
+        if (blockedIds.has(String(line.modelId))) state.removeCartLine(lineKey(line));
+      blockedIds = new Set();
+      error = '';
+      render();
+      host.querySelector('#submit')?.focus({ preventScroll: true });
     });
 
     // Vaciar el carrito no tiene vuelta atrás: se confirma en el diálogo del portal
@@ -360,6 +398,7 @@ export default function checkout(host) {
       setAccepted(false);   // carrito nuevo, condiciones nuevas
       sent = null;
       error = '';
+      blockedIds = new Set();
       render();
     };
 
@@ -425,6 +464,7 @@ export default function checkout(host) {
           button.disabled = false;
           // El backend explica el 400 (p. ej. artículos fuera de la visibilidad
           // del actor): ese mensaje LLEGA al usuario; el genérico es el respaldo.
+          blockedIds = new Set((err?.body?.blockedModelIds || []).map(String));
           error = err?.body?.error || t('checkout.payError');
           render();
         }
@@ -436,11 +476,13 @@ export default function checkout(host) {
         state.clearCart();
         setAccepted(false);
         error = '';
+        blockedIds = new Set();
         render();
       } catch (err) {
         button.disabled = false;
         // Mismo criterio: el error del backend (ApiError.body.error) por delante
         // del genérico — "Estos artículos no están disponibles…" se ve, no se tapa.
+        blockedIds = new Set((err?.body?.blockedModelIds || []).map(String));
         error = err?.body?.error || t('checkout.submitError');
         render();
       }

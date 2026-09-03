@@ -218,6 +218,7 @@ export default async function clients(host) {
     });
     list.querySelector('[data-release]')?.addEventListener('click', () => {
       state.stopActing();
+      api.refreshMe();   // vuelve la ficha del agente
       // Igual que el botón del header: re-resolver la ruta re-pinta el chrome
       // (carrito y "Deseleccionar" desaparecen) además de la lista. Con solo
       // load() el header seguía mostrando la suplantación hasta recargar (P2-2).
@@ -290,6 +291,7 @@ function openSelectModal(client) {
         // El token de suplantación pasa a mandar en api.js; el dashboard/catálogo
         // ya se pintan como el cliente.
         state.actAs({ token: result.token, client: result.client || client, window: window_ });
+        await api.refreshMe();   // ficha del cliente (formas de pago, direcciones) para el checkout
         dialog.close();
         go('dashboard');
       } catch {
@@ -308,6 +310,7 @@ function openSelectModal(client) {
     try {
       const result = await api.impersonate(client.clientId);
       state.actAs({ token: result.token, client: result.client || client });
+      await api.refreshMe();
       dialog.close();
       go('business');
     } catch {

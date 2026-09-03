@@ -2,6 +2,7 @@
 import { SCHEMAS } from '../schemas.js';
 import { icons } from '../icons.js';
 import { esc, dig, loadRows, fkOptions } from '../util.js';
+import { api } from '../api.js';
 import { go } from '../router.js';
 
 const PAGE = 25;
@@ -15,6 +16,24 @@ export default async function list(main, type, slug) {
   const sc = SCHEMAS[type];
   const article = sc.fem ? 'Nueva' : 'Nuevo';
   const rows = await loadRows(type);
+
+  // Clientes y agentes con reglas de visibilidad: chip en la fila, para verlo sin
+  // entrar ficha por ficha (UX-M6). El resumen es una sola llamada para todo el listado.
+  let visMap = {};
+  if (type === 'client' || type === 'agent') {
+    try {
+      const summary = await api.get('/api/admin/visibility/summary');
+      visMap = Object.fromEntries(Object.entries(summary?.[type] || {})
+        .map(([id, source]) => [String(id).toLowerCase(), source]));
+    } catch { /* el chip es informativo: sin resumen, sin chip */ }
+  }
+  const visChip = row => {
+    const source = visMap[String(row.id).toLowerCase()];
+    if (!source) return '';
+    const bc = source === 'bc';
+    return ` <span class="grid-chip warn vis-row-chip" title="Reglas de visibilidad ${
+      bc ? 'fijadas por Business Central' : 'manuales del portal'}">Surtido restringido · ${bc ? 'BC' : 'manual'}</span>`;
+  };
 
   // Precarga de etiquetas para columnas FK (fk:tipo y fkarr:tipo)
   const fkCols = sc.list.filter(c => /^fka?rr?:|^fk:/.test(String(c[2])));
@@ -101,7 +120,7 @@ export default async function list(main, type, slug) {
     count.textContent = `${shown.length} ${shown.length === 1 ? 'registro' : 'registros'}`;
     tbody.innerHTML = slice.length ? slice.map(r => `
       <tr class="row-link" data-id="${esc(r.id)}">
-        ${sc.list.map((c, j) => `<td${j === 0 ? ' class="grid-link"' : ''}>${cell(r, c)}</td>`).join('')}
+        ${sc.list.map((c, j) => `<td${j === 0 ? ' class="grid-link"' : ''}>${cell(r, c)}${j === 0 ? visChip(r) : ''}</td>`).join('')}
         <td class="grid-actions">${icons.right(16)}</td></tr>`).join('')
       : `<tr class="grid-empty"><td colspan="${sc.list.length + 1}">Sin resultados con «${esc(term)}».</td></tr>`;
     pagerHost.innerHTML = pages > 1 ? pager(page, pages) : '';

@@ -141,7 +141,9 @@ public sealed record CatalogAttributeFacet(
 /// base de la cinta, que es navegación y no cambia al filtrar ni al buscar (14a-8).
 public sealed record CatalogRibbonFacets(
     IReadOnlyList<CatalogFamilyFacet> Families,
-    IReadOnlyList<CatalogAttributeFacet> AttributeFacets);
+    IReadOnlyList<CatalogAttributeFacet> AttributeFacets,
+    /// Modelos del surtido completo del actor: el recuento de la pestaña TODO (D-B2)
+    int Total);
 
 public sealed record CatalogPage(
     IReadOnlyList<object> Windows,
@@ -223,8 +225,8 @@ public static class CatalogService
         var families = FamilyFacet(all, query, vocabulary);
         var attributeFacets = AttributeFacets(all, query, vocabulary);
         var ribbon = hasFilters
-            ? new CatalogRibbonFacets(FamilyFacet(all, unfiltered, vocabulary), AttributeFacets(all, unfiltered, vocabulary))
-            : new CatalogRibbonFacets(families, attributeFacets);
+            ? new CatalogRibbonFacets(FamilyFacet(all, unfiltered, vocabulary), AttributeFacets(all, unfiltered, vocabulary), all.Count)
+            : new CatalogRibbonFacets(families, attributeFacets, all.Count);
 
         return new CatalogPage(
             Windows: [.. windows.Select(object (w) => new

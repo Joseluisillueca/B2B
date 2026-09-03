@@ -553,7 +553,8 @@ public static class AgentEndpoints
                 .ToList();
 
             var page = rows.Skip(skip).Take(take).ToList();
-            return Results.Ok(new { total = rows.Count, skip, take, items = page });
+            // `restricted`: el front avisa "Solo modelos de tu surtido" en el selector (UX-M1)
+            return Results.Ok(new { total = rows.Count, skip, take, restricted = visibility.IsRestricted, items = page });
         }).RequireAgent();
 
         // Listado de selecciones del agente (admin ve todas)

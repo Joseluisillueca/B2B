@@ -18,6 +18,12 @@ let shellReady = false;
 
 export function go(hash) { location.hash = hash.startsWith('#') ? hash : '#/' + hash; }
 
+// Guardia de salida de una vista con cambios sin guardar (la Cinta del catálogo). Si
+// devuelve false, la navegación se anula y el hash vuelve al de la vista SIN repintarla.
+// La guardia se retira sola en la primera navegación que prospera.
+let leaveGuard = null, lastHash = location.hash, restoring = false;
+export function setLeaveGuard(fn) { leaveGuard = fn; }
+
 async function loadCounts() {
   try {
     const data = await api.summary();
@@ -26,6 +32,14 @@ async function loadCounts() {
 }
 
 export async function resolve() {
+  if (restoring) { restoring = false; return; }   // hashchange del propio retorno: nada que pintar
+  if (leaveGuard && location.hash !== lastHash && !leaveGuard()) {
+    restoring = true;
+    location.hash = lastHash;
+    return;
+  }
+  leaveGuard = null;
+  lastHash = location.hash;
   const parts = (location.hash.replace(/^#\/?/, '') || 'dashboard').split('/').filter(Boolean);
   const view = parts[0] || 'dashboard';
 

@@ -45,7 +45,7 @@ public static class ShopEndpoints
                 // sin segunda petición ni salto de layout. 14a-8: es ESTABLE — se computa sobre
                 // el surtido completo del actor (page.Ribbon, sin filtros de query): filtrar o
                 // buscar no cambia sus entradas ni sus recuentos.
-                ribbon = new { entries = RibbonBuilder.Build(page, settings?.CatalogRibbonJson, page.Locale) },
+                ribbon = new { entries = RibbonBuilder.Build(page, settings?.CatalogRibbonJson, page.Locale), total = page.Ribbon.Total },
                 items = page.Rows.Select(row => CardItem(row, favorites))
             });
         }).RequireAuthorization();
@@ -123,7 +123,7 @@ public static class ShopEndpoints
 
             var settings = await db.IntegrationSettings.FindAsync(1);
             var entries = RibbonBuilder.Build(page, settings?.CatalogRibbonJson, locale);
-            return Results.Ok(new { locale, entries });
+            return Results.Ok(new { locale, entries, total = page.Ribbon.Total });
         }).RequireAuthorization();
 
         // Botón "Desc. Stock" de la toolbar: el listado que se está viendo, con los

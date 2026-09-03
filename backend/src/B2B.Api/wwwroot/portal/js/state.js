@@ -23,6 +23,32 @@ const write = (store, key, value) => {
   else store.setItem(key, JSON.stringify(value));
 };
 
+// Ámbito del carrito y de la preselección: USUARIO + CLIENTE (UX-A2). La clave era
+// global al navegador: un agente que soltaba un cliente arrastraba su carrito al
+// siguiente, y en un equipo compartido el carrito de un usuario le aparecía al otro.
+// Suplantando se compra en el ámbito del cliente suplantado; al soltarlo el agente
+// recupera el suyo y el del cliente queda esperando para la próxima vez.
+const scopeKey = base => {
+  const me = read(sessionStorage, ME, null);
+  const acting = read(sessionStorage, ACTING, null);
+  const credential = read(sessionStorage, CREDENTIAL, null);
+  const user = me?.email || me?.id || 'anon';
+  const client = acting?.client?.id || acting?.client?.clientId || credential?.clientId || '-';
+  return `${base}:${String(user).toLowerCase()}:${String(client).toLowerCase()}`;
+};
+// Migración única de la clave global antigua: la adopta el primer ámbito que la lee
+const readScoped = base => {
+  const own = read(localStorage, scopeKey(base), null);
+  if (own) return own;
+  const legacy = read(localStorage, base, null);
+  if (legacy && Object.keys(legacy).length) {
+    write(localStorage, scopeKey(base), legacy);
+    localStorage.removeItem(base);
+    return legacy;
+  }
+  return {};
+};
+
 // El contador del header y el drawer se repintan solos cuando cambia el carrito o
 // la ventana de servicio; nadie tiene que acordarse de avisar al chrome.
 const listeners = new Set();
@@ -85,8 +111,8 @@ export const state = {
   set prefs(value) { write(localStorage, PREFS, value); emit(); },
 
   /** Carrito por ventana de servicio: { [windowKey]: { [lineKey]: linea } } */
-  get cart() { return read(localStorage, CART, {}); },
-  set cart(value) { write(localStorage, CART, value); emit(); },
+  get cart() { return readScoped(CART); },
+  set cart(value) { write(localStorage, scopeKey(CART), value); emit(); },
 
   /** Ventana activa: 'replenishment' | 'scheduled' — la que cuenta el botón azul */
   get window() { return state.prefs.window; },
@@ -127,8 +153,8 @@ export const state = {
 
   // ── Preselección del Lookbook (modelos apartados sin tallas) ────────────────
   /** { [windowKey]: { [modelId]: item de catálogo } } */
-  get preselection() { return read(localStorage, PRESEL, {}); },
-  set preselection(value) { write(localStorage, PRESEL, value); emit(); },
+  get preselection() { return readScoped(PRESEL); },
+  set preselection(value) { write(localStorage, scopeKey(PRESEL), value); emit(); },
 
   preselections(windowKey = state.prefs.window) {
     return Object.values(state.preselection[windowKey] || {});

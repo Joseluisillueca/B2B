@@ -57,6 +57,9 @@ export const api = {
   },
 
   me: () => request('GET', '/api/portal/me'),
+  /** Relee la ficha con el token EFECTIVO: al suplantar pasa a ser la del cliente
+   *  (formas de pago, direcciones, `impersonating`) y al soltarlo vuelve la del agente */
+  refreshMe: async () => { try { state.me = await request('GET', '/api/portal/me'); } catch { /* se queda la anterior */ } },
 
   /** Cartera de clientes del agente (contrato §agent). `params` es un URLSearchParams */
   agentClients: params => request('GET', `/api/agent/clients?${params}`),

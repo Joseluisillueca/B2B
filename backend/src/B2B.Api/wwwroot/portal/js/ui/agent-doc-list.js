@@ -201,6 +201,7 @@ export async function agentDocList(host, config) {
     try {
       const result = await api.impersonate(clientId);
       state.actAs({ token: result.token, client: result.client });
+      await api.refreshMe();
       go(key);   // 'orders' | 'delivery-notes' | 'invoices' del cliente suplantado
     } catch { /* si falla la suplantación, la fila simplemente no navega */ }
   }

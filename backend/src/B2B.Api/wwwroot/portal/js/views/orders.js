@@ -33,6 +33,11 @@ const typeLabel = type => ({
   REPLENISHMENT: t('window.replenishment')
 }[type] || type || '');
 
+// Pedido creado por un comercial (`agentName` viaja con el listado, 14a-5): sublínea
+// bajo el número, no una columna fija que quedaría vacía para el resto de pedidos.
+const agentSub = order => order.agentName
+  ? `<small class="doc-agent">${esc(t('orders.managedBy', { agent: order.agentName }))}</small>` : '';
+
 export default async function orders(host) {
   // Agente sin suplantar: vista agregada de la cartera con columna CLIENTE
   if (state.isAgent && !state.acting) {
@@ -46,7 +51,7 @@ export default async function orders(host) {
         { label: t('orders.col.status') }
       ],
       cells: order => [
-        esc(order.number),
+        esc(order.number) + agentSub(order),
         esc(date(order.date)),
         esc(typeLabel(order.type)),
         esc(eur(order.total)),
@@ -72,7 +77,7 @@ export default async function orders(host) {
     ],
 
     cells: order => [
-      `<button type="button" class="grid-link" data-open="${esc(order.id)}">${esc(order.number)}</button>`,
+      `<button type="button" class="grid-link" data-open="${esc(order.id)}">${esc(order.number)}</button>${agentSub(order)}`,
       esc(date(order.date)),
       esc(order.reference || ''),
       esc(typeLabel(order.type)),
@@ -88,6 +93,7 @@ export default async function orders(host) {
         ${modalFacts([
           [t('orders.col.reference'), esc(order.reference || '—')],
           [t('orders.col.type'), esc(typeLabel(order.type))],
+          order.agentName ? [t('orders.col.agent'), esc(order.agentName)] : null,
           [t('orders.col.status'), statusChip(statusLabel(order.status), TONE[order.status] || 'none')],
           [t('orders.col.units'), esc(num(order.units))],
           order.shippingAddress ? [t('checkout.shipTo'), esc(order.shippingAddress)] : null,

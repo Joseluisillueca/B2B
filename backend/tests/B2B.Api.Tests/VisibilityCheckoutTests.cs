@@ -395,6 +395,8 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
             .Select(i => i.GetProperty("reference").GetString()).ToList();
         Assert.Contains("VCK4-ADI-REF", restrictedRefs);
         Assert.DoesNotContain("VCK4-NIKE-REF", restrictedRefs);
+        // 14b: el selector avisa de que la lista viene recortada ("Solo modelos de tu surtido")
+        Assert.True(restrictedBody.GetProperty("restricted").GetBoolean());
 
         // Agente sin reglas: ve de todo (incluidos ambos modelos de esta prueba)
         var openToken = await AgentTokenAsync(openAgentId, "comercial-visck4-abierto@agente.test");
@@ -404,6 +406,7 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
             .Select(i => i.GetProperty("reference").GetString()).ToList();
         Assert.Contains("VCK4-ADI-REF", openRefs);
         Assert.Contains("VCK4-NIKE-REF", openRefs);
+        Assert.False(openBody.GetProperty("restricted").GetBoolean());
     }
 
     // ── 4b. Selecciones del agente (14a-3): los modelos se validan contra el scope del

@@ -6,6 +6,7 @@
 import { t, LANGS, lang } from '../i18n.js';
 import { state, onCartChange } from '../state.js';
 import { esc, initial, roleLabel } from '../format.js';
+import { api } from '../api.js';
 import { href, go, current } from '../router.js';
 import { icons } from './icons.js';
 import { paintCartBody } from './cart.js';
@@ -160,6 +161,7 @@ function paintHeader() {
 /** Suelta al cliente suplantado y vuelve a la cartera de clientes del agente */
 function releaseClient() {
   state.stopActing();
+  api.refreshMe();   // vuelve la ficha del agente
   go('clients');
 }
 
