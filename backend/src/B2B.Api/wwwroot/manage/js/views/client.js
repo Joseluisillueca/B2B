@@ -8,6 +8,7 @@ import { esc, dig, setPath, delPath, fkOptions, flash, invalidateOptions, showJs
 
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
 import { go } from '../router.js';
+import { mountVisibility, mountClientAgents } from './visibility.js';
 
 const COUNTRIES = [['ES', 'España'], ['PT', 'Portugal'], ['FR', 'Francia'], ['IT', 'Italia'],
   ['DE', 'Alemania'], ['GB', 'Reino Unido'], ['NL', 'Países Bajos'], ['BE', 'Bélgica'], ['US', 'EE. UU.']];
@@ -131,6 +132,8 @@ export default async function client(main, id) {
         </div>
       </section>
 
+      ${editing ? '<div id="visHost"></div><div id="agentsHost"></div>' : ''}
+
       <div class="acc-actions nc-actions">
         ${editing ? '<button type="button" class="btn-danger" id="del">Eliminar cliente</button>' : ''}
         <a class="btn-ghost" href="#/clients">Cancelar</a>
@@ -166,6 +169,13 @@ export default async function client(main, id) {
   };
   main.querySelector('#addShip').onclick = () => addShip();
   if (addresses.length) addresses.forEach(addShip); else addShip();
+
+  // Visibilidad de catálogo (lista blanca) + agentes con este cliente en cartera.
+  // Se montan aparte y guardan por su cuenta: no bloquean el render del formulario.
+  if (editing) {
+    mountVisibility(main.querySelector('#visHost'), 'client', id, 'el cliente');
+    mountClientAgents(main.querySelector('#agentsHost'), id);
+  }
 
   // ── Guardar ──
   formEl.onsubmit = async event => {

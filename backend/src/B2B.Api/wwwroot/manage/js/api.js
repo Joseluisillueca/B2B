@@ -84,6 +84,13 @@ export const api = {
   // Marca del portal (nombre + color + logo). Vacíos = volver a la marca por defecto.
   intSaveBranding: b => request('PUT', '/api/admin/integration/branding', b),
 
+  // Visibilidad de catálogo por sujeto (client|agent): fila bc (solo lectura, la
+  // proyecta el sync) + fila manual (la edita /manage). PUT rules:[] retira la manual.
+  getVisibility: (type, id) =>
+    request('GET', `/api/admin/visibility/${encodeURIComponent(type)}/${encodeURIComponent(id)}`),
+  putVisibility: (type, id, rules) =>
+    request('PUT', `/api/admin/visibility/${encodeURIComponent(type)}/${encodeURIComponent(id)}`, { rules }),
+
   // Reglas de transporte (portes)
   transportRules: () => request('GET', '/api/admin/transport-rules'),
   createTransportRule: b => request('POST', '/api/admin/transport-rules', b),

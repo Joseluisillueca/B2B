@@ -42,6 +42,7 @@ export default async function form(main, type, id) {
       <div id="notice"></div>
       ${sc.sections.map(sectionHtml).join('')}
       ${editing && type === 'model' ? '<div id="imgHost"></div><div id="relHost"></div>' : ''}
+      ${editing && type === 'agent' ? '<div id="visHost"></div>' : ''}
       <div class="acc-actions nc-actions">
         ${editing ? '<button type="button" class="btn-danger" id="del">Eliminar</button>' : ''}
         <a class="btn-ghost" href="#/${SLUG[type]}">Cancelar</a>
@@ -154,6 +155,11 @@ export default async function form(main, type, id) {
 
   // Imagen del modelo (solo al editar; para uno nuevo se añade desde «Imágenes» tras crearlo)
   if (editing && type === 'model') { await mountModelImage(); await mountRelatedBc(); }
+
+  // Visibilidad de catálogo del AGENTE (misma sección que en la ficha de cliente;
+  // patrón mountRelatedBc: host propio dentro del form, guarda por su cuenta).
+  if (editing && type === 'agent')
+    (await import('./visibility.js')).mountVisibility(main.querySelector('#visHost'), 'agent', id, 'el agente');
 
   async function mountModelImage() {
     const host = main.querySelector('#imgHost');

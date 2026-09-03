@@ -387,3 +387,48 @@ a.mng-rel-chip:hover b { color:var(--blue); }
 .mng-rel-missing-note svg { flex:none; margin-top:.15rem; }
 .mng-rel-missing-note a { color:inherit; font-weight:700; }
 .mng-rel-missing-note a:hover { color:var(--out); }
+
+/* ── Visibilidad de catálogo (fichas de cliente y agente) ─────────────────────
+   Lista blanca por atributo. Dos modos: candado BC (solo lectura) y editor manual.
+   Mismo lenguaje que el resto del back-office: radio 0, filetes, paper de fondo. */
+.vis-bc { display:block; background:var(--paper); border:1px solid var(--line);
+  border-left:3px solid var(--ink); padding:.9rem 1.1rem; margin:0 0 1rem; }
+.vis-bc-head { display:flex; align-items:center; gap:.5rem; margin-bottom:.35rem; color:var(--ink); }
+.vis-bc-head b { font-size:.74rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.vis-bc-head svg { flex:none; }
+.vis-bc p { margin:0; font-size:.84rem; color:var(--muted); line-height:1.55; }
+.vis-bc code { font:.78rem/1 ui-monospace,Consolas,monospace; background:var(--surface);
+  padding:.1rem .35rem; border:1px solid var(--line); }
+/* Chips de regla (BC, solo lectura): atributo → valores permitidos */
+.vis-chips { display:flex; flex-direction:column; gap:.5rem; align-items:flex-start; }
+.vis-chip { display:inline-flex; align-items:center; flex-wrap:wrap; gap:.45rem;
+  border:1px solid var(--line-control); background:var(--card); padding:.5rem .8rem; font-size:.84rem; }
+.vis-chip b { font-weight:700; color:var(--ink); }
+.vis-arrow { color:var(--muted); }
+.vis-val { font-size:.76rem; font-weight:600; color:var(--ink-2); background:var(--surface);
+  border:1px solid var(--line); padding:.14rem .5rem; }
+.vis-val.is-none { color:var(--muted); font-style:italic; border-style:dashed; background:none; }
+.vis-manual-note { display:flex; align-items:flex-start; gap:.4rem; margin:.9rem 0 0;
+  font-size:.78rem; line-height:1.5; color:var(--muted); }
+.vis-manual-note svg { flex:none; margin-top:.15rem; color:var(--low); }
+/* Editor manual: cada restricción como bloque (mismo aire que .nc-ship) */
+.vis-rule { border:1px solid var(--line); border-radius:var(--r-sm); padding:1rem 1.2rem 1.1rem;
+  margin:.9rem 0; background:var(--paper); }
+.vis-rule-head { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem;
+  margin-bottom:.75rem; flex-wrap:wrap; }
+.vis-rule-attr { display:flex; flex-direction:column; gap:.3rem; min-width:14rem; }
+.vis-rule-attr > span { font-size:.72rem; font-weight:700; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--ink); }
+.vis-rule-attr select { border:1px solid var(--line-control); border-radius:var(--r-sm);
+  padding:.5rem .7rem; background:#fff; font:inherit; }
+.vis-rule-attr select:focus { border-color:var(--blue); }
+.vis-rule .acc-hint { margin-top:.55rem; }
+/* Estado vacío honesto: sin restricciones = catálogo completo */
+.vis-empty { display:flex; flex-direction:column; align-items:center; gap:.15rem; text-align:center;
+  border:1px dashed var(--line-control); border-radius:var(--r-sm); padding:1.6rem 1rem; margin:.2rem 0 1rem;
+  color:var(--muted); }
+.vis-empty svg { color:var(--line-control); margin-bottom:.35rem; }
+.vis-empty b { color:var(--ink); font-size:.95rem; }
+.vis-empty span { font-size:.84rem; }
+.vis-actions { display:flex; align-items:center; justify-content:space-between; gap:.8rem;
+  flex-wrap:wrap; margin-top:1rem; }
