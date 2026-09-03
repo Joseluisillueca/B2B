@@ -52,6 +52,11 @@ public class PortalCartTests : IClassFixture<PortalCartTests.Factory>, IAsyncLif
                 """{"name":"TEST 5","externalReference":"C100057","canShop":true,"groupIds":["mayorista"]}""");
             await PutAsync($"/api/clients/{ClientB}",
                 """{"name":"OTRA TIENDA","externalReference":"C100099","canShop":true,"groupIds":[]}""");
+            // Tarea 5: el checkout (POST /api/portal/orders) valida las líneas contra el
+            // catálogo real (modelo conocido y activo), así que la línea de prueba necesita
+            // un CatalogModel de verdad detrás de ModelId.
+            await PutAsync($"/api/catalog/models/{ModelId}",
+                """{"name":{"es_ES":"LEJAN ONE - AETERNA"},"active":true,"externalReference":"1974","productSegments":[],"attributes":{}}""");
             await PutAsync($"/api/clients/{ClientA}/users/admin",
                 $$"""{"email":"{{TestWebApplicationFactory.SeededEmail}}","name":"Test 5","culture":"es_ES"}""");
             await PutAsync($"/api/clients/{ClientB}/users/admin",

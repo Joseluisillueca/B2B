@@ -180,6 +180,40 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Contains("VCK2-NIKE-REF", body.GetProperty("error").GetString());
+
+        // Nada de SaveChanges tampoco en modo erp: el pedido no existe.
+        var orders = await (await Send(HttpMethod.Get, "/api/portal/orders", token))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(0, orders.GetProperty("total").GetInt32());
+    }
+
+    // ── 2b. El modelo desconocido se bloquea SIEMPRE, aunque el actor no tenga reglas ──
+    // (en modo erp nada más re-tarifica/valida las líneas: sin esto un modelId fantasma
+    // se guardaba tal cual).
+
+    [Fact]
+    public async Task CheckoutBloqueaModeloDesconocido_SinReglas_ModoErp()
+    {
+        const string clientId = "VISCK2BC-0000-4000-9000-000000000012";
+        const string fantasma = "visck2bf-0000-4000-9000-000000000013";
+
+        // Sin PutClientVisibility: este cliente no tiene reglas de visibilidad.
+        var token = await ClientTokenAsync(clientId);
+        await SetOrdersModeAsync("erp");
+
+        var response = await Send(HttpMethod.Post, "/api/portal/orders", token, new
+        {
+            windowId = "reposic",
+            lines = new[] { Line(fantasma, "PRD-VCK2B-FANT", "REF-FANTASMA", 40m) }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(fantasma, body.GetProperty("error").GetString());
+
+        var orders = await (await Send(HttpMethod.Get, "/api/portal/orders", token))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(0, orders.GetProperty("total").GetInt32());
     }
 
     // ── 3. Comprar solo lo visible funciona (modo portal, con re-tarificación real) ──

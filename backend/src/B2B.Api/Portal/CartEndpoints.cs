@@ -217,25 +217,31 @@ public static class CartEndpoints
             if (actor is null) return Unknown();
             if (Invalid(body, requireName: false, out var lines, out var problem)) return problem;
 
-            // Visibilidad (Tarea 5): el checkout arma el pedido con las líneas que manda el
-            // CLIENTE, sin pasar por CatalogService.QueryAsync (donde la Tarea 4 enchufó el
-            // filtro) — así que sin esto un cliente restringido podía comprar por id lo que
-            // no ve en el catálogo. Un único punto, COMÚN a los dos modos (portal/erp): aquí,
-            // con `lines` ya resuelto y ANTES de la primera bifurcación y de cualquier
-            // SaveChanges. Un modelo que ni siquiera existe en el catálogo (id inventado o
-            // desactivado) también se bloquea: "conocido" sale de esta misma consulta.
+            // Visibilidad + catálogo real (Tarea 5): el checkout arma el pedido con las
+            // líneas que manda el CLIENTE, sin pasar por CatalogService.QueryAsync (donde la
+            // Tarea 4 enchufó el filtro). Un único punto, COMÚN a los dos modos (portal/erp):
+            // aquí, con `lines` ya resuelto y ANTES de la primera bifurcación y de cualquier
+            // SaveChanges. Dos comprobaciones distintas, y la primera corre SIEMPRE (no solo
+            // con reglas de visibilidad): un modelId desconocido o INACTIVO no es comprable
+            // en ningún caso — en modo erp nada más valida las líneas (no hay RepriceAsync),
+            // así que sin esto un actor sin reglas podía colar un modelo fantasma o dado de
+            // baja. La visibilidad (whitelist por atributo) solo se suma si el actor está
+            // restringido.
+            var modelIds = lines.Select(l => l.ModelId ?? "").Where(s => s.Length > 0).Distinct().ToList();
+            // SIN filtrar Active: un modelo desactivado debe listarse aquí para bloquearlo
+            // (no para dejarlo pasar como "desconocido" con otro mensaje).
+            var models = await db.CatalogModels.Where(m => modelIds.Contains(m.ExternalId)).ToListAsync();
+            var known = models.Select(m => m.ExternalId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var blocked = models.Where(m => !m.Active).Select(m => m.ExternalReference).ToList();
+            blocked.AddRange(modelIds.Where(id => !known.Contains(id)));   // desconocido → el propio modelId
+
             var visibility = await Shop.VisibilityStore.ScopeForAsync(db, actor.ClientId, actor.User.AgentExternalId);
             if (visibility.IsRestricted)
-            {
-                var modelIds = lines.Select(l => l.ModelId ?? "").Where(s => s.Length > 0).Distinct().ToList();
-                var models = await db.CatalogModels.Where(m => modelIds.Contains(m.ExternalId)).ToListAsync();
-                var blocked = models.Where(m => !visibility.Visible(m)).Select(m => m.ExternalReference).ToList();
-                var known = models.Select(m => m.ExternalId).ToHashSet(StringComparer.OrdinalIgnoreCase);
-                blocked.AddRange(modelIds.Where(id => !known.Contains(id)));
-                if (blocked.Count > 0)
-                    return Results.BadRequest(new { error =
-                        $"Estos artículos no están disponibles para tu cuenta: {string.Join(", ", blocked)}." });
-            }
+                blocked.AddRange(models.Where(m => m.Active && !visibility.Visible(m)).Select(m => m.ExternalReference));
+
+            if (blocked.Count > 0)
+                return Results.BadRequest(new { error =
+                    $"Estos artículos no están disponibles para tu cuenta: {string.Join(", ", blocked.Distinct())}." });
 
             var settings = await db.IntegrationSettings.FindAsync(1) ?? new Data.IntegrationSettings();
             var portalMode = PortalOrdersMode(settings, config);
