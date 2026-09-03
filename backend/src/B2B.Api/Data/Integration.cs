@@ -35,6 +35,12 @@ public class IntegrationSettings
     public string? BrandColor { get; set; }
     public string? BrandLogoUrl { get; set; }
 
+    // Config de la cinta del catálogo (JSON crudo, editable desde /manage → Catálogo →
+    // Cinta): {"attributes":[slugs de atributo que la alimentan],"entries":[overrides por
+    // entrada: key, hidden, order, titles por idioma]}. null = cinta autogenerada (solo
+    // familias). La computa por actor GET /api/shop/ribbon (VisibilityEndpoints).
+    public string? CatalogRibbonJson { get; set; }
+
     // Valores efectivos (no mapeados por EF): con respaldo a la marca por defecto.
     public string BrandNameOrDefault => string.IsNullOrWhiteSpace(BrandName) ? "MITO PROJECTS" : BrandName!.Trim();
     public string BrandColorOrDefault => string.IsNullOrWhiteSpace(BrandColor) ? "#ec3013" : BrandColor!.Trim();
