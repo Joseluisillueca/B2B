@@ -421,9 +421,11 @@ export default function checkout(host) {
           state.clearCart();
           setAccepted(false);
           window.location.href = pay.url;
-        } catch {
+        } catch (err) {
           button.disabled = false;
-          error = t('checkout.payError');
+          // El backend explica el 400 (p. ej. artículos fuera de la visibilidad
+          // del actor): ese mensaje LLEGA al usuario; el genérico es el respaldo.
+          error = err?.body?.error || t('checkout.payError');
           render();
         }
         return;
@@ -435,9 +437,11 @@ export default function checkout(host) {
         setAccepted(false);
         error = '';
         render();
-      } catch {
+      } catch (err) {
         button.disabled = false;
-        error = t('checkout.submitError');
+        // Mismo criterio: el error del backend (ApiError.body.error) por delante
+        // del genérico — "Estos artículos no están disponibles…" se ve, no se tapa.
+        error = err?.body?.error || t('checkout.submitError');
         render();
       }
     };

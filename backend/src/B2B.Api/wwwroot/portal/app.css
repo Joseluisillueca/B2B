@@ -667,6 +667,49 @@ body[data-focus="on"] .cat-filters { display:none; }
   .cat-lookup-panel.scroll { max-height:14rem; }
 }
 
+/* ── Cinta de navegación del catálogo (banda bajo CATÁLOGO|LOOKBOOK) ──
+   Pestañas editoriales sobre una regla fina: MAYÚSCULAS pequeñas, activo con la
+   regla de 2px en el rojo de marca (mismo lenguaje que el nav del chrome pero un
+   peso por debajo: la cinta es sub-navegación, no compite con CATÁLOGO|LOOKBOOK).
+   El recuento va como numeral diminuto y apagado, a lo índice de revista. */
+/* gap:0 — la regla inferior del raíl y la de las flechas forman UNA línea continua */
+.cat-ribbon { display:flex; align-items:stretch; gap:0; margin:-.6rem 0 1.9rem; }
+.cat-ribbon[hidden] { display:none; }
+.rib-rail { flex:1; min-width:0; display:flex; align-items:stretch; gap:1.9rem;
+  overflow-x:auto; scroll-snap-type:x proximity; overscroll-behavior-x:contain;
+  scrollbar-width:none; border-bottom:1px solid var(--line); }
+.rib-rail::-webkit-scrollbar { display:none; }
+.rib-chip { scroll-snap-align:start; flex:none; display:inline-flex; align-items:baseline; gap:.32rem;
+  padding:.6rem .1rem; font-size:.8rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--ink-2); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap;
+  transition:color .12s var(--ease), border-color .12s var(--ease); }
+.rib-chip:hover { color:var(--ink); }
+.rib-chip:focus-visible { outline:2px solid var(--blue); outline-offset:-2px; }
+.rib-chip.on { color:var(--blue-deep); border-bottom-color:var(--blue); }
+.rib-count { font-size:.64rem; font-weight:600; color:var(--muted); letter-spacing:.02em; translate:0 -.32em; }
+.rib-chip.on .rib-count { color:var(--blue); }
+/* Cambio de plano (familias → valores de atributo de /manage): separador fino */
+.rib-sep { flex:none; width:1px; background:var(--line); margin:.55rem 0 .7rem; }
+/* Flechas: solo existen si el raíl desborda (patrón del raíl de relacionados) */
+.rib-arrow { display:none; }
+.cat-ribbon.has-nav .rib-arrow { display:inline-flex; align-items:center; justify-content:center;
+  flex:none; width:2.6rem; border-bottom:1px solid var(--line); color:var(--ink-2);
+  transition:color .12s var(--ease); }
+/* El icono se arrima al borde exterior: aire hacia los chips SIN romper la línea base */
+.cat-ribbon.has-nav .rib-prev { justify-content:flex-start; }
+.cat-ribbon.has-nav .rib-next { justify-content:flex-end; }
+.rib-arrow:hover:not([disabled]) { color:var(--blue); }
+.rib-arrow[disabled] { opacity:.3; cursor:default; }
+.rib-arrow svg { flex:none; }
+/* Vista sin distracciones (ojo del header): la cinta se va con los filtros */
+body[data-focus="on"] .cat-ribbon { display:none; }
+@media (max-width:48rem) {
+  .cat-ribbon { margin:-.4rem 0 1.5rem; }
+  .cat-ribbon.has-nav .rib-arrow { display:none; }   /* táctil: dedo + snap */
+  .rib-rail { gap:1.4rem; scroll-snap-type:x mandatory; }
+  .rib-chip { padding:.72rem .1rem; }                /* área táctil más generosa */
+}
+
 /* Fila de artículo */
 .item { display:grid; grid-template-columns:17rem minmax(0,1fr);
   grid-template-areas:"photo info" "photo matrix"; column-gap:2.4rem; row-gap:1.6rem;

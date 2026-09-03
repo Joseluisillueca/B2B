@@ -170,6 +170,7 @@ export default async function catalog(host) {
 
   host.innerHTML = `
     <div class="page catalog-top">
+      <nav class="cat-ribbon" id="ribbon" hidden aria-label="${esc(t('ribbon.label'))}"></nav>
       <div class="cat-bar">
         <div class="cat-title">
           ${pageHead(t('nav.catalog'), [t('nav.catalog')],
@@ -184,6 +185,7 @@ export default async function catalog(host) {
       <div id="pager"></div>
     </div>`;
 
+  const ribbon = host.querySelector('#ribbon');
   const filters = host.querySelector('#filters');
   const list = host.querySelector('#list');
   const tools = host.querySelector('#tools');
@@ -192,6 +194,149 @@ export default async function catalog(host) {
 
   const itemsById = {};
   bindMatrix(list, itemsById, { onChange: () => paintPrices() });
+
+  // ── Cinta de navegación (banda bajo CATÁLOGO|LOOKBOOK) ─────────────────────
+  // Las entradas las COMPUTA EL SERVIDOR para el actor (familias visibles + los
+  // valores de atributo que active /manage): aquí solo se pintan, con el mismo
+  // diccionario del rail. La cinta NO es otra fuente de filtros: cada clic muta
+  // el MISMO `query` que los desplegables y syncRibbon() lee ese `query` de
+  // vuelta — estado único, cinta y desplegables siempre coherentes.
+  // Se pide en paralelo con el primer catálogo y se pinta EN LA MISMA pasada que
+  // sustituye los esqueletos (lección CLS: nada empuja el grid una vez legible).
+  let ribbonEntries = null;                 // null = aún no llegó; [] = sin cinta
+  let ribbonBuilt = false;
+  const ribbonFetch = api.get(`/api/shop/ribbon?locale=${lang()}`)
+    .then(payload => payload?.entries || [])
+    .catch(() => []);
+
+  // El filtro de atributo viaja con clave y valor CRUDOS de BC ("Silueta",
+  // "Melrose"); la cinta trae slugs de servidor ("silueta", "melrose"). Este mapa
+  // slug→crudo se alimenta de las facetas de cada respuesta y ACUMULA: una faceta
+  // recortada por otro filtro no borra lo ya aprendido.
+  const ribbonVocab = new Map();
+  const feedRibbonVocab = () => {
+    for (const attr of data.facets?.attributes || []) {
+      const rec = ribbonVocab.get(attr.keySlug) || { key: attr.key, values: new Map() };
+      rec.key = attr.key;
+      for (const v of attr.values || []) rec.values.set(v.slug, v.value);
+      ribbonVocab.set(attr.keySlug, rec);
+    }
+  };
+
+  // slug de servidor → { key, value } crudos para query.attributes. Si el mapa aún
+  // no conoce el valor (deep-link con facetas recortadas) se usan los slugs tal
+  // cual: la clave casa igual (el servidor compara sin mayúsculas) y TODO restaura.
+  const resolveEntry = entry => {
+    const rec = ribbonVocab.get(entry.attributeId);
+    return { key: rec?.key || entry.attributeId, value: rec?.values.get(entry.value) ?? entry.value };
+  };
+
+  const familyOf = entry => entry.key.startsWith('family:') ? entry.key.slice(7) : '';
+
+  const entryOn = entry => {
+    if (entry.kind === 'family') return query.family === familyOf(entry);
+    const { key, value } = resolveEntry(entry);
+    return (query.attributes[key] || []).includes(value);
+  };
+
+  const ribbonText = entry => entry.kind === 'family'
+    ? vocab('family', familyOf(entry), entry.label, entry.label)
+    : vocab('attrValue', entry.value, entry.label, entry.label);
+
+  // Con UNA sola entrada la cinta se queda: para un cliente restringido es la
+  // etiqueta de SU catálogo ("Calzado"), y que exista para todos los actores
+  // evita que la interfaz cambie de anatomía entre cuentas.
+  function buildRibbon() {
+    if (ribbonBuilt || !ribbonEntries?.length) return;
+    ribbonBuilt = true;
+    const chips = [`<button type="button" class="rib-chip" data-rib="all" aria-pressed="false">${esc(t('ribbon.all'))}</button>`];
+    let lastKind = 'family';
+    ribbonEntries.forEach((entry, index) => {
+      // Cambio de plano (familias → valores de atributo): separador fino
+      if (entry.kind !== lastKind) { chips.push('<span class="rib-sep" aria-hidden="true"></span>'); lastKind = entry.kind; }
+      chips.push(`<button type="button" class="rib-chip" data-rib="${index}" aria-pressed="false">${esc(ribbonText(entry))}${
+        entry.count ? `<span class="rib-count">${entry.count}</span>` : ''}</button>`);
+    });
+    ribbon.innerHTML = `
+      <button type="button" class="rib-arrow rib-prev" aria-label="${esc(t('ribbon.prev'))}">${icons.left(16)}</button>
+      <div class="rib-rail">${chips.join('')}</div>
+      <button type="button" class="rib-arrow rib-next" aria-label="${esc(t('ribbon.next'))}">${icons.right(16)}</button>`;
+    ribbon.hidden = false;
+    wireRibbon();
+  }
+
+  function wireRibbon() {
+    const rail = ribbon.querySelector('.rib-rail');
+    rail.addEventListener('click', event => {
+      const chipEl = event.target.closest('.rib-chip');
+      if (!chipEl) return;
+      if (chipEl.dataset.rib === 'all') {
+        // TODO = sin filtro de lo que la cinta gobierna (familia + sus atributos);
+        // buscador y disponibilidad no son suyos y se respetan.
+        const attributes = { ...query.attributes };
+        for (const entry of ribbonEntries) if (entry.kind === 'attr') delete attributes[resolveEntry(entry).key];
+        query = { ...query, family: '', attributes, skip: 0 };
+        return load({ keepScroll: true });
+      }
+      const entry = ribbonEntries[Number(chipEl.dataset.rib)];
+      if (!entry) return;
+      if (entry.kind === 'family') {
+        // Mismo mecanismo que el desplegable LÍNEAS; re-clic = "Todas"
+        query = { ...query, family: entryOn(entry) ? '' : familyOf(entry), skip: 0 };
+      } else {
+        // Mismo mecanismo que la casilla de su faceta: alterna el valor del grupo
+        const { key, value } = resolveEntry(entry);
+        const set = new Set(query.attributes[key] || []);
+        set.has(value) ? set.delete(value) : set.add(value);
+        const attributes = { ...query.attributes };
+        if (set.size) attributes[key] = [...set]; else delete attributes[key];
+        query = { ...query, attributes, skip: 0 };
+      }
+      load({ keepScroll: true });
+    });
+
+    // Flechas solo si desborda (patrón del raíl de relacionados); en táctil no
+    // existen: el raíl se desplaza con el dedo y el snap lo deja en un chip.
+    const prev = ribbon.querySelector('.rib-prev');
+    const next = ribbon.querySelector('.rib-next');
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const step = () => Math.max(rail.clientWidth * 0.8, 120);
+    const update = () => {
+      const max = rail.scrollWidth - rail.clientWidth;
+      ribbon.classList.toggle('has-nav', max > 4);
+      prev.disabled = rail.scrollLeft <= 1;
+      next.disabled = rail.scrollLeft >= max - 1;
+    };
+    prev.onclick = () => rail.scrollBy({ left: -step(), behavior: reduced ? 'auto' : 'smooth' });
+    next.onclick = () => rail.scrollBy({ left: step(), behavior: reduced ? 'auto' : 'smooth' });
+    rail.addEventListener('scroll', update, { passive: true });
+    const onResize = () => (ribbon.isConnected ? update() : removeEventListener('resize', onResize));
+    addEventListener('resize', onResize);
+
+    // El estado activo puede llegar por deep-link: el chip encendido se centra
+    requestAnimationFrame(() => {
+      const on = rail.querySelector('.rib-chip.on');
+      if (on) rail.scrollLeft = Math.max(0, on.offsetLeft - rail.clientWidth / 2 + on.offsetWidth / 2);
+      update();
+    });
+  }
+
+  // Relee `query` y enciende lo que toque (llamado en cada load, venga el cambio
+  // de la cinta o de los desplegables — una sola fuente de verdad).
+  function syncRibbon() {
+    if (!ribbonBuilt) return;
+    let any = false;
+    ribbon.querySelectorAll('.rib-chip').forEach(chipEl => {
+      if (chipEl.dataset.rib === 'all') return;
+      const on = entryOn(ribbonEntries[Number(chipEl.dataset.rib)]);
+      any = any || on;
+      chipEl.classList.toggle('on', on);
+      chipEl.setAttribute('aria-pressed', String(on));
+    });
+    const all = ribbon.querySelector('[data-rib="all"]');
+    all.classList.toggle('on', !any);
+    all.setAttribute('aria-pressed', String(!any));
+  }
 
   // El H1 y las migas se ocultan con el ojo; el recuento se queda, como en 20-header-ojo.png
   const paintCount = () => {
@@ -240,10 +385,17 @@ export default async function catalog(host) {
     windows = data.windows || [];
     if (!knew && windowId() && data.window !== windowId()) return load({ keepScroll: true });
 
+    // La cinta llega en paralelo con el primer catálogo y se pinta en ESTA misma
+    // pasada (los esqueletos aún están: nada legible se mueve al aparecer).
+    if (ribbonEntries === null) ribbonEntries = await ribbonFetch;
+    feedRibbonVocab();
+    buildRibbon();
+
     list.removeAttribute('aria-busy');
     list.classList.remove('is-loading');
     paintCount();
     renderFilters();
+    syncRibbon();
     paintTools();
     paintList();
     paintPager();
