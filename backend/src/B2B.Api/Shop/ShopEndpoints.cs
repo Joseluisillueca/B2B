@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using System.Text.Json.Nodes;
-using B2B.Api.Admin;
 using B2B.Api.Data;
 using B2B.Api.Portal;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +19,7 @@ public static class ShopEndpoints
             var query = CatalogQuery.From(request.Query);
             var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow, visibility);
             var favorites = await FavoritesAsync(db, actor);
+            var settings = await db.IntegrationSettings.FindAsync(1);
 
             return Results.Ok(new
             {
@@ -33,12 +32,19 @@ public static class ShopEndpoints
                 query.Skip,
                 query.Take,
                 sort = query.Sort,
+                // 14a-4 / UX-M1: el actor está restringido por reglas de visibilidad (el
+                // front avisa "Catálogo adaptado a tu cuenta" y ajusta los vacíos).
+                restricted = visibility.IsRestricted,
                 facets = new
                 {
                     families = page.Families,
                     availability = page.AvailabilityFacet.Select(f => new { id = f.Value, count = f.Count }),
                     attributes = page.AttributeFacets
                 },
+                // 14a-4 / UX-M4: la cinta viaja con el catálogo (misma forma que /api/shop/ribbon),
+                // computada con las facetas de ESTA respuesta: sin segunda petición ni salto de
+                // layout. Las entradas reflejan los filtros activos (recuentos contextuales).
+                ribbon = new { entries = RibbonBuilder.Build(page, settings?.CatalogRibbonJson, page.Locale) },
                 items = page.Rows.Select(row => CardItem(row, favorites))
             });
         }).RequireAuthorization();
@@ -98,11 +104,10 @@ public static class ShopEndpoints
         }).RequireAuthorization();
 
         // ── Cinta del catálogo (ribbon) ────────────────────────────────────────
-        // Las entradas de la banda bajo CATÁLOGO|LOOKBOOK, COMPUTADAS EN SERVIDOR para
-        // el actor: nacen de las facetas del pipeline del catálogo ya filtradas por su
-        // VisibilityScope (cero fugas de valores prohibidos) y se les aplica la config
-        // de /manage (IntegrationSettings.CatalogRibbonJson: atributos que la alimentan
-        // + overrides hidden/order/titles por entrada). Sin config → solo familias.
+        // Las entradas de la banda bajo CATÁLOGO|LOOKBOOK computadas para el actor
+        // (RibbonBuilder) sobre el catálogo COMPLETO filtrado por su visibilidad, sin
+        // ningún filtro de la barra. La usa /manage (vista previa del gestor); el portal
+        // ya recibe la cinta dentro de /api/shop/catalog (14a-4).
         app.MapGet("/api/shop/ribbon", async (HttpRequest request, ClaimsPrincipal principal, AppDbContext db) =>
         {
             var actor = await PortalScope.ActorAsync(principal, db);
@@ -116,52 +121,7 @@ public static class ShopEndpoints
                 new CatalogQuery { Take = 1, Locale = locale }, DateTimeOffset.UtcNow, visibility);
 
             var settings = await db.IntegrationSettings.FindAsync(1);
-            var config = VisibilityEndpoints.ParseNode(settings?.CatalogRibbonJson) as JsonObject;
-
-            // Candidatas: SIEMPRE nacidas de las facetas filtradas — jamás una entrada
-            // que el actor no pueda ver. Sin config → solo familias (cinta autogenerada).
-            var candidates = new List<RibbonCandidate>();
-            foreach (var family in page.Families)
-                candidates.Add(new("family:" + family.Id, "family", null, null, family.Label, family.Count,
-                    Raw: family.Id));
-
-            if (config?["attributes"] is JsonArray attributes)
-                foreach (var wanted in attributes)
-                {
-                    var slug = CatalogVocabulary.Slug(Text(wanted));
-                    if (slug.Length == 0) continue;
-                    var facet = page.AttributeFacets.FirstOrDefault(f =>
-                        string.Equals(f.KeySlug, slug, StringComparison.OrdinalIgnoreCase));
-                    if (facet is null) continue;
-                    foreach (var value in facet.Values)
-                        candidates.Add(new($"attr:{facet.KeySlug}:{value.Slug}", "attr",
-                            // Raw = el valor CRUDO de BC (Value/Label de la faceta, ANTES de los
-                            // overrides de títulos): es lo que el filtro a.{clave}= compara tal cual.
-                            facet.KeySlug, value.Slug, value.Label, value.Count, Raw: value.Value));
-                }
-
-            // Overrides por entrada: hidden → fuera; order → delante (los sin order al
-            // final, en el orden natural de las facetas); titles → etiqueta del locale.
-            var overrides = Overrides(config);
-            var entries = candidates
-                .Select((candidate, index) => (candidate, index,
-                    over: overrides.GetValueOrDefault(candidate.Key.ToLowerInvariant())))
-                .Where(x => x.over?.Hidden != true)
-                .OrderBy(x => x.over?.Order ?? int.MaxValue)
-                .ThenBy(x => x.index)
-                .Select(x => new
-                {
-                    key = x.candidate.Key,
-                    kind = x.candidate.Kind,
-                    attributeId = x.candidate.AttributeId,
-                    value = x.candidate.Value,
-                    // El valor crudo NO pasa por los overrides de títulos: es dato de
-                    // filtro, no etiqueta — el front lo manda tal cual en a.{clave}=.
-                    raw = x.candidate.Raw,
-                    label = Title(x.over, locale) ?? x.candidate.Label,
-                    count = x.candidate.Count,
-                });
-
+            var entries = RibbonBuilder.Build(page, settings?.CatalogRibbonJson, locale);
             return Results.Ok(new { locale, entries });
         }).RequireAuthorization();
 
@@ -310,46 +270,6 @@ public static class ShopEndpoints
             return false;
         }
     }
-
-    // ── Helpers de la cinta ────────────────────────────────────────────────────
-
-    private sealed record RibbonCandidate(
-        string Key, string Kind, string? AttributeId, string? Value, string Label, int Count, string Raw);
-
-    private sealed record RibbonOverride(bool Hidden, int? Order, JsonObject? Titles);
-
-    private static Dictionary<string, RibbonOverride> Overrides(JsonObject? config)
-    {
-        var result = new Dictionary<string, RibbonOverride>();
-        if (config?["entries"] is not JsonArray entries) return result;
-        foreach (var entry in entries)
-        {
-            // Config guardada con basura ("oops", 5 en entries): un elemento que no sea
-            // objeto se IGNORA — indexarlo lanzaría InvalidOperationException y tumbaría
-            // la cinta de TODOS los actores (fix de revisión).
-            if (entry is not JsonObject over) continue;
-            var key = Text(over["key"]).ToLowerInvariant();
-            if (key.Length == 0) continue;
-            int? order = null;
-            try { order = over["order"]?.GetValue<int>(); } catch { /* no numérico → sin orden */ }
-            result[key] = new RibbonOverride(
-                Hidden: (over["hidden"] as JsonValue)?.TryGetValue<bool>(out var hidden) == true && hidden,
-                Order: order,
-                Titles: over["titles"] as JsonObject);
-        }
-        return result;
-    }
-
-    /// Título del locale pedido, si está configurado; si no, null (cae al de la faceta)
-    private static string? Title(RibbonOverride? over, string locale)
-    {
-        if (over?.Titles is not { } titles) return null;
-        var title = Text(titles[locale]);
-        return title.Length > 0 ? title : null;
-    }
-
-    private static string Text(JsonNode? node) =>
-        (node as JsonValue)?.TryGetValue<string>(out var text) == true ? text : "";
 
     private static PortalActorPrices Prices(PortalActor? actor) =>
         actor is null ? PortalActorPrices.Anonymous : new PortalActorPrices(actor.ClientId, actor.GroupIds);

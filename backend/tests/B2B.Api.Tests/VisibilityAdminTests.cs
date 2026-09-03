@@ -387,6 +387,57 @@ public class VisibilityAdminTests : IClassFixture<TestWebApplicationFactory>
         finally { await SetRibbonAsync("null"); }
     }
 
+    // ── 6b. La cinta viaja DENTRO de /api/shop/catalog (14a-4): misma forma que
+    // /api/shop/ribbon, computada con las facetas ya filtradas por el scope, más
+    // `restricted` para que el front avise "Catálogo adaptado a tu cuenta" ──────
+
+    [Fact]
+    public async Task ShopCatalog_TraeRibbonFiltradaYRestricted()
+    {
+        const string restrictedClient = "VISAD6BC-0000-4000-9000-000000000021";
+        const string openClient = "VISAD6BO-0000-4000-9000-000000000022";
+        const string visible = "visad6ba-0000-4000-9000-000000000023";
+        const string hidden = "visad6bb-0000-4000-9000-000000000024";
+
+        await PutModel(visible, "VISAD6B ADIDAS", "VA6B-A-REF", "visad6bcalz", """{"MarcaR6B":"VISAD6BADIDAS"}""");
+        await PutModel(hidden, "VISAD6B NIKE", "VA6B-B-REF", "visad6bropa", """{"MarcaR6B":"VISAD6BNIKE"}""");
+        await PutClientVisibility(restrictedClient, """[{"attributeId":"marcar6b","valueIds":["visad6badidas"]}]""");
+        await Put($"/api/clients/{openClient}", """{"name":"Cliente abierto"}""");
+        var restrictedToken = await ClientTokenAsync(restrictedClient);
+        var openToken = await ClientTokenAsync(openClient);
+
+        try
+        {
+            await SetRibbonAsync("""{"attributes":["marcar6b"]}""");
+
+            var response = await Send(HttpMethod.Get, "/api/shop/catalog?q=VISAD6B", restrictedToken);
+            response.EnsureSuccessStatusCode();
+            var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+            Assert.True(body.GetProperty("restricted").GetBoolean());
+            var entries = body.GetProperty("ribbon").GetProperty("entries").EnumerateArray().ToList();
+            var keys = entries.Select(e => e.GetProperty("key").GetString()).ToList();
+            Assert.Contains("family:visad6bcalz", keys);
+            Assert.Contains("attr:marcar6b:visad6badidas", keys);
+            Assert.DoesNotContain(keys, k => k!.Contains("visad6bropa") || k.Contains("nike"));
+            // Misma forma que /api/shop/ribbon.
+            var attr = entries.Single(e => e.GetProperty("key").GetString() == "attr:marcar6b:visad6badidas");
+            Assert.Equal("attr", attr.GetProperty("kind").GetString());
+            Assert.Equal("marcar6b", attr.GetProperty("attributeId").GetString());
+            Assert.Equal("VISAD6BADIDAS", attr.GetProperty("raw").GetString());
+            Assert.Equal(1, attr.GetProperty("count").GetInt32());
+
+            var open = await (await Send(HttpMethod.Get, "/api/shop/catalog?q=VISAD6B", openToken))
+                .Content.ReadFromJsonAsync<JsonElement>();
+            Assert.False(open.GetProperty("restricted").GetBoolean());
+            var openKeys = open.GetProperty("ribbon").GetProperty("entries").EnumerateArray()
+                .Select(e => e.GetProperty("key").GetString()).ToList();
+            Assert.Contains("family:visad6bropa", openKeys);
+            Assert.Contains("attr:marcar6b:visad6bnike", openKeys);
+        }
+        finally { await SetRibbonAsync("null"); }
+    }
+
     // ── 7. Config con entries basura: el endpoint no revienta y aplica lo válido ──
     // (fix de revisión: un elemento de entries que no sea objeto —"oops", 5— hacía
     // saltar InvalidOperationException al indexarlo → 500 para TODOS los actores).
