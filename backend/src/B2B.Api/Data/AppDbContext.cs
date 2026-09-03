@@ -30,6 +30,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
     public DbSet<SalesRule> SalesRules => Set<SalesRule>();
     public DbSet<DocumentSource> DocumentSources => Set<DocumentSource>();
+    public DbSet<CatalogVisibility> CatalogVisibilities => Set<CatalogVisibility>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -316,6 +317,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             d.Property(x => x.SourceType).HasMaxLength(30);
             d.Property(x => x.Method).HasMaxLength(10);
             d.Property(x => x.Endpoint).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<CatalogVisibility>(v =>
+        {
+            v.ToTable("catalog_visibility");
+            v.HasKey(x => x.Id);
+            v.Property(x => x.SubjectType).HasMaxLength(20);
+            v.Property(x => x.SubjectId).HasMaxLength(120);
+            v.Property(x => x.Source).HasMaxLength(10);
+            v.Property(x => x.RulesJson).HasColumnType("jsonb");
+            v.HasIndex(x => new { x.SubjectType, x.SubjectId, x.Source }).IsUnique();
         });
 
         modelBuilder.Entity<ContactMessage>(message =>
