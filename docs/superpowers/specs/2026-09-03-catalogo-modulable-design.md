@@ -68,8 +68,11 @@ Numeración libre verificada: tablas ≥80134, páginas ≥80147, codeunits ≥8
   (ExternalId), `RulesJson` (jsonb `[{attributeId, valueIds[]}]`), `Source`
   ("bc"|"manual"), UpdatedAt. Índice (SubjectType, SubjectId).
 - **Hook de ingesta** (junto a ClientIdentity.ApplyAsync): al upsert de un doc
-  client/agent, si el payload trae `visibleAttributes` NO vacío → upsert de la fila
-  `Source="bc"`; si BC manda vacío/ausente → NO tocar (las filas `manual` nunca se pisan).
+  client/agent — `visibleAttributes` PRESENTE y no vacío → upsert de la fila `Source="bc"`;
+  PRESENTE y vacío (`[]`) → **BC levanta la restricción: se BORRA la fila bc** (la resolución
+  cae a la manual si existe); AUSENTE → no tocar (conector antiguo / payload parcial).
+  Las filas `manual` nunca se pisan desde la ingesta. (El builder del conector NEW emite
+  la clave SIEMPRE, aunque no haya reglas — ver §2/T12.)
   Regla de resolución en runtime: para un sujeto, **manda la fila `bc` si existe;
   si no, la `manual`** (BC es la fuente de verdad cuando está conectado).
 - El multiagente NO necesita tabla: la cartera sigue en `clientIds` de los docs agent

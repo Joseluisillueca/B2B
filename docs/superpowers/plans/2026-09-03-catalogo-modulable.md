@@ -509,7 +509,7 @@ El JSON de config exacto queda así de simple a propósito (YAGNI); la UI de /ma
 
 ### Task 12: Visibilidad — Enum80120 + Tab80135 + páginas + visibleAttributes
 - `Enum80120` (Customer|Agent), `Tab80135 "B2B Catalog Visibility"` (PK 4 campos, TableRelations condicionales, FlowFields), `Pag80149` + ListParts en fichas.
-- Extraer `SanitizeId` de Cod80114 a `Cod80122.B2BUtils` (mover, actualizar llamada) y builder compartido `BuildVisibleAttributesArray(subjectType, code)` usado por `Cod80130.BuildCustomerJson` (tras productSegments) y `Cod80140.InternalBuildModelJson` (tras markets). Agrupar filas por atributo → `{"attributeId": B2B Code, "valueIds":[SanitizeId(valor)]}`; atributo sin B2B Code → omitir.
+- Extraer `SanitizeId` de Cod80114 a `Cod80122.B2BUtils` (mover, actualizar llamada) y builder compartido `BuildVisibleAttributesArray(subjectType, code)` usado por `Cod80130.BuildCustomerJson` (tras productSegments) y `Cod80140.InternalBuildModelJson` (tras markets). Agrupar filas por atributo → `{"attributeId": B2B Code, "valueIds":[SanitizeId(valor)]}`; atributo sin B2B Code → omitir. **La clave `visibleAttributes` se emite SIEMPRE, también como `[]` sin reglas** — así BC puede LEVANTAR una restricción (el portal borra la fila bc al recibir `[]`; ausente = no tocar).
 
 ### Task 13: Frescura — job de agentes + suscriptores
 - `"B2B Needs Sync"` en TabExt80121 (field 50101). `Cod80181 "B2B Agent Sync Job"` calcado de Cod80169: Job Queue 5 min, procesa marcados jerarquía maestro-primero (lógica de Rep80104:67-84), sincroniza cualquier Salesperson referenciado por Tab80134 aunque no esté en Tab80104.
