@@ -215,7 +215,7 @@ public class VisibilityCatalogTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, (await Fav("no-existe-0000")).StatusCode);
 
         var list = await (await GetAsync("/api/portal/favorites", token)).Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal([a], list.GetProperty("items").EnumerateArray().Select(i => i.GetString()).ToArray());
+        Assert.Equal([a], list.GetProperty("items").EnumerateArray().Select(i => i.GetString()!).ToArray());
     }
 
     // ── 4. Sin reglas de visibilidad, el cliente ve todo ───────────────────────

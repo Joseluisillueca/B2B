@@ -510,6 +510,100 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal([adidas], ids);
     }
 
+    // ── 4c. Huecos de la auditoría (14a-7): suplantación = INTERSECCIÓN agente ∩ cliente
+    // en catálogo y cinta (con atributos configurados: cero valores prohibidos), y los
+    // PDFs no "destapan" un modelo oculto (404).
+
+    private async Task SetRibbonAsync(string ribbonJsonOrNull)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Put, "/api/admin/integration/ribbon")
+        {
+            Content = new StringContent($$"""{"ribbon":{{ribbonJsonOrNull}} }""", Encoding.UTF8, "application/json")
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.GetAdminTokenAsync(_client));
+        (await _client.SendAsync(request)).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task Suplantacion_CatalogoYCinta_SonLaInterseccionAgenteCliente()
+    {
+        const string agentId = "VISCKBAG-0000-4000-9000-000000000001";
+        const string clientId = "VISCKBCL-0000-4000-9000-000000000002";
+        const string alfa = "visckba0-0000-4000-9000-000000000003";
+        const string beta = "visckbb0-0000-4000-9000-000000000004";
+        const string gamma = "visckbc0-0000-4000-9000-000000000005";
+        const string tag = "VISCKBTAG";
+
+        // Atributo y familias únicos de esta prueba (la BD de la fixture es compartida).
+        await PutModel(alfa, $"{tag} ALFA", "VCKB-ALFA", "visckbfam1", """{"MarcaCKB":"ALFA"}""");
+        await PutModel(beta, $"{tag} BETA", "VCKB-BETA", "visckbfam2", """{"MarcaCKB":"BETA"}""");
+        await PutModel(gamma, $"{tag} GAMMA", "VCKB-GAMMA", "visckbfam3", """{"MarcaCKB":"GAMMA"}""");
+        // Cliente: beta y gamma. Agente: alfa y beta. Intersección: SOLO beta.
+        await Put($"/api/clients/{clientId}",
+            """{"name":"Cliente intersección","canShop":true,"visibleAttributes":[{"attributeId":"marcackb","valueIds":["beta","gamma"]}] }""");
+        var agentToken = await AgentTokenAsync(agentId, "comercial-visckb@agente.test", clientIds: [clientId],
+            """[{"attributeId":"marcackb","valueIds":["alfa","beta"]}]""");
+        var impersonated = await ImpersonateAsync(agentToken, clientId);
+
+        try
+        {
+            await SetRibbonAsync("""{"attributes":["marcackb"]}""");
+
+            var catalog = await (await Send(HttpMethod.Get, $"/api/shop/catalog?q={tag}", impersonated))
+                .Content.ReadFromJsonAsync<JsonElement>();
+            Assert.Equal(1, catalog.GetProperty("total").GetInt32());
+            Assert.Equal(beta, catalog.GetProperty("items")[0].GetProperty("modelId").GetString());
+            Assert.True(catalog.GetProperty("restricted").GetBoolean());
+
+            // Cinta del catálogo y endpoint /ribbon: solo beta y su familia; ni ALFA (solo
+            // agente) ni GAMMA (solo cliente) aparecen en NINGUNA entrada.
+            var inCatalog = catalog.GetProperty("ribbon").GetProperty("entries").EnumerateArray()
+                .Select(e => e.GetProperty("key").GetString()!).ToList();
+            var ribbon = await (await Send(HttpMethod.Get, "/api/shop/ribbon", impersonated))
+                .Content.ReadFromJsonAsync<JsonElement>();
+            var standalone = ribbon.GetProperty("entries").EnumerateArray()
+                .Select(e => e.GetProperty("key").GetString()!).ToList();
+            foreach (var keys in new[] { inCatalog, standalone })
+            {
+                Assert.Contains("attr:marcackb:beta", keys);
+                Assert.Contains("family:visckbfam2", keys);
+                Assert.DoesNotContain(keys, k => k.Contains("alfa") || k.Contains("gamma") || k.Contains("fam1") || k.Contains("fam3"));
+            }
+
+            // El agente SIN suplantar ve su propio surtido (alfa y beta), no el del cliente.
+            var own = await (await Send(HttpMethod.Get, $"/api/shop/catalog?q={tag}", agentToken))
+                .Content.ReadFromJsonAsync<JsonElement>();
+            Assert.Equal(2, own.GetProperty("total").GetInt32());
+        }
+        finally { await SetRibbonAsync("null"); }
+    }
+
+    [Fact]
+    public async Task Pdfs_ModeloOculto_404()
+    {
+        const string clientId = "VISCKCCL-0000-4000-9000-000000000001";
+        const string adidas = "visckca0-0000-4000-9000-000000000002";
+        const string nike = "visckcn0-0000-4000-9000-000000000003";
+
+        await PutModel(adidas, "VISCKC ADIDAS", "VCKC-ADI-REF", "calzado", """{"Marca":"ADIDAS"}""");
+        await PutModel(nike, "VISCKC NIKE", "VCKC-NIKE-REF", "calzado", """{"Marca":"NIKE"}""");
+        await PutClientVisibility(clientId, """[{"attributeId":"marca","valueIds":["adidas"]}]""");
+        var token = await ClientTokenAsync(clientId);
+
+        // Ficha técnica del oculto → 404; la del visible → PDF.
+        var hidden = await Send(HttpMethod.Get, "/api/portal/product/VCKC-NIKE-REF/tech-sheet.pdf", token);
+        Assert.Equal(HttpStatusCode.NotFound, hidden.StatusCode);
+        var visible = await Send(HttpMethod.Get, "/api/portal/product/VCKC-ADI-REF/tech-sheet.pdf", token);
+        Assert.Equal(HttpStatusCode.OK, visible.StatusCode);
+        Assert.Equal("application/pdf", visible.Content.Headers.ContentType?.MediaType);
+
+        // Line-sheet solo con refs ocultas → 404; con una visible entre ellas → PDF (solo esa).
+        var sheetHidden = await Send(HttpMethod.Get, "/api/portal/line-sheet.pdf?refs=VCKC-NIKE-REF", token);
+        Assert.Equal(HttpStatusCode.NotFound, sheetHidden.StatusCode);
+        var sheetMixed = await Send(HttpMethod.Get, "/api/portal/line-sheet.pdf?refs=VCKC-NIKE-REF,VCKC-ADI-REF", token);
+        Assert.Equal(HttpStatusCode.OK, sheetMixed.StatusCode);
+    }
+
     // ── 5. Atribución del pedido al agente creador (Multiagente §7, Tarea 6) ────────
 
     // Lee el JSON que el portal habría mandado a BC para el evento "shoes.purchase_order.
