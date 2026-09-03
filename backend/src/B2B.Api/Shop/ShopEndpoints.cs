@@ -42,8 +42,9 @@ public static class ShopEndpoints
                     attributes = page.AttributeFacets
                 },
                 // 14a-4 / UX-M4: la cinta viaja con el catálogo (misma forma que /api/shop/ribbon),
-                // computada con las facetas de ESTA respuesta: sin segunda petición ni salto de
-                // layout. Las entradas reflejan los filtros activos (recuentos contextuales).
+                // sin segunda petición ni salto de layout. 14a-8: es ESTABLE — se computa sobre
+                // el surtido completo del actor (page.Ribbon, sin filtros de query): filtrar o
+                // buscar no cambia sus entradas ni sus recuentos.
                 ribbon = new { entries = RibbonBuilder.Build(page, settings?.CatalogRibbonJson, page.Locale) },
                 items = page.Rows.Select(row => CardItem(row, favorites))
             });

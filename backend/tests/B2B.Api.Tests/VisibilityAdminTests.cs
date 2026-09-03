@@ -463,6 +463,52 @@ public class VisibilityAdminTests : IClassFixture<TestWebApplicationFactory>
         finally { await SetRibbonAsync("null"); }
     }
 
+    // ── 6c. La cinta es NAVEGACIÓN y es ESTABLE (14a-8): sus entradas y recuentos son
+    // los del surtido del actor y NO cambian al filtrar por familia/atributo ni al
+    // buscar — solo la visibilidad del actor la cambia ──────────────────────────
+
+    [Fact]
+    public async Task ShopCatalog_RibbonEstable_NoCambiaConLosFiltrosDeQuery()
+    {
+        const string clientId = "VISAD6CC-0000-4000-9000-000000000031";
+        const string one = "visad6ca-0000-4000-9000-000000000032";
+        const string two = "visad6cb-0000-4000-9000-000000000033";
+
+        await PutModel(one, "VISAD6C UNO", "VA6C-A-REF", "visad6cfam1", """{"MarcaR6C":"UNO"}""");
+        await PutModel(two, "VISAD6C DOS", "VA6C-B-REF", "visad6cfam2", """{"MarcaR6C":"DOS"}""");
+        await Put($"/api/clients/{clientId}", """{"name":"Cliente cinta estable"}""");
+        var token = await ClientTokenAsync(clientId);
+
+        try
+        {
+            await SetRibbonAsync("""{"attributes":["marcar6c"]}""");
+
+            async Task<string> RibbonAsync(string query)
+            {
+                var body = await (await Send(HttpMethod.Get, "/api/shop/catalog" + query, token))
+                    .Content.ReadFromJsonAsync<JsonElement>();
+                return body.GetProperty("ribbon").GetProperty("entries").GetRawText();
+            }
+
+            var baseline = await RibbonAsync("");
+            Assert.Contains("attr:marcar6c:uno", baseline);
+            Assert.Contains("attr:marcar6c:dos", baseline);
+            Assert.Contains("family:visad6cfam1", baseline);
+
+            // Con búsqueda, familia o atributo la cinta es IDÉNTICA (entradas y recuentos).
+            Assert.Equal(baseline, await RibbonAsync("?q=VISAD6C%20UNO"));
+            Assert.Equal(baseline, await RibbonAsync("?family=visad6cfam2"));
+            Assert.Equal(baseline, await RibbonAsync("?a.MarcaR6C=DOS"));
+            Assert.Equal(baseline, await RibbonAsync("?q=nada-que-coincida-xyz"));
+
+            // Y coincide con la del endpoint autónomo (/manage).
+            var standalone = await (await Send(HttpMethod.Get, "/api/shop/ribbon", token))
+                .Content.ReadFromJsonAsync<JsonElement>();
+            Assert.Equal(baseline, standalone.GetProperty("entries").GetRawText());
+        }
+        finally { await SetRibbonAsync("null"); }
+    }
+
     // ── 7. Config con entries basura: el endpoint no revienta y aplica lo válido ──
     // (fix de revisión: un elemento de entries que no sea objeto —"oops", 5— hacía
     // saltar InvalidOperationException al indexarlo → 500 para TODOS los actores).

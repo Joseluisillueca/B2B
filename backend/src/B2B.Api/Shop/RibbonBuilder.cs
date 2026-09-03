@@ -11,21 +11,23 @@ public sealed record RibbonEntry(
     string Key, string Kind, string? AttributeId, string? Value, string Raw, string Label, int Count);
 
 // Las entradas de la cinta, COMPUTADAS EN SERVIDOR para el actor: nacen de las facetas
-// del pipeline del catálogo ya filtradas por su VisibilityScope (cero fugas de valores
-// prohibidos) y se les aplica la config de /manage (IntegrationSettings.CatalogRibbonJson:
-// atributos que la alimentan + overrides hidden/order/titles por entrada). Sin config →
-// solo familias. La usan GET /api/shop/ribbon (/manage, vista previa) y GET /api/shop/catalog
+// del SURTIDO COMPLETO del actor (CatalogPage.Ribbon: post-visibilidad, sin filtros de
+// query — la cinta es navegación y es ESTABLE, 14a-8; cero fugas de valores prohibidos)
+// y se les aplica la config de /manage (IntegrationSettings.CatalogRibbonJson: atributos
+// que la alimentan + overrides hidden/order/titles por entrada). Sin config → solo
+// familias. La usan GET /api/shop/ribbon (/manage, vista previa) y GET /api/shop/catalog
 // (14a-4: la cinta viaja con el catálogo, sin segunda petición ni salto de layout).
 public static class RibbonBuilder
 {
     public static IReadOnlyList<RibbonEntry> Build(CatalogPage page, string? ribbonConfigJson, string locale)
     {
         var config = VisibilityEndpoints.ParseNode(ribbonConfigJson) as JsonObject;
+        var facets = page.Ribbon;
 
-        // Candidatas: SIEMPRE nacidas de las facetas filtradas — jamás una entrada
-        // que el actor no pueda ver. Sin config → solo familias (cinta autogenerada).
+        // Candidatas: SIEMPRE nacidas de las facetas filtradas por visibilidad — jamás una
+        // entrada que el actor no pueda ver. Sin config → solo familias (autogenerada).
         var candidates = new List<RibbonEntry>();
-        foreach (var family in page.Families)
+        foreach (var family in facets.Families)
             candidates.Add(new("family:" + family.Id, "family", null, null, Raw: family.Id, family.Label, family.Count));
 
         if (config?["attributes"] is JsonArray attributes)
@@ -33,7 +35,7 @@ public static class RibbonBuilder
             {
                 var slug = CatalogVocabulary.Slug(CatalogNormalizer.Text(wanted));
                 if (slug.Length == 0) continue;
-                var facet = page.AttributeFacets.FirstOrDefault(f =>
+                var facet = facets.AttributeFacets.FirstOrDefault(f =>
                     string.Equals(f.KeySlug, slug, StringComparison.OrdinalIgnoreCase));
                 if (facet is null) continue;
                 foreach (var value in facet.Values)

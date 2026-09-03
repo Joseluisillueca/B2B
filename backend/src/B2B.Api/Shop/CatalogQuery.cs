@@ -137,6 +137,12 @@ public sealed record CatalogFamilyFacet(string Id, string Label, int Count);
 public sealed record CatalogAttributeFacet(
     string Key, string KeySlug, string Label, IReadOnlyList<CatalogFacetValue> Values);
 
+/// Facetas del surtido COMPLETO del actor (post-visibilidad, SIN filtros de query): la
+/// base de la cinta, que es navegación y no cambia al filtrar ni al buscar (14a-8).
+public sealed record CatalogRibbonFacets(
+    IReadOnlyList<CatalogFamilyFacet> Families,
+    IReadOnlyList<CatalogAttributeFacet> AttributeFacets);
+
 public sealed record CatalogPage(
     IReadOnlyList<object> Windows,
     string? Window,
@@ -145,7 +151,8 @@ public sealed record CatalogPage(
     int Total,
     IReadOnlyList<CatalogFamilyFacet> Families,
     IReadOnlyList<CatalogFacetValue> AvailabilityFacet,
-    IReadOnlyList<CatalogAttributeFacet> AttributeFacets);
+    IReadOnlyList<CatalogAttributeFacet> AttributeFacets,
+    CatalogRibbonFacets Ribbon);
 
 // Arma el catálogo comprable en una sola pasada: modelos, tallas, stock por ventana,
 // tarifa del cliente y facetas. El volumen del catálogo (centenares de modelos) cabe
@@ -207,6 +214,18 @@ public static class CatalogService
         var filtered = all.Where(row => Matches(row, query)).ToList();
         var page = Sort(filtered, query).Skip(query.Skip).Take(query.Take).ToList();
 
+        // Cinta (14a-8): facetas sobre el MISMO `all` (ya filtrado por visibilidad) con la
+        // query vacía — en memoria, sin otra consulta. Si la query ya viene sin filtros
+        // (p.ej. /api/shop/ribbon) se reutilizan las facetas del listado tal cual.
+        var unfiltered = new CatalogQuery { Locale = query.Locale, Window = query.Window };
+        var hasFilters = query.Search is not null || query.Family is not null
+            || query.Availability.Count > 0 || query.Attributes.Count > 0;
+        var families = FamilyFacet(all, query, vocabulary);
+        var attributeFacets = AttributeFacets(all, query, vocabulary);
+        var ribbon = hasFilters
+            ? new CatalogRibbonFacets(FamilyFacet(all, unfiltered, vocabulary), AttributeFacets(all, unfiltered, vocabulary))
+            : new CatalogRibbonFacets(families, attributeFacets);
+
         return new CatalogPage(
             Windows: [.. windows.Select(object (w) => new
             {
@@ -218,9 +237,10 @@ public static class CatalogService
             Locale: query.Locale,
             Rows: page,
             Total: filtered.Count,
-            Families: FamilyFacet(all, query, vocabulary),
+            Families: families,
             AvailabilityFacet: AvailabilityFacet(all, query),
-            AttributeFacets: AttributeFacets(all, query, vocabulary));
+            AttributeFacets: attributeFacets,
+            Ribbon: ribbon);
     }
 
     private static ServiceWindow? PickWindow(List<ServiceWindow> windows, string? requested)
