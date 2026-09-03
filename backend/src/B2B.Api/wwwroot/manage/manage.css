@@ -493,7 +493,18 @@ a.mng-rel-chip:hover b { color:var(--blue); }
 .rb-titles label span { flex:none; width:1.5rem; font-size:.64rem; font-weight:800; letter-spacing:.1em; color:var(--hint); }
 .rb-titles input { flex:1; min-width:0; border:1px solid var(--line-control); border-radius:var(--r-sm);
   padding:.45rem .6rem; font:inherit; font-size:.85rem; background:var(--card); }
-.rb-titles input:focus { border-color:var(--blue); outline:none; }
+.rb-titles input:focus-visible { border-color:var(--blue); outline:2px solid var(--blue); outline-offset:-1px; }
+
+/* Entradas con ajustes guardados que hoy no están en las facetas (huérfanas) */
+.rb-orphans { margin-top:1.1rem; padding-top:.9rem; border-top:1px dashed var(--line-control); }
+.rb-orphans .mng-subhead { margin-top:0; }
+.rb-orphan-list { display:flex; flex-direction:column; gap:.4rem; margin-top:.6rem; }
+.rb-orphan { display:flex; align-items:center; gap:.8rem; flex-wrap:wrap; padding:.5rem .7rem;
+  background:var(--paper); border:1px solid var(--line); font-size:.8rem; color:var(--muted); }
+.rb-orphan code { font:.76rem/1 ui-monospace,Consolas,monospace; color:var(--ink); background:var(--card);
+  border:1px solid var(--line); padding:.2rem .45rem; }
+.rb-orphan > span { flex:1; min-width:8rem; }
+.rb-orphan .btn-ghost { padding:.35rem .6rem; font-size:.72rem; }
 
 /* Barra de acciones */
 .rb-actions { display:flex; align-items:center; gap:.9rem; margin-top:1.5rem; flex-wrap:wrap; }

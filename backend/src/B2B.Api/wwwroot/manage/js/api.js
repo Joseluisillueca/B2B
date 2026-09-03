@@ -97,7 +97,8 @@ export const api = {
   // el token del admin sirve porque su actor no tiene restricciones de visibilidad.
   putRibbon: ribbon => request('PUT', '/api/admin/integration/ribbon', { ribbon }),
   shopRibbon: (locale = 'es') => request('GET', `/api/shop/ribbon?locale=${encodeURIComponent(locale)}`),
-  shopFacets: () => request('GET', '/api/shop/catalog?take=1&locale=es'),
+  // Facetas del catálogo en un idioma (etiquetas y orden natural del locale).
+  shopFacets: (locale = 'es') => request('GET', `/api/shop/catalog?take=1&locale=${encodeURIComponent(locale)}`),
 
   // Reglas de transporte (portes)
   transportRules: () => request('GET', '/api/admin/transport-rules'),

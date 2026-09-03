@@ -251,7 +251,7 @@ export default async function catalog(host) {
   // familia cuyo nombre es su propio id capitalizado) — antes pisaba los títulos.
   const ribbonText = entry => {
     const raw = entry.kind === 'family' ? familyOf(entry) : (entry.raw ?? entry.value);
-    if (entry.label && entry.label.toLowerCase() !== String(raw ?? '').toLowerCase())
+    if (entry.label && entry.label.trim().toLowerCase() !== String(raw ?? '').trim().toLowerCase())
       return entry.label;
     return entry.kind === 'family'
       ? vocab('family', familyOf(entry), entry.label, entry.label)
