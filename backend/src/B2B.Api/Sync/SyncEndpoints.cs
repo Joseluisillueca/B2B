@@ -246,6 +246,31 @@ public static class SyncEndpoints
 
         var doc = await db.SyncDocuments
             .SingleOrDefaultAsync(d => d.EntityType == entityType && d.ExternalId == externalId);
+
+        // Deduplicación de pedidos BC→portal: si el pedido nació en el portal y se comunicó a
+        // BC, el doc nativo lleva `bcId` (SystemId que BC devolvió en su 201; lo guarda
+        // NotificationDispatcher). Cuando BC re-sincroniza ESE pedido lo hace por su propio
+        // SystemId en la URL, que aquí no existe como ExternalId → sin esto se creaba un
+        // segundo doc (P00001 y 101001 duplicados). Se localiza el doc del portal por su
+        // bcId y se actualiza ÉL, conservando su ExternalId y el enlace, y anotando el
+        // número nativo previo en `portalNumber` para trazabilidad.
+        if (doc is null && entityType == "order" && payload is JsonObject incoming)
+        {
+            doc = await FindLinkedPortalOrderAsync(db, externalId, parentId);
+            if (doc is not null)
+            {
+                externalId = doc.ExternalId;
+                var previous = ClientIdentity.Parse(doc.Payload);
+                incoming["bcId"] = CatalogNormalizer.Text(previous?["bcId"]);
+                if (!incoming.ContainsKey("bcNumber") && CatalogNormalizer.Text(previous?["bcNumber"]) is { Length: > 0 } bcNumber)
+                    incoming["bcNumber"] = bcNumber;
+                var portalNumber = CatalogNormalizer.Text(previous?["portalNumber"]);
+                if (portalNumber.Length == 0) portalNumber = CatalogNormalizer.Text(previous?["externalReference"]);
+                if (portalNumber.Length > 0) incoming["portalNumber"] = portalNumber;
+                body = incoming.ToJsonString();
+            }
+        }
+
         if (doc is null)
         {
             db.SyncDocuments.Add(new SyncDocument
@@ -270,5 +295,19 @@ public static class SyncEndpoints
         CatalogNormalizer.Normalize(db, entityType, externalId, payload);
         await ClientIdentity.ApplyAsync(db, entityType, externalId, payload);
         await VisibilityStore.ProjectFromPayloadAsync(db, entityType, externalId, payload);
+    }
+
+    // Doc "order" del portal cuyo `bcId` es el SystemId de BC entrante (case-insensitive).
+    // Payload es jsonb: se acota en SQL por cliente (ParentId, que el pedido de BC trae en
+    // `clientId`) y se confirma en memoria — así compila y funciona igual en Npgsql y en el
+    // provider InMemory de las pruebas. Sin cliente en el pedido no hay a quién enlazar.
+    private static async Task<SyncDocument?> FindLinkedPortalOrderAsync(AppDbContext db, string bcId, string? parentId)
+    {
+        if (string.IsNullOrEmpty(parentId)) return null;
+        var candidates = await db.SyncDocuments
+            .Where(d => d.EntityType == "order" && d.ParentId == parentId)
+            .ToListAsync();
+        return candidates.FirstOrDefault(d => string.Equals(
+            CatalogNormalizer.Text(ClientIdentity.Parse(d.Payload)?["bcId"]), bcId, StringComparison.OrdinalIgnoreCase));
     }
 }

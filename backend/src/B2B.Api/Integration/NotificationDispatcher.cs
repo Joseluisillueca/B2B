@@ -57,9 +57,49 @@ public static class NotificationDispatcher
             return;
         }
         var res = await bc.PostAsync(settings, ch.Endpoint ?? "", payload);
+        var link = res.Ok ? await LinkBcResponseAsync(db, eventKey, inputJson, res.Body) : "";
         Log(db, eventKey, entityType, entityId, "business-central",
-            res.Ok ? "completed" : "errors", $"{ch.Endpoint} → HTTP {res.Status}" + (res.Ok ? "" : $": {Trim(res.Body)}"), payload, inputJson, ch.Endpoint);
+            res.Ok ? "completed" : "errors", $"{ch.Endpoint} → HTTP {res.Status}" + (res.Ok ? link : $": {Trim(res.Body)}"), payload, inputJson, ch.Endpoint);
     }
+
+    // Evento del pedido (canal BC → salesOrders). Es el único cuyo 201 hay que enlazar.
+    public const string OrderEventKey = "shoes.purchase_order.updated";
+
+    // Enlace pedido portal ↔ pedido BC. BC inserta el pedido con SU PROPIO SystemId (el
+    // nuestro solo queda en "B2B Id") y responde 201 con el JSON del pedido creado (`id`,
+    // `number`). Se guardan como `bcId`/`bcNumber` en el doc nativo "order" (ExternalId =
+    // `$.id` del JSON de entrada) para que, cuando BC re-sincronice ese pedido por su
+    // SystemId, la ingesta (SyncEndpoints) ACTUALICE este doc en vez de crear un duplicado.
+    // Nunca rompe el despacho: sin JSON o sin `id` → no hay enlace y se sigue.
+    private static async Task<string> LinkBcResponseAsync(AppDbContext db, string eventKey, string inputJson, string body)
+    {
+        if (eventKey != OrderEventKey || string.IsNullOrWhiteSpace(body)) return "";
+        try
+        {
+            if (JsonNode.Parse(body) is not JsonObject created) return "";
+            var bcId = Text(created["id"] ?? created["Id"]);
+            if (bcId.Length == 0) return "";
+            var bcNumber = Text(created["number"] ?? created["Number"]);
+
+            var orderId = Text((JsonNode.Parse(inputJson) as JsonObject)?["id"]);
+            if (orderId.Length == 0) return "";
+            var doc = await db.SyncDocuments.SingleOrDefaultAsync(d => d.EntityType == "order" && d.ExternalId == orderId);
+            if (doc is null || JsonNode.Parse(doc.Payload) is not JsonObject payload) return "";
+
+            payload["bcId"] = bcId;
+            if (bcNumber.Length > 0) payload["bcNumber"] = bcNumber;
+            doc.Payload = payload.ToJsonString();
+            return $" · BC id {bcId}" + (bcNumber.Length > 0 ? $" · nº {bcNumber}" : "");
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or InvalidOperationException)
+        {
+            return "";   // respuesta no JSON (o inesperada): el envío fue bien; solo no hay enlace
+        }
+    }
+
+    private static string Text(JsonNode? node) => node is JsonValue v
+        ? (v.TryGetValue<string>(out var s) ? s : v.ToJsonString().Trim('"')).Trim()
+        : "";
 
     private static async Task DispatchEmailAsync(
         AppDbContext db, IEmailSender email, IntegrationSettings settings, NotificationChannel ch,
@@ -119,9 +159,11 @@ public static class NotificationDispatcher
         {
             var payload = JsonTransformService.Transform(ch.Transformer ?? "{}", log.InputJson);
             var res = await bc.PostAsync(settings, ch.Endpoint ?? "", payload);
+            // Un reproceso que por fin crea el pedido en BC también enlaza (mismo 201).
+            var link = res.Ok ? await LinkBcResponseAsync(db, log.EventKey, log.InputJson, res.Body) : "";
             Log(db, log.EventKey, log.EntityType, log.EntityId, "business-central",
                 res.Ok ? "completed" : "errors",
-                $"[reproceso] {ch.Endpoint} → HTTP {res.Status}" + (res.Ok ? "" : $": {Trim(res.Body)}"),
+                $"[reproceso] {ch.Endpoint} → HTTP {res.Status}" + (res.Ok ? link : $": {Trim(res.Body)}"),
                 payload, log.InputJson, ch.Endpoint);
             await db.SaveChangesAsync();
             return (res.Ok, res.Ok ? $"Reprocesado correctamente (HTTP {res.Status})." : $"Business Central devolvió HTTP {res.Status}.");
