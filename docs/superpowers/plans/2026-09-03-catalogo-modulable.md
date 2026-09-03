@@ -15,7 +15,12 @@
 - Relanzar server para las tareas de UI: `ASPNETCORE_ENVIRONMENT=Development Portal__OrdersMode=portal nohup dotnet run --project backend/src/B2B.Api --no-build --urls http://localhost:5300 &`.
 - Commits pequeños por tarea, mensaje en castellano, `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`.
 - Decisión de spec que aplica a varios pasos: **whitelist estricta** — si hay regla para un atributo, el modelo debe TENER ese atributo con valor permitido (modelo sin el atributo → oculto). "familyId" es pseudo-atributo contra `CatalogModel.FamilyId`.
-- Normalización compartida: `Slug(texto)` = minúsculas + espacios y `/ \ _ .` → `-` (paridad con `SanitizeId` de BC, Cod80114). Claves y valores se comparan SIEMPRE en slug.
+- Normalización compartida: usar SIEMPRE **`CatalogVocabulary.Slug`** (ya existe en
+  `Shop/CatalogVocabulary.cs:80-93`, paridad completa con SanitizeId de BC: minúsculas,
+  espacios y `/ \ _ .` → `-`, colapso de `--` y recorte de `-` en extremos). PROHIBIDO
+  definir otro slug. Claves y valores se comparan SIEMPRE en slug.
+- Semántica de regla con `valueIds: []` CONFIGURADA: se ignora (no restringe) — protege de
+  guardados a medias en /manage. Una intersección COMPUTADA que quede vacía SÍ bloquea.
 
 ---
 
