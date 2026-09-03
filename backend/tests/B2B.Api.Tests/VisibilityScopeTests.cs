@@ -62,6 +62,16 @@ public class VisibilityScopeTests
         Assert.True(s.Visible(Model()));
     }
 
+    // 14a-2: un ítem roto (attributeId objeto, valueIds número) no tira el conjunto:
+    // se captura POR ÍTEM y la regla válida sigue restringiendo (fail-closed).
+    [Fact] public void ItemRoto_NoTiraElConjunto()
+    {
+        var s = Scope("""[{"attributeId":"marca","valueIds":["adidas"]},{"attributeId":{"x":1},"valueIds":5},{"attributeId":"color","valueIds":[{"y":2}]}]""");
+        Assert.True(s.IsRestricted);
+        Assert.True(s.Visible(Model(attrsJson: """{"Marca":"ADIDAS"}""")));
+        Assert.False(s.Visible(Model(attrsJson: """{"Marca":"NIKE"}""")));
+    }
+
     [Fact] public void ParidadSlug_ConCatalogVocabulary_ColapsaGuiones()
     {
         var s = Scope("""[{"attributeId":"color","valueIds":["azul-marino"]}]""");

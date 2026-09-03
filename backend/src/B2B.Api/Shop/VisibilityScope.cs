@@ -66,26 +66,39 @@ public sealed class VisibilityScope
         return result;
     }
 
+    // Cada ítem se captura POR SEPARADO (14a-2): una regla rota no puede dejar al sujeto
+    // sin restricción (fail-open) arrastrando a las válidas. Solo el JSON ilegible
+    // entero devuelve null (sin reglas).
     private static Dictionary<string, HashSet<string>>? Parse(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return null;
+        JsonArray arr;
         try
         {
-            if (JsonNode.Parse(json) is not JsonArray arr) return null;
-            var result = new Dictionary<string, HashSet<string>>();
-            foreach (var item in arr)
+            if (JsonNode.Parse(json) is not JsonArray parsed) return null;
+            arr = parsed;
+        }
+        catch { return null; }
+
+        var result = new Dictionary<string, HashSet<string>>();
+        foreach (var item in arr)
+        {
+            try
             {
-                var attr = CatalogVocabulary.Slug(item?["attributeId"]?.GetValue<string>() ?? "");
+                var attr = CatalogVocabulary.Slug(Text(item?["attributeId"]));
                 if (attr.Length == 0 || item?["valueIds"] is not JsonArray values) continue;
                 var slugs = new HashSet<string>(StringComparer.Ordinal);
                 foreach (var v in values)
-                    if (v?.GetValue<string>() is { Length: > 0 } s) slugs.Add(CatalogVocabulary.Slug(s));
+                    if (Text(v) is { Length: > 0 } s) slugs.Add(CatalogVocabulary.Slug(s));
                 if (slugs.Count == 0) continue;   // regla configurada con valueIds vacío → se ignora
                 if (result.TryGetValue(attr, out var existing)) existing.UnionWith(slugs);
                 else result[attr] = slugs;
             }
-            return result.Count > 0 ? result : null;
+            catch { /* ítem ilegible → se descarta solo él */ }
         }
-        catch { return null; }
+        return result.Count > 0 ? result : null;
     }
+
+    private static string Text(JsonNode? node) =>
+        node is JsonValue value && value.TryGetValue<string>(out var text) ? text : "";
 }

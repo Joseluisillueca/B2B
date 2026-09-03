@@ -78,6 +78,10 @@ if (!builder.Environment.IsDevelopment()
 
 var app = builder.Build();
 
+// La ingesta de reglas de visibilidad (hook estático del sync) avisa por aquí de los
+// ítems de BC que descarta (14a-2).
+VisibilityStore.Logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("B2B.Api.Shop.VisibilityStore");
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

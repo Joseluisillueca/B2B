@@ -158,6 +158,75 @@ public class VisibilityIngestTests : IClassFixture<TestWebApplicationFactory>
         Assert.Contains("manual-brand", await VisibilityStore.RulesForAsync(db, "client", clientId));
     }
 
+    // ── 2d. Fail-closed (14a-2): un ítem inválido se DESCARTA solo (no el conjunto).
+    // Antes la fila bc guardaba el array tal cual y VisibilityScope.Parse lo tiraba entero
+    // al primer ítem roto → el sujeto quedaba SIN restricción (fail-open). Ahora la
+    // ingesta normaliza con la misma lógica que el admin (VisibilityRules.Normalize):
+    // se conserva "marca" y se descarta "categoria" (valueIds con un número) ──────
+
+    [Fact]
+    public async Task IngestaConItemInvalido_DescartaSoloEseItem()
+    {
+        const string clientId = "VISCLI0E-0000-4000-9000-000000000012";
+
+        await Put($"/api/clients/{clientId}",
+            """{"name":"Cliente","visibleAttributes":[{"attributeId":"marca","valueIds":["adidas"]},{"attributeId":"categoria","valueIds":[123]}]}""");
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var row = Assert.Single(db.CatalogVisibilities
+            .Where(v => v.SubjectType == "client" && v.SubjectId == clientId).ToList());
+        Assert.Equal("bc", row.Source);
+        Assert.Contains("adidas", row.RulesJson);
+        Assert.DoesNotContain("categoria", row.RulesJson);
+
+        // El sujeto sigue restringido a adidas.
+        var actorScope = await VisibilityStore.ScopeForAsync(db, clientId, null);
+        Assert.True(actorScope.IsRestricted);
+        Assert.True(actorScope.Visible(new CatalogModel { ExternalId = "m-a", AttributesJson = """{"marca":"adidas"}""" }));
+        Assert.False(actorScope.Visible(new CatalogModel { ExternalId = "m-n", AttributesJson = """{"marca":"nike"}""" }));
+    }
+
+    // ── 2e. El array trae ítems y NINGUNO es válido → no se escribe nada: la fila bc
+    // previa se conserva (BC no puede "levantar" una restricción con basura) ──────
+
+    [Fact]
+    public async Task IngestaTodosInvalidos_ConservaFilaBcPrevia()
+    {
+        const string clientId = "VISCLI0F-0000-4000-9000-000000000013";
+
+        await Put($"/api/clients/{clientId}",
+            """{"name":"Cliente","visibleAttributes":[{"attributeId":"marca","valueIds":["nike"]}]}""");
+        await Put($"/api/clients/{clientId}",
+            """{"name":"Cliente","visibleAttributes":[{"attributeId":"","valueIds":["x"]},{"valueIds":["y"]},"basura"]}""");
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var row = Assert.Single(db.CatalogVisibilities
+            .Where(v => v.SubjectType == "client" && v.SubjectId == clientId).ToList());
+        Assert.Equal("bc", row.Source);
+        Assert.Contains("nike", row.RulesJson);
+    }
+
+    // ── 2f. La ingesta normaliza a slug (misma moneda que el admin y que VisibilityScope) ──
+
+    [Fact]
+    public async Task IngestaNormalizaASlug()
+    {
+        const string clientId = "VISCLI0G-0000-4000-9000-000000000014";
+
+        await Put($"/api/clients/{clientId}",
+            """{"name":"Cliente","visibleAttributes":[{"attributeId":"MARCA","valueIds":["Nike Air"]}]}""");
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var row = Assert.Single(db.CatalogVisibilities
+            .Where(v => v.SubjectType == "client" && v.SubjectId == clientId).ToList());
+        Assert.Contains("\"marca\"", row.RulesJson);
+        Assert.Contains("\"nike-air\"", row.RulesJson);
+        Assert.DoesNotContain("MARCA", row.RulesJson);
+    }
+
     // ── 3. Ingesta de agente proyecta una fila bc con SubjectType="agent" ──────
 
     [Fact]

@@ -16,9 +16,6 @@ namespace B2B.Api.Admin;
 // La cinta computada por actor vive en Shop: GET /api/shop/ribbon (ShopEndpoints).
 public static class VisibilityEndpoints
 {
-    private const int MaxRules = 200;
-    private const int MaxValueIds = 500;
-
     public static void MapVisibilityEndpoints(this IEndpointRouteBuilder app)
     {
         // ── Visibilidad por sujeto (cliente o agente) ──────────────────────────
@@ -106,41 +103,15 @@ public static class VisibilityEndpoints
     private static IResult BadType() =>
         Results.BadRequest(new { error = "Tipo de sujeto no válido (client | agent)." });
 
-    // Valida y normaliza el body del PUT a la moneda canónica (slug), la misma con la
-    // que compara VisibilityScope y la que emite el conector de BC.
+    // Valida y normaliza el body del PUT con el helper compartido con la ingesta
+    // (VisibilityRules). El admin es estricto: CUALQUIER ítem inválido → 400 y no se
+    // guarda nada (el editor de /manage tiene que enterarse de lo que está mal).
     private static (JsonArray? Normalized, string? Error) Normalize(JsonElement? rules)
     {
-        if (rules is not { ValueKind: JsonValueKind.Array } array)
-            return (null, "rules debe ser un array de reglas [{attributeId, valueIds[]}].");
-        if (array.GetArrayLength() > MaxRules)
-            return (null, $"Demasiadas reglas (máx. {MaxRules}).");
-
-        var normalized = new JsonArray();
-        foreach (var item in array.EnumerateArray())
-        {
-            if (item.ValueKind != JsonValueKind.Object)
-                return (null, "Cada regla debe ser un objeto {attributeId, valueIds[]}.");
-            if (!item.TryGetProperty("attributeId", out var attribute)
-                || attribute.ValueKind != JsonValueKind.String
-                || CatalogVocabulary.Slug(attribute.GetString() ?? "") is not { Length: > 0 } attributeSlug)
-                return (null, "Cada regla necesita un attributeId (texto no vacío).");
-            if (!item.TryGetProperty("valueIds", out var values) || values.ValueKind != JsonValueKind.Array)
-                return (null, $"La regla de \"{attribute.GetString()}\" necesita valueIds como array de textos.");
-            if (values.GetArrayLength() > MaxValueIds)
-                return (null, $"Demasiados valueIds en \"{attribute.GetString()}\" (máx. {MaxValueIds}).");
-
-            var slugs = new JsonArray();
-            foreach (var value in values.EnumerateArray())
-            {
-                if (value.ValueKind != JsonValueKind.String
-                    || CatalogVocabulary.Slug(value.GetString() ?? "") is not { Length: > 0 } valueSlug)
-                    return (null, $"valueIds de \"{attribute.GetString()}\" solo admite textos no vacíos.");
-                slugs.Add(valueSlug);
-            }
-
-            normalized.Add(new JsonObject { ["attributeId"] = attributeSlug, ["valueIds"] = slugs });
-        }
-        return (normalized, null);
+        var node = rules is { ValueKind: not (JsonValueKind.Null or JsonValueKind.Undefined) } element
+            ? JsonNode.Parse(element.GetRawText()) : null;
+        var result = VisibilityRules.Normalize(node);
+        return result.Errors.Count > 0 ? (null, result.Errors[0]) : (result.Valid, null);
     }
 
     /// Parse defensivo compartido (settings/reglas guardados): JSON roto o vacío → null.
