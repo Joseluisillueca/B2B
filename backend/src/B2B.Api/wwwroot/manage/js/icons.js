@@ -20,4 +20,8 @@ export const icons = {
   book: size => svg('<path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2Z"/><path d="M18 6H8"/>', size),
   activity: size => svg('<path d="M3 12h4l2.5 7 4-14 2.5 7H21"/>', size),
   percent: size => svg('<path d="M19 5 5 19"/><circle cx="7.5" cy="7.5" r="2.2"/><circle cx="16.5" cy="16.5" r="2.2"/>', size),
+  up: size => svg('<path d="m6 14 6-6 6 6"/>', size),
+  down: size => svg('<path d="m6 10 6 6 6-6"/>', size),
+  // Banda de pestañas del catálogo (cinta): raíl superior + pestañas con su regla
+  ribbon: size => svg('<path d="M3 6h18"/><path d="M3 18h18"/><path d="M6.5 12h4"/><path d="M14.5 12h3"/>', size),
 };

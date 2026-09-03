@@ -244,9 +244,19 @@ export default async function catalog(host) {
     return (query.attributes[key] || []).includes(value);
   };
 
-  const ribbonText = entry => entry.kind === 'family'
-    ? vocab('family', familyOf(entry), entry.label, entry.label)
-    : vocab('attrValue', entry.value, entry.label, entry.label);
+  // La etiqueta del servidor ya viene resuelta por locale Y con los títulos que
+  // configura /manage (Cinta del catálogo): si trae algo más elaborado que el dato
+  // crudo (un título propio, el nombre real del maestro), manda ella. El diccionario
+  // local solo traduce las entradas "sin vestir" (etiqueta == dato crudo, p. ej. la
+  // familia cuyo nombre es su propio id capitalizado) — antes pisaba los títulos.
+  const ribbonText = entry => {
+    const raw = entry.kind === 'family' ? familyOf(entry) : (entry.raw ?? entry.value);
+    if (entry.label && entry.label.toLowerCase() !== String(raw ?? '').toLowerCase())
+      return entry.label;
+    return entry.kind === 'family'
+      ? vocab('family', familyOf(entry), entry.label, entry.label)
+      : vocab('attrValue', entry.value, entry.label, entry.label);
+  };
 
   // Con UNA sola entrada la cinta se queda: para un cliente restringido es la
   // etiqueta de SU catálogo ("Calzado"), y que exista para todos los actores

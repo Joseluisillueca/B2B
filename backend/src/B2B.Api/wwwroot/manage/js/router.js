@@ -61,6 +61,7 @@ export async function resolve() {
     // Contenido web + comunicación (vistas nativas portadas del antiguo CMS). Import
     // dinámico: si un módulo aún no existe, solo falla su ruta, no todo el back-office.
     if (view === 'received') return await (await import('./views/received.js')).default(main);
+    if (view === 'ribbon') return await (await import('./views/ribbon.js')).default(main);
     if (view === 'content') return await (await import('./views/content.js')).default(main);
     if (view === 'lookbook') return await (await import('./views/lookbook.js')).default(main);
     if (view === 'clients') {

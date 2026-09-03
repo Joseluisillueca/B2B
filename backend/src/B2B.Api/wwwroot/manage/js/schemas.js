@@ -221,6 +221,7 @@ export const NAV = [
     ['categories', 'Categorías', 'folder'], ['families', 'Familias', 'folder'],
     ['attributes', 'Atributos', 'tag'], ['warehouses', 'Almacenes', 'building'],
     ['payment-methods', 'Formas de pago', 'coin'], ['images', 'Imágenes', 'image'],
+    ['ribbon', 'Cinta del catálogo', 'ribbon'],
   ] },
   { title: 'Comercial', items: [
     ['clients', 'Clientes', 'building'], ['client-groups', 'Grupos', 'users'],

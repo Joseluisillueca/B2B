@@ -432,3 +432,77 @@ a.mng-rel-chip:hover b { color:var(--blue); }
 .vis-empty span { font-size:.84rem; }
 .vis-actions { display:flex; align-items:center; justify-content:space-between; gap:.8rem;
   flex-wrap:wrap; margin-top:1rem; }
+
+/* ── Cinta del catálogo (Tarea 10): editor + vista previa ── */
+.rb-preview-card { padding:1.3rem 1.6rem 1.35rem; }
+.rb-prevbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin:0 0 .8rem; }
+.rb-prevnote { font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--hint); }
+.rb-langs { display:flex; gap:.3rem; }
+.rb-lang { border:1px solid var(--line-control); background:none; border-radius:0; cursor:pointer;
+  font:inherit; font-size:.66rem; font-weight:800; letter-spacing:.1em; padding:.32rem .6rem; color:var(--ink-2); }
+.rb-lang:hover { border-color:var(--ink); color:var(--ink); }
+.rb-lang.on { background:var(--ink); border-color:var(--ink); color:#fff; }
+/* Maqueta: mismo lenguaje que la cinta real del portal (.rib-*): pestañas uppercase
+   sobre un raíl con regla, la activa en rojo de marca. Solo lectura (spans). */
+.rb-mock { border:1px solid var(--line); background:var(--card); padding:.85rem 1.3rem 0; }
+.rb-mock-top { display:flex; gap:1.1rem; font-size:.62rem; font-weight:700; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--hint); padding:0 0 .8rem; }
+.rb-mock-top b { color:var(--ink); font-weight:800; }
+.rb-band { display:flex; align-items:stretch; gap:1.7rem; overflow-x:auto; scrollbar-width:none;
+  border-bottom:1px solid var(--line); }
+.rb-band::-webkit-scrollbar { display:none; }
+.rb-chip { flex:none; display:inline-flex; align-items:baseline; gap:.32rem; padding:.58rem .1rem;
+  font-size:.78rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--ink-2); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }
+.rb-chip.on { color:var(--blue-deep); border-bottom-color:var(--blue); }
+.rb-pcount { font-size:.62rem; font-weight:600; color:var(--muted); letter-spacing:.02em; translate:0 -.32em; }
+.rb-chip.on .rb-pcount { color:var(--blue); }
+.rb-psep { flex:none; width:1px; background:var(--line); margin:.5rem 0 .65rem; }
+
+/* Listado de entradas */
+.rb-list { margin:.2rem 0 0; }
+.rb-entry + .rb-entry { border-top:1px solid var(--line); }
+.rb-row { display:flex; align-items:center; gap:1rem; padding:.7rem .15rem; }
+.rb-move { display:flex; flex-direction:column; gap:.18rem; }
+.rb-move button { width:1.55rem; height:1.3rem; display:grid; place-items:center; padding:0;
+  border:1px solid var(--line-control); background:var(--card); color:var(--ink-2); cursor:pointer; border-radius:0; }
+.rb-move button:hover:not([disabled]) { border-color:var(--ink); color:var(--ink); }
+.rb-move button[disabled] { opacity:.32; cursor:default; }
+.rb-main { flex:1; min-width:0; }
+.rb-name { font-size:.95rem; font-weight:700; color:var(--ink); }
+.rb-meta { display:flex; align-items:center; flex-wrap:wrap; gap:.55rem; margin-top:.3rem;
+  font-size:.78rem; color:var(--muted); }
+.rb-orig { font-size:.74rem; color:var(--hint); font-style:italic; }
+.rb-tools { display:flex; align-items:center; gap:.5rem; flex:none; }
+.rb-langbtn { padding:.4rem .65rem; font-size:.74rem; }
+.rb-langbtn.on { border-color:var(--ink); color:var(--ink); background:var(--paper); }
+/* Conmutador mostrar/ocultar: estado explícito con texto, no solo color */
+.rb-vis { display:inline-flex; align-items:center; gap:.4rem; border:1px solid var(--line-control);
+  background:var(--card); cursor:pointer; font:inherit; font-size:.74rem; font-weight:700;
+  padding:.4rem .65rem; color:var(--ok); border-radius:0; }
+.rb-vis:hover { border-color:var(--ink); }
+.rb-vis.off { color:var(--muted); background:var(--surface); }
+.rb-entry.is-hidden .rb-main { opacity:.5; }
+.rb-entry.is-hidden .rb-name { text-decoration:line-through; text-decoration-thickness:1px; }
+
+/* Editor de títulos por idioma (colapsable por entrada) */
+.rb-titles { margin:0 0 .9rem 2.7rem; padding:.8rem 1rem .7rem; background:var(--paper);
+  border:1px solid var(--line); border-radius:var(--r-sm); }
+.rb-titles-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem 1.1rem; margin-bottom:.35rem; }
+.rb-titles label { display:flex; align-items:center; gap:.55rem; }
+.rb-titles label span { flex:none; width:1.5rem; font-size:.64rem; font-weight:800; letter-spacing:.1em; color:var(--hint); }
+.rb-titles input { flex:1; min-width:0; border:1px solid var(--line-control); border-radius:var(--r-sm);
+  padding:.45rem .6rem; font:inherit; font-size:.85rem; background:var(--card); }
+.rb-titles input:focus { border-color:var(--blue); outline:none; }
+
+/* Barra de acciones */
+.rb-actions { display:flex; align-items:center; gap:.9rem; margin-top:1.5rem; flex-wrap:wrap; }
+.rb-actions .spacer { flex:1; }
+.rb-dirty { display:inline-flex; align-items:center; gap:.35rem; font-size:.78rem; font-weight:700; color:var(--low); }
+.rb-foot { margin-top:.7rem; }
+@media (max-width: 640px) {
+  .rb-row { flex-wrap:wrap; }
+  .rb-tools { margin-left:2.55rem; }
+  .rb-titles { margin-left:0; }
+  .rb-titles-grid { grid-template-columns:1fr; }
+}

@@ -52,7 +52,9 @@ async function pagedRows(type) {
 const emptyPage = () => ({ rows: [], total: 0, truncated: false });
 
 // ── Vocabulario: attrSlug → { label, values: Map(valueSlug → etiqueta) } ─────────
-async function loadVocabulary() {
+// Exportado: la Cinta del catálogo (views/ribbon.js) reutiliza el MISMO vocabulario
+// (maestros sincronizados ∪ lo observado en modelos) para el selector de atributos.
+export async function loadVocabulary() {
   const [modelPage, attrPage, famPage] = await Promise.all([
     pagedRows('model').catch(emptyPage),
     pagedRows('attribute').catch(emptyPage),

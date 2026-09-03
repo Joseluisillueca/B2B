@@ -1,0 +1,397 @@
+// Cinta del catálogo (Tarea 10): la banda de pestañas bajo CATÁLOGO | LOOKBOOK con la
+// que se navega el catálogo del portal. Aquí se elige QUÉ la alimenta (las familias
+// siempre + los valores de los atributos marcados), en qué orden, qué entradas se
+// ocultan y con qué título por idioma.
+//
+// Moneda de datos:
+// - Config cruda → IntegrationSettings.CatalogRibbonJson: GET settings.catalogRibbon,
+//   PUT /api/admin/integration/ribbon { ribbon: {...} | null } (null = por defecto).
+// - Entradas candidatas → las MISMAS facetas del pipeline del catálogo
+//   (GET /api/shop/catalog, actor admin sin restricciones): families + attributes
+//   (keySlug/values.slug = CatalogVocabulary.Slug, la clave con la que el servidor
+//   computa GET /api/shop/ribbon). La vista previa refleja los cambios SIN guardar
+//   aplicando los overrides locales a esas candidatas — jamás inventa entradas.
+// - Selector de atributos → el vocabulario de visibility.js (maestros sincronizados
+//   ∪ lo observado en modelos), el mismo que usa la visibilidad por cliente/agente.
+import { api } from '../api.js';
+import { icons } from '../icons.js';
+import { esc, flash } from '../util.js';
+import { loadVocabulary, visSlug } from './visibility.js';
+
+const LANGS = [['es', 'ES'], ['en', 'EN'], ['fr', 'FR'], ['it', 'IT']];
+// "Todo" de la cinta real por idioma (i18n del portal: ribbon.all). Fijo: no configurable.
+const ALL_LABEL = { es: 'Todo', en: 'All', fr: 'Tout', it: 'Tutto' };
+const BIG = 1e9;   // "sin orden" para los sort (Infinity-Infinity = NaN rompería el comparador)
+
+export default async function ribbonView(main) {
+  let settings, catalog, vocab;
+  try {
+    [settings, catalog, vocab] = await Promise.all([api.intSettings(), api.shopFacets(), loadVocabulary()]);
+  } catch (e) {
+    main.innerHTML = `<div class="notice notice-error" role="alert">${icons.alert(18)}<div><span>
+      No se pudo cargar la cinta: ${esc(e.body?.error || e.message)}</span></div></div>`;
+    return;
+  }
+
+  const families = catalog?.facets?.families || [];
+  const attrFacets = catalog?.facets?.attributes || [];
+  const facetBySlug = new Map(attrFacets.map(f => [String(f.keySlug || '').toLowerCase(), f]));
+
+  // ── Estado editable, sembrado con la config guardada ───────────────────────────
+  const saved = settings?.catalogRibbon && typeof settings.catalogRibbon === 'object'
+    && !Array.isArray(settings.catalogRibbon) ? settings.catalogRibbon : null;
+
+  let attrsSelected = (Array.isArray(saved?.attributes) ? saved.attributes : [])
+    .map(visSlug).filter(Boolean).filter((s, i, arr) => arr.indexOf(s) === i);
+
+  // key (minúsculas, como compara el servidor) → { hidden, order, titles:{es..} }
+  const overrides = new Map();
+  for (const entry of (Array.isArray(saved?.entries) ? saved.entries : [])) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    const key = String(entry.key || '').toLowerCase();
+    if (!key) continue;
+    const titles = {};
+    if (entry.titles && typeof entry.titles === 'object')
+      for (const [lang] of LANGS) {
+        const t = entry.titles[lang];
+        if (typeof t === 'string' && t.trim()) titles[lang] = t.trim();
+      }
+    overrides.set(key, {
+      hidden: entry.hidden === true,
+      order: Number.isInteger(entry.order) ? entry.order : null,
+      titles,
+    });
+  }
+  const stateOf = key => {
+    if (!overrides.has(key)) overrides.set(key, { hidden: false, order: null, titles: {} });
+    return overrides.get(key);
+  };
+
+  // Candidatas en su ORDEN NATURAL (el mismo del servidor: familias por facetas,
+  // luego cada atributo marcado en su orden con sus valores en orden de faceta).
+  let missing = [];
+  function buildCandidates() {
+    const list = [];
+    missing = [];
+    for (const f of families)
+      list.push({ key: `family:${f.id}`, kind: 'family', group: 'Familia', label: f.label, count: f.count });
+    for (const slug of attrsSelected) {
+      const facet = facetBySlug.get(slug);
+      if (!facet) { missing.push(slug); continue; }
+      for (const v of (facet.values || []))
+        list.push({ key: `attr:${facet.keySlug}:${v.slug}`, kind: 'attr', group: facet.label || facet.key, label: v.label, count: v.count });
+    }
+    list.forEach((c, i) => { c.lower = c.key.toLowerCase(); c.natural = i; });
+    return list;
+  }
+
+  // `display` ES el orden del editor (y de la cinta). Primera carga: se reconstruye
+  // como lo haría el servidor (order asc, luego orden natural).
+  let display = buildCandidates().sort((a, b) =>
+    ((overrides.get(a.lower)?.order ?? BIG) - (overrides.get(b.lower)?.order ?? BIG)) || (a.natural - b.natural));
+
+  // Al (des)marcar un atributo: las entradas que siguen existiendo conservan su sitio;
+  // las nuevas entran detrás, que es su posición natural (el atributo recién marcado
+  // va el último en config.attributes).
+  function rebuild() {
+    const pos = new Map(display.map((c, i) => [c.lower, i]));
+    display = buildCandidates().sort((a, b) => {
+      const pa = pos.has(a.lower) ? pos.get(a.lower) : BIG + a.natural;
+      const pb = pos.has(b.lower) ? pos.get(b.lower) : BIG + b.natural;
+      return (pa - pb) || (a.natural - b.natural);
+    });
+  }
+
+  // ── Config mínima a guardar: solo lo que difiere del comportamiento por defecto ──
+  // Órdenes: el servidor pone primero las entradas con `order` y deja el resto en
+  // orden natural → basta numerar el PREFIJO mínimo que no quede ya en orden natural.
+  function buildConfig() {
+    let k = Math.max(0, display.length - 1);
+    while (k > 0 && display[k - 1].natural < display[k].natural) k--;
+    const entries = [];
+    display.forEach((c, i) => {
+      const st = overrides.get(c.lower);
+      const titles = {};
+      for (const [lang] of LANGS) if (st?.titles?.[lang]) titles[lang] = st.titles[lang];
+      const hasTitles = Object.keys(titles).length > 0;
+      const order = i < k ? i + 1 : null;
+      if (st?.hidden || hasTitles || order !== null)
+        entries.push({
+          key: c.key,
+          ...(st?.hidden ? { hidden: true } : {}),
+          ...(order !== null ? { order } : {}),
+          ...(hasTitles ? { titles } : {}),
+        });
+    });
+    if (!attrsSelected.length && !entries.length) return null;   // por defecto → null
+    const config = {};
+    if (attrsSelected.length) config.attributes = [...attrsSelected];
+    if (entries.length) config.entries = entries;
+    return config;
+  }
+
+  let baseline = JSON.stringify(buildConfig());
+  const isDirty = () => JSON.stringify(buildConfig()) !== baseline;
+
+  let previewLang = 'es';
+  const openTitles = new Set();   // entradas con el editor de idiomas desplegado
+
+  // ── Render ─────────────────────────────────────────────────────────────────────
+
+  const effectiveLabel = (c, lang) => overrides.get(c.lower)?.titles?.[lang] || c.label;
+
+  function previewChips() {
+    const chips = [`<span class="rb-chip on">${esc(ALL_LABEL[previewLang])}</span>`];
+    let lastKind = 'family';
+    for (const c of display) {
+      if (overrides.get(c.lower)?.hidden) continue;
+      if (c.kind !== lastKind) { chips.push('<span class="rb-psep" aria-hidden="true"></span>'); lastKind = c.kind; }
+      chips.push(`<span class="rb-chip">${esc(effectiveLabel(c, previewLang))}${
+        c.count ? `<span class="rb-pcount">${c.count}</span>` : ''}</span>`);
+    }
+    return chips.join('');
+  }
+
+  function entryRow(c, index) {
+    const st = overrides.get(c.lower);
+    const hidden = st?.hidden === true;
+    const custom = st?.titles?.es;
+    const name = custom || c.label;
+    const titleValues = LANGS.map(([lang, tag]) => `
+      <label><span>${tag}</span>
+        <input type="text" data-rb-title="${esc(lang)}" value="${esc(st?.titles?.[lang] || '')}"
+          placeholder="${esc(c.label)}" aria-label="Título en ${tag} de ${esc(c.label)}"></label>`).join('');
+    return `
+    <div class="rb-entry${hidden ? ' is-hidden' : ''}" data-key="${esc(c.lower)}" data-index="${index}">
+      <div class="rb-row">
+        <div class="rb-move">
+          <button type="button" data-rb-up ${index === 0 ? 'disabled' : ''}
+            aria-label="Subir ${esc(name)}">${icons.up(13)}</button>
+          <button type="button" data-rb-down ${index === display.length - 1 ? 'disabled' : ''}
+            aria-label="Bajar ${esc(name)}">${icons.down(13)}</button>
+        </div>
+        <div class="rb-main">
+          <b class="rb-name">${esc(name)}</b>
+          <span class="rb-meta">
+            <span class="grid-chip">${esc(c.group)}</span>
+            <span>${c.count} modelo${c.count === 1 ? '' : 's'}</span>
+            ${custom ? `<span class="rb-orig">título propio · original «${esc(c.label)}»</span>` : ''}
+          </span>
+        </div>
+        <div class="rb-tools">
+          <button type="button" class="btn-ghost rb-langbtn${openTitles.has(c.lower) ? ' on' : ''}" data-rb-titles
+            aria-expanded="${openTitles.has(c.lower)}">${icons.chat(14)} Títulos</button>
+          <button type="button" class="rb-vis${hidden ? ' off' : ''}" data-rb-vis role="switch"
+            aria-checked="${!hidden}" aria-label="Mostrar ${esc(name)} en la cinta">
+            ${hidden ? icons.eyeOff(15) : icons.eye(15)}<span>${hidden ? 'Oculta' : 'Visible'}</span></button>
+        </div>
+      </div>
+      ${openTitles.has(c.lower) ? `
+      <div class="rb-titles">
+        <div class="rb-titles-grid">${titleValues}</div>
+        <span class="acc-hint">Vacío = etiqueta original del catálogo («${esc(c.label)}»).</span>
+      </div>` : ''}
+    </div>`;
+  }
+
+  function attrChips() {
+    // Vocabulario ∪ lo ya marcado (una config antigua puede traer un slug que hoy no
+    // esté en el vocabulario: se enseña igual para poder desmarcarlo).
+    const options = new Map([...vocab.attrs.entries()].map(([slug, a]) => [slug, a.label]));
+    for (const slug of attrsSelected) if (!options.has(slug)) options.set(slug, slug);
+    if (!options.size) return '<p class="mng-multi-empty">El catálogo aún no tiene atributos.</p>';
+    return `<div class="mng-multi" data-rb-attrs>${[...options.entries()].map(([slug, label]) => `
+      <label><input type="checkbox" value="${esc(slug)}"${attrsSelected.includes(slug) ? ' checked' : ''}> ${esc(label)}</label>`).join('')}
+    </div>`;
+  }
+
+  function render() {
+    main.innerHTML = `
+    <div class="mng-page-head">
+      <div>
+        <p class="crumbs">Catálogo</p>
+        <h1 class="title">Cinta del catálogo</h1>
+        <p class="lead">La banda de pestañas con la que se navega el catálogo del portal
+          (bajo CATÁLOGO | LOOKBOOK). Elige qué la alimenta, su orden, su visibilidad y sus
+          títulos por idioma; el portal la filtra en automático por la visibilidad de cada
+          cliente o agente.</p>
+      </div>
+    </div>
+
+    <section class="biz-section">
+      <header class="acc-head biz-head"><h2>${icons.eye(20)}Vista previa</h2></header>
+      <div class="biz-card rb-preview-card">
+        <div class="rb-prevbar">
+          <span class="rb-prevnote" id="rbLangNote">Idioma de la vista previa</span>
+          <div class="rb-langs" role="group" aria-labelledby="rbLangNote">${LANGS.map(([lang, tag]) => `
+            <button type="button" class="rb-lang${lang === previewLang ? ' on' : ''}" data-rb-lang="${lang}"
+              aria-pressed="${lang === previewLang}">${tag}</button>`).join('')}
+          </div>
+        </div>
+        <div class="rb-mock">
+          <div class="rb-mock-top"><b>Catálogo</b><span>Lookbook</span></div>
+          <div class="rb-band" id="rbBand" aria-label="Vista previa de la cinta">${previewChips()}</div>
+        </div>
+        <p class="acc-hint">Se calcula en vivo con los cambios de abajo, aún sin guardar. Es la
+          cinta del <b>catálogo completo</b> (administrador): cada cliente o agente puede ver
+          <b>menos entradas</b>, según su visibilidad. La entrada «Todo» es fija.</p>
+      </div>
+    </section>
+
+    <section class="biz-section">
+      <header class="acc-head biz-head"><h2>${icons.tag(20)}Atributos que alimentan la cinta</h2></header>
+      <div class="biz-card">
+        <p class="biz-hint">${icons.alert(16)}<span>Las <b>familias</b> siempre forman la cinta.
+          Además, cada valor de los atributos marcados se convierte en una pestaña
+          (p. ej. marcar «Silueta» añade Melrose, One…).</span></p>
+        ${attrChips()}
+        ${missing.length ? `<p class="acc-hint">${missing.map(esc).join(', ')}: sin valores en el
+          catálogo ahora mismo, no añade${missing.length === 1 ? '' : 'n'} pestañas (si llegan modelos con ese atributo, entrarán solos).</p>` : ''}
+        ${vocab.clippedNote ? `<p class="acc-hint">${esc(vocab.clippedNote)}</p>` : ''}
+      </div>
+    </section>
+
+    <section class="biz-section">
+      <header class="acc-head biz-head"><h2>${icons.list(20)}Entradas de la cinta</h2></header>
+      <div class="biz-card">
+        ${display.length ? `
+          <p class="biz-hint">${icons.alert(16)}<span>Ordena con las flechas, oculta lo que no
+            quieras enseñar y da un título propio por idioma. Nada se aplica hasta
+            <b>Guardar la cinta</b>.</span></p>
+          <div class="rb-list">${display.map(entryRow).join('')}</div>`
+          : `<div class="vis-empty">${icons.ribbon(20)}<b>Sin entradas todavía</b>
+             <span>El catálogo no tiene familias; la cinta aparecerá sola cuando las haya.</span></div>`}
+      </div>
+    </section>
+
+    <div class="rb-actions">
+      <button type="button" class="btn-ghost nc-remove" data-rb-reset>${icons.trash(15)} Restaurar por defecto</button>
+      <span class="spacer"></span>
+      <span class="rb-dirty" id="rbDirty" role="status" hidden>${icons.alert(14)} Cambios sin guardar</span>
+      <button type="button" class="btn-primary" data-rb-save>Guardar la cinta</button>
+    </div>
+    <p class="acc-hint rb-foot">Por defecto (sin configuración) la cinta enseña solo las familias
+      con su etiqueta original.</p>`;
+    wire();
+    syncDirty();
+  }
+
+  function syncDirty() {
+    const tag = main.querySelector('#rbDirty');
+    if (tag) tag.hidden = !isDirty();
+  }
+
+  function updatePreview() {
+    const band = main.querySelector('#rbBand');
+    if (band) band.innerHTML = previewChips();
+  }
+
+  // ── Interacción ────────────────────────────────────────────────────────────────
+  function wire() {
+    // Idioma de la vista previa
+    for (const btn of main.querySelectorAll('[data-rb-lang]'))
+      btn.onclick = () => {
+        previewLang = btn.dataset.rbLang;
+        for (const b of main.querySelectorAll('[data-rb-lang]')) {
+          b.classList.toggle('on', b === btn);
+          b.setAttribute('aria-pressed', String(b === btn));
+        }
+        updatePreview();
+      };
+
+    // Selector de atributos
+    const attrsHost = main.querySelector('[data-rb-attrs]');
+    if (attrsHost) attrsHost.onchange = e => {
+      const input = e.target.closest('input[type=checkbox]');
+      if (!input) return;
+      const slug = input.value;
+      if (input.checked) { if (!attrsSelected.includes(slug)) attrsSelected.push(slug); }
+      else attrsSelected = attrsSelected.filter(s => s !== slug);
+      rebuild();
+      render();
+    };
+
+    // Filas: mover, ocultar, títulos
+    for (const row of main.querySelectorAll('.rb-entry')) {
+      const index = Number(row.dataset.index);
+      const key = row.dataset.key;
+      const move = delta => {
+        const j = index + delta;
+        if (j < 0 || j >= display.length) return;
+        [display[index], display[j]] = [display[j], display[index]];
+        render();
+        // El foco sigue a la entrada movida (no se queda en un botón repintado)
+        main.querySelector(`.rb-entry[data-index="${j}"] [data-rb-${delta < 0 ? 'up' : 'down'}]`)?.focus();
+      };
+      row.querySelector('[data-rb-up]').onclick = () => move(-1);
+      row.querySelector('[data-rb-down]').onclick = () => move(1);
+      row.querySelector('[data-rb-vis]').onclick = () => {
+        const st = stateOf(key);
+        st.hidden = !st.hidden;
+        render();
+        main.querySelector(`.rb-entry[data-key="${CSS.escape(key)}"] [data-rb-vis]`)?.focus();
+      };
+      row.querySelector('[data-rb-titles]').onclick = () => {
+        openTitles.has(key) ? openTitles.delete(key) : openTitles.add(key);
+        render();
+        main.querySelector(`.rb-entry[data-key="${CSS.escape(key)}"] ${openTitles.has(key) ? '[data-rb-title="es"]' : '[data-rb-titles]'}`)?.focus();
+      };
+      for (const input of row.querySelectorAll('[data-rb-title]'))
+        input.oninput = () => {
+          const st = stateOf(key);
+          const value = input.value.trim();
+          if (value) st.titles[input.dataset.rbTitle] = value;
+          else delete st.titles[input.dataset.rbTitle];
+          // En vivo sin repintar (no se pierde el foco): banda + nombre de la fila
+          updatePreview();
+          const entry = display.find(c => c.lower === key);
+          const nameEl = main.querySelector(`.rb-entry[data-key="${CSS.escape(key)}"] .rb-name`);
+          if (entry && nameEl) nameEl.textContent = st.titles.es || entry.label;
+          syncDirty();
+        };
+    }
+
+    // Guardar / restaurar
+    main.querySelector('[data-rb-save]').onclick = save;
+    main.querySelector('[data-rb-reset]').onclick = reset;
+  }
+
+  async function save() {
+    const btn = main.querySelector('[data-rb-save]');
+    const config = buildConfig();
+    btn.disabled = true;
+    try {
+      await api.putRibbon(config);
+      baseline = JSON.stringify(config);
+      flash(config ? 'Cinta guardada. El portal ya la enseña así.'
+        : 'Cinta guardada: configuración por defecto (solo familias).');
+    } catch (e) {
+      flash(e.body?.error || e.message || 'No se pudo guardar la cinta.', 'err');
+    } finally {
+      btn.disabled = false;
+      syncDirty();
+    }
+  }
+
+  async function reset() {
+    if (!confirm('¿Restaurar la cinta por defecto?\n\nSe borra la configuración guardada: solo familias, en su orden natural, con sus etiquetas originales.')) return;
+    const btn = main.querySelector('[data-rb-reset]');
+    btn.disabled = true;
+    try {
+      await api.putRibbon(null);
+      attrsSelected = [];
+      overrides.clear();
+      openTitles.clear();
+      rebuild();
+      display.sort((a, b) => a.natural - b.natural);
+      baseline = JSON.stringify(buildConfig());   // = null
+      flash('Cinta restaurada: por defecto (solo familias).');
+      render();
+    } catch (e) {
+      btn.disabled = false;
+      flash(e.body?.error || e.message || 'No se pudo restaurar la cinta.', 'err');
+    }
+  }
+
+  render();
+}

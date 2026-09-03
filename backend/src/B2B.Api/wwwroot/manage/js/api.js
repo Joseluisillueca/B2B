@@ -91,6 +91,14 @@ export const api = {
   putVisibility: (type, id, rules) =>
     request('PUT', `/api/admin/visibility/${encodeURIComponent(type)}/${encodeURIComponent(id)}`, { rules }),
 
+  // Cinta del catálogo (banda de navegación del portal). La config cruda viaja en
+  // settings.catalogRibbon (intSettings); el PUT admite objeto o null (= por defecto).
+  // Las entradas COMPUTADAS por el servidor (fuente de verdad) salen de /api/shop/*:
+  // el token del admin sirve porque su actor no tiene restricciones de visibilidad.
+  putRibbon: ribbon => request('PUT', '/api/admin/integration/ribbon', { ribbon }),
+  shopRibbon: (locale = 'es') => request('GET', `/api/shop/ribbon?locale=${encodeURIComponent(locale)}`),
+  shopFacets: () => request('GET', '/api/shop/catalog?take=1&locale=es'),
+
   // Reglas de transporte (portes)
   transportRules: () => request('GET', '/api/admin/transport-rules'),
   createTransportRule: b => request('POST', '/api/admin/transport-rules', b),
