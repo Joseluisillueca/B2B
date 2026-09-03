@@ -98,11 +98,17 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
     // Token de un comercial (rol "agent"), provisto por el sync de /api/agents/{id} (mismo
     // patrón que AgentModelTests): visibleAttributes va en el propio documento del agente,
     // por el mismo hook de ingesta que el del cliente (VisibilityStore.ProjectFromPayloadAsync).
-    private async Task<string> AgentTokenAsync(string agentId, string email, string? rulesJsonArray = null)
+    private async Task<string> AgentTokenAsync(string agentId, string email, string? rulesJsonArray = null) =>
+        await AgentTokenAsync(agentId, email, clientIds: [], rulesJsonArray);
+
+    // Variante con cartera (clientIds): la necesita /api/agent/impersonate, que 403 si el
+    // cliente no pertenece a la cartera del comercial (AgentEndpoints.AgentClientIdsAsync).
+    private async Task<string> AgentTokenAsync(string agentId, string email, string[] clientIds, string? rulesJsonArray = null)
     {
         var rules = rulesJsonArray is null ? "" : $$""", "visibleAttributes": {{rulesJsonArray}}""";
+        var ids = string.Join(",", clientIds.Select(c => $"\"{c}\""));
         await Put($"/api/agents/{agentId}",
-            $$"""{"id":"{{agentId}}","parentId":null,"clientIds":[],"name":"Comercial","email":"{{email}}","culture":"es_ES"{{rules}} }""");
+            $$"""{"id":"{{agentId}}","parentId":null,"clientIds":[{{ids}}],"name":"Comercial","email":"{{email}}","culture":"es_ES"{{rules}} }""");
 
         using (var scope = _factory.Services.CreateScope())
         {
@@ -113,6 +119,16 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         }
 
         return await _factory.LoginAsync(_client, email, AgentPass);
+    }
+
+    // Token de suplantación (agente → cliente de su cartera), vía /api/agent/impersonate:
+    // mismo patrón que AgentModelTests.Impersonate_*.
+    private async Task<string> ImpersonateAsync(string agentToken, string clientId)
+    {
+        var response = await Send(HttpMethod.Post, "/api/agent/impersonate", agentToken, new { clientId });
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return body.GetProperty("token").GetString()!;
     }
 
     // Conmutador de Conexiones (rol admin, endpoint dedicado en IntegrationEndpoints):
@@ -275,5 +291,78 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
             .Select(i => i.GetProperty("reference").GetString()).ToList();
         Assert.Contains("VCK4-ADI-REF", openRefs);
         Assert.Contains("VCK4-NIKE-REF", openRefs);
+    }
+
+    // ── 5. Atribución del pedido al agente creador (Multiagente §7, Tarea 6) ────────
+
+    // Lee el JSON que el portal habría mandado a BC para el evento "shoes.purchase_order.
+    // updated" (PayloadJson, ya transformado con el transformer de "Orden de compra" — que
+    // copia $.saleId literal, así que refleja el SourceJson.Order() de origen). En test no
+    // hay Conexión BC configurada, así que el despacho queda "simulated" (NotificationDispatcher.
+    // DispatchBcAsync) pero SÍ registra el JSON que se habría enviado: es el mecanismo real
+    // para inspeccionar el saliente sin BC real. Se localiza por "customerId" (= clientId,
+    // un GUID de prueba único) para no cruzarse con los pedidos de otros tests de esta clase.
+    private async Task<JsonElement> LastOutboundOrderPayloadAsync(string clientId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var log = await db.NotificationLogs
+            .Where(l => l.EventKey == "shoes.purchase_order.updated" && l.ChannelType == "business-central"
+                && l.PayloadJson != null && l.PayloadJson.Contains(clientId))
+            .OrderByDescending(l => l.CreatedAt)
+            .FirstOrDefaultAsync();
+        Assert.NotNull(log);
+        Assert.Equal("simulated", log!.Status);   // BC no configurado en test: se registra, no se manda
+        return JsonDocument.Parse(log.PayloadJson!).RootElement.Clone();
+    }
+
+    [Fact]
+    public async Task PedidoDeAgente_LlevaSaleIdDelCreador()
+    {
+        const string agentId = "VISCK5AG-0000-4000-9000-000000000001";
+        const string clientId = "VISCK5CL-0000-4000-9000-000000000002";
+        const string model = "visck5m0-0000-4000-9000-000000000003";
+
+        await PutModel(model, "VISCK5 MODELO", "VCK5-MOD-REF", "calzado", "{}");
+        await PutOffer("visck5of-0000-4000-9000-000000000004", model, 40m);
+        await Put($"/api/clients/{clientId}", """{"name":"Cliente agente","canShop":true}""");
+        await SetOrdersModeAsync("portal");
+
+        var agentToken = await AgentTokenAsync(agentId, "comercial-visck5@agente.test", clientIds: [clientId]);
+        var impersonatedToken = await ImpersonateAsync(agentToken, clientId);
+
+        var response = await Send(HttpMethod.Post, "/api/portal/orders", impersonatedToken, new
+        {
+            windowId = "reposic",
+            lines = new[] { Line(model, "PRD-VCK5-MOD", "VCK5-MOD-REF", 40m) }
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var payload = await LastOutboundOrderPayloadAsync(clientId);
+        Assert.Equal(agentId, payload.GetProperty("saleId").GetString());
+    }
+
+    [Fact]
+    public async Task PedidoDeClienteNormal_SaleIdVacio()
+    {
+        const string clientId = "VISCK6CL-0000-4000-9000-000000000001";
+        const string model = "visck6m0-0000-4000-9000-000000000002";
+
+        await PutModel(model, "VISCK6 MODELO", "VCK6-MOD-REF", "calzado", "{}");
+        await PutOffer("visck6of-0000-4000-9000-000000000003", model, 40m);
+        await Put($"/api/clients/{clientId}", """{"name":"Cliente normal","canShop":true}""");
+        await SetOrdersModeAsync("portal");
+
+        var token = await ClientTokenAsync(clientId);
+
+        var response = await Send(HttpMethod.Post, "/api/portal/orders", token, new
+        {
+            windowId = "reposic",
+            lines = new[] { Line(model, "PRD-VCK6-MOD", "VCK6-MOD-REF", 40m) }
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var payload = await LastOutboundOrderPayloadAsync(clientId);
+        Assert.Equal("", payload.GetProperty("saleId").GetString());
     }
 }

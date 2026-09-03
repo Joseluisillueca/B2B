@@ -345,10 +345,13 @@ public static class CartEndpoints
                         transportCost: transportCost);
                     await SyncEndpoints.IngestDocumentAsync(db, "order", order.Id.ToString(), actor.ClientId, doc);
 
-                    // JSON de origen (forma "cart" de la referencia) para el transformer a BC
+                    // JSON de origen (forma "cart" de la referencia) para el transformer a BC.
+                    // saleId = SystemId del comercial que crea el pedido suplantando al cliente
+                    // (Multiagente §7); vacío para un pedido de cliente normal. BC resolverá ese
+                    // SystemId a su Salesperson para atribuir la venta.
                     sourceJson = Integration.SourceJson.Order(
                         order.Id.ToString(), actor.ClientId, body.ShippingAddressId, body.Reference,
-                        body.PayMethod, incotermId: incoterm, saleId: "",
+                        body.PayMethod, incotermId: incoterm, saleId: actor.User.AgentExternalId ?? "",
                         lines: lines, window: window, transportCost: transportCost);
                     order.SourceJson = sourceJson.ToJsonString();
 
