@@ -223,31 +223,29 @@ public static class CartEndpoints
                 return Results.BadRequest(new { error = "El pedido necesita un cliente: entra como cliente o suplanta a uno." });
             if (Invalid(body, requireName: false, out var lines, out var problem)) return problem;
 
-            // Visibilidad + catálogo real (Tarea 5): el checkout arma el pedido con las
-            // líneas que manda el CLIENTE, sin pasar por CatalogService.QueryAsync (donde la
-            // Tarea 4 enchufó el filtro). Un único punto, COMÚN a los dos modos (portal/erp):
-            // aquí, con `lines` ya resuelto y ANTES de la primera bifurcación y de cualquier
-            // SaveChanges. Dos comprobaciones distintas, y la primera corre SIEMPRE (no solo
-            // con reglas de visibilidad): un modelId desconocido o INACTIVO no es comprable
-            // en ningún caso — en modo erp nada más valida las líneas (no hay RepriceAsync),
-            // así que sin esto un actor sin reglas podía colar un modelo fantasma o dado de
-            // baja. La visibilidad (whitelist por atributo) solo se suma si el actor está
-            // restringido.
-            var modelIds = lines.Select(l => l.ModelId ?? "").Where(s => s.Length > 0).Distinct().ToList();
-            // SIN filtrar Active: un modelo desactivado debe listarse aquí para bloquearlo
-            // (no para dejarlo pasar como "desconocido" con otro mensaje).
-            var models = await db.CatalogModels.Where(m => modelIds.Contains(m.ExternalId)).ToListAsync();
-            var known = models.Select(m => m.ExternalId).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var blocked = models.Where(m => !m.Active).Select(m => m.ExternalReference).ToList();
-            blocked.AddRange(modelIds.Where(id => !known.Contains(id)));   // desconocido → el propio modelId
-
+            // Visibilidad + catálogo real (Tarea 5, endurecido en 14a-1): el checkout arma el
+            // pedido con las líneas que manda el CLIENTE, sin pasar por CatalogService.QueryAsync
+            // (donde la Tarea 4 enchufó el filtro). Un único punto, COMÚN a los dos modos
+            // (portal/erp): aquí, con `lines` ya resuelto y ANTES de la primera bifurcación y
+            // de cualquier SaveChanges. La unidad de verdad es el PRODUCTO (la talla que se
+            // compra): cada línea se resuelve por su productId contra CatalogProducts, el
+            // modelId se deriva del producto (si la línea no lo trae) o se exige coherente con
+            // él, y la visibilidad se evalúa sobre el modelo DEL PRODUCTO. Antes se validaba el
+            // modelId que declaraba la línea: bastaba declarar un modelo visible y colar el
+            // productId de otro oculto. Todo corre SIEMPRE (no solo con reglas): un producto o
+            // modelo desconocido o inactivo no es comprable en ningún caso — en modo erp nada
+            // más valida las líneas (no hay RepriceAsync).
             var visibility = await Shop.VisibilityStore.ScopeForAsync(db, actor.ClientId, actor.User.AgentExternalId);
-            if (visibility.IsRestricted)
-                blocked.AddRange(models.Where(m => m.Active && !visibility.Visible(m)).Select(m => m.ExternalReference));
-
+            var (resolved, blocked, blockedModelIds) = await ResolveLinesAsync(db, lines, visibility);
             if (blocked.Count > 0)
-                return Results.BadRequest(new { error =
-                    $"Estos artículos no están disponibles para tu cuenta: {string.Join(", ", blocked.Distinct())}." });
+                return Results.BadRequest(new
+                {
+                    error = $"Estos artículos no están disponibles para tu cuenta: {string.Join(", ", blocked)}.",
+                    // UX-M3: ids de modelo de las líneas bloqueadas, para que el front marque
+                    // las líneas del carrito y ofrezca "Quitar artículos no disponibles".
+                    blockedModelIds
+                });
+            lines = resolved;
 
             var settings = await db.IntegrationSettings.FindAsync(1) ?? new Data.IntegrationSettings();
             var portalMode = PortalOrdersMode(settings, config);
@@ -444,6 +442,77 @@ public static class CartEndpoints
         var key = windowId.ToLowerInvariant();
         var window = await db.ServiceWindows.SingleOrDefaultAsync(w => w.ExternalId == key);
         return string.IsNullOrWhiteSpace(window?.OrderType) ? null : window!.OrderType;
+    }
+
+    // Integridad de las líneas del checkout (14a-1). Devuelve las líneas con el modelId
+    // resuelto (derivado del producto cuando la línea no lo trae), la lista de etiquetas
+    // bloqueadas para el mensaje (referencia del modelo, o de la línea, o el productId) y
+    // los modelId bloqueados (para que el front marque las líneas). Se bloquea:
+    //  - producto desconocido, inactivo o case pack (aquí solo se compran tallas);
+    //  - producto que no pertenece al modelId que declara la línea;
+    //  - modelo del producto desconocido o inactivo;
+    //  - modelo del producto fuera del VisibilityScope del actor (si está restringido).
+    private static async Task<(CartLine[] Lines, List<string> Blocked, List<string> BlockedModelIds)> ResolveLinesAsync(
+        AppDbContext db, CartLine[] lines, Shop.VisibilityScope visibility)
+    {
+        var productIds = lines.Select(l => l.ProductId!).Distinct().ToList();
+        var products = (await db.CatalogProducts.Where(p => productIds.Contains(p.ExternalId)).ToListAsync())
+            .GroupBy(p => p.ExternalId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        // SIN filtrar Active: un modelo desactivado debe listarse aquí para bloquearlo
+        // (no para dejarlo pasar como "desconocido" con otro mensaje).
+        var modelIds = products.Values.Select(p => p.ModelExternalId)
+            .Concat(lines.Select(l => l.ModelId ?? ""))
+            .Where(s => s.Length > 0).Distinct().ToList();
+        var models = (await db.CatalogModels.Where(m => modelIds.Contains(m.ExternalId)).ToListAsync())
+            .GroupBy(m => m.ExternalId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        var resolved = new CartLine[lines.Length];
+        var blocked = new List<string>();
+        var blockedModelIds = new List<string>();
+        void Block(string label, string? modelId)
+        {
+            if (!blocked.Contains(label)) blocked.Add(label);
+            if (!string.IsNullOrEmpty(modelId) && !blockedModelIds.Contains(modelId, StringComparer.OrdinalIgnoreCase))
+                blockedModelIds.Add(modelId);
+        }
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            var lineLabel = !string.IsNullOrWhiteSpace(line.Reference) ? line.Reference : line.ProductId!;
+
+            if (!products.TryGetValue(line.ProductId!, out var product) || !product.Active || product.IsCasePack)
+            {
+                Block(lineLabel, line.ModelId);
+                continue;
+            }
+
+            var modelId = string.IsNullOrWhiteSpace(line.ModelId) ? product.ModelExternalId : line.ModelId;
+            if (!string.Equals(product.ModelExternalId, modelId, StringComparison.OrdinalIgnoreCase))
+            {
+                Block(lineLabel, modelId);   // la talla no es de ese modelo
+                continue;
+            }
+
+            if (!models.TryGetValue(product.ModelExternalId, out var model) || !model.Active)
+            {
+                Block(model?.ExternalReference is { Length: > 0 } reference ? reference : lineLabel, modelId);
+                continue;
+            }
+
+            if (visibility.IsRestricted && !visibility.Visible(model))
+            {
+                Block(model.ExternalReference.Length > 0 ? model.ExternalReference : lineLabel, model.ExternalId);
+                continue;
+            }
+
+            resolved[i] = line with { ModelId = model.ExternalId };
+        }
+
+        return (resolved, blocked, blockedModelIds);
     }
 
     // Re-tarifica cada línea con el MISMO motor que el catálogo (CatalogPricing): el

@@ -57,6 +57,9 @@ public class PortalCartTests : IClassFixture<PortalCartTests.Factory>, IAsyncLif
             // un CatalogModel de verdad detrás de ModelId.
             await PutAsync($"/api/catalog/models/{ModelId}",
                 """{"name":{"es_ES":"LEJAN ONE - AETERNA"},"active":true,"externalReference":"1974","productSegments":[],"attributes":{}}""");
+            // 14a-1: el checkout resuelve cada línea por su productId (variante real del modelo).
+            await PutAsync($"/api/catalog/products/{Product36}",
+                $$"""{"modelId":"{{ModelId}}","name":{"es_ES":"Talla 36"},"active":true,"sku":"1974-36","ean":"1974-36","attributes":{"tallas":"36"},"taxId":"iva-normal"}""");
             await PutAsync($"/api/clients/{ClientA}/users/admin",
                 $$"""{"email":"{{TestWebApplicationFactory.SeededEmail}}","name":"Test 5","culture":"es_ES"}""");
             await PutAsync($"/api/clients/{ClientB}/users/admin",

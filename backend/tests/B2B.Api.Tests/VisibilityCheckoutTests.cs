@@ -65,6 +65,12 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
             $$$"""[{"id":"{{{offerId}}}","offerData":{"basePrice":{"code":"EUR","value":{{{value}}} },"priceType":"PVD","stock":0,"priority":1,"modelId":"{{{modelId}}}"}}]""");
     }
 
+    // Variante (talla) real del catálogo: el checkout (14a-1) resuelve cada línea por su
+    // productId contra CatalogProducts, así que las líneas de prueba necesitan una detrás.
+    private Task PutProduct(string id, string modelId, string size, string sku, bool active = true) =>
+        Put($"/api/catalog/products/{id}",
+            $$"""{"modelId":"{{modelId}}","name":{"es_ES":"Talla {{size}}"},"active":{{(active ? "true" : "false")}},"sku":"{{sku}}","ean":"{{sku}}","attributes":{"tallas":"{{size}}"},"taxId":"iva-normal"}""");
+
     // El campo visibleAttributes es el que proyecta VisibilityStore.ProjectFromPayloadAsync
     // (Tarea 3) a la fila "bc" de CatalogVisibility, tanto para "client" como para "agent".
     private Task PutClientVisibility(string clientId, string rulesJsonArray) =>
@@ -137,10 +143,13 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         (await Send(HttpMethod.Put, "/api/admin/integration/orders-mode",
             await _factory.GetAdminTokenAsync(_client), new { mode })).EnsureSuccessStatusCode();
 
-    private static object Line(string modelId, string productId, string reference, decimal price, int qty = 1) => new
+    private static object Line(string? modelId, string productId, string reference, decimal price, int qty = 1) => new
     {
         modelId, productId, size = "40", name = reference, reference, qty, price
     };
+
+    private static List<string?> BlockedModelIds(JsonElement body) =>
+        [.. body.GetProperty("blockedModelIds").EnumerateArray().Select(e => e.GetString())];
 
     // ── 1. Checkout (modo portal) bloquea una línea fuera de scope ─────────────
 
@@ -153,6 +162,7 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         // Con oferta y precio válidos: si el checkout la bloquea, es SOLO por visibilidad,
         // no porque a la línea le faltara tarifa (RepriceAsync ya la rechazaría por eso).
         await PutModel(nike, "VISCK1 NIKE", "VCK1-NIKE-REF", "calzado", """{"Marca":"NIKE"}""");
+        await PutProduct("PRD-VCK1-NIKE", nike, "40", "VCK1-NIKE-40");
         await PutOffer("visck1of-0000-4000-9000-000000000003", nike, 40m);
         await PutClientVisibility(clientId, """[{"attributeId":"marca","valueIds":["adidas"]}]""");
         var token = await ClientTokenAsync(clientId);
@@ -167,6 +177,8 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Contains("VCK1-NIKE-REF", body.GetProperty("error").GetString());
+        // UX-M3: el 400 nombra además los modelId bloqueados para que el front marque las líneas.
+        Assert.Equal([nike], BlockedModelIds(body));
 
         // Nada de SaveChanges: el pedido no existe.
         var orders = await (await Send(HttpMethod.Get, "/api/portal/orders", token))
@@ -183,6 +195,7 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         const string nike = "visck2n0-0000-4000-9000-000000000004";
 
         await PutModel(nike, "VISCK2 NIKE", "VCK2-NIKE-REF", "calzado", """{"Marca":"NIKE"}""");
+        await PutProduct("PRD-VCK2-NIKE", nike, "40", "VCK2-NIKE-40");
         await PutClientVisibility(clientId, """[{"attributeId":"marca","valueIds":["adidas"]}]""");
         var token = await ClientTokenAsync(clientId);
         await SetOrdersModeAsync("erp");
@@ -203,12 +216,12 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal(0, orders.GetProperty("total").GetInt32());
     }
 
-    // ── 2b. El modelo desconocido se bloquea SIEMPRE, aunque el actor no tenga reglas ──
-    // (en modo erp nada más re-tarifica/valida las líneas: sin esto un modelId fantasma
-    // se guardaba tal cual).
+    // ── 2b. El producto desconocido se bloquea SIEMPRE, aunque el actor no tenga reglas ──
+    // (en modo erp nada más re-tarifica/valida las líneas: sin esto un productId fantasma
+    // se guardaba tal cual). Se nombra por la referencia de la línea (lo que ve el cliente).
 
     [Fact]
-    public async Task CheckoutBloqueaModeloDesconocido_SinReglas_ModoErp()
+    public async Task CheckoutBloqueaProductoDesconocido_SinReglas_ModoErp()
     {
         const string clientId = "VISCK2BC-0000-4000-9000-000000000012";
         const string fantasma = "visck2bf-0000-4000-9000-000000000013";
@@ -225,11 +238,110 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Contains(fantasma, body.GetProperty("error").GetString());
+        Assert.Contains("REF-FANTASMA", body.GetProperty("error").GetString());
+        Assert.Equal([fantasma], BlockedModelIds(body));
 
         var orders = await (await Send(HttpMethod.Get, "/api/portal/orders", token))
             .Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(0, orders.GetProperty("total").GetInt32());
+    }
+
+    // ── 2c. ALTO (auditoría 14a): la visibilidad se evalúa sobre el modelo DEL PRODUCTO.
+    // Una línea que declara un modelId visible pero cuyo productId pertenece a otro
+    // modelo (oculto o no) se bloquea en los dos modos: el par (modelId, productId) tiene
+    // que ser coherente con el catálogo.
+
+    [Theory]
+    [InlineData("portal")]
+    [InlineData("erp")]
+    public async Task CheckoutBloqueaProductoDeOtroModelo(string mode)
+    {
+        var suffix = mode == "portal" ? "1" : "2";
+        var clientId = $"VISCK2DC-0000-4000-9000-00000000002{suffix}";
+        var adidas = $"visck2da-0000-4000-9000-00000000003{suffix}";
+        var nike = $"visck2dn-0000-4000-9000-00000000004{suffix}";
+        var nikeProduct = $"PRD-VCK2D-NIKE-{mode}";
+
+        await PutModel(adidas, "VISCK2D ADIDAS", $"VCK2D-ADI-{mode}", "calzado", """{"Marca":"ADIDAS"}""");
+        await PutOffer($"visck2do-0000-4000-9000-00000000005{suffix}", adidas, 40m);
+        await PutModel(nike, "VISCK2D NIKE", $"VCK2D-NIKE-{mode}", "calzado", """{"Marca":"NIKE"}""");
+        await PutProduct(nikeProduct, nike, "40", $"VCK2D-NIKE-40-{mode}");
+        await PutOffer($"visck2dp-0000-4000-9000-00000000006{suffix}", nike, 40m);
+        await PutClientVisibility(clientId, """[{"attributeId":"marca","valueIds":["adidas"]}]""");
+        var token = await ClientTokenAsync(clientId);
+        await SetOrdersModeAsync(mode);
+
+        // modelId = ADIDAS (visible) pero productId = talla de NIKE (oculto).
+        var response = await Send(HttpMethod.Post, "/api/portal/orders", token, new
+        {
+            windowId = "reposic",
+            lines = new[] { Line(adidas, nikeProduct, $"VCK2D-ADI-{mode}", 40m) }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains($"VCK2D-ADI-{mode}", body.GetProperty("error").GetString());
+        Assert.Equal([adidas], BlockedModelIds(body));
+
+        var orders = await (await Send(HttpMethod.Get, "/api/portal/orders", token))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(0, orders.GetProperty("total").GetInt32());
+    }
+
+    // ── 2d. Línea SIN modelId: se deriva del producto y se evalúa la visibilidad sobre
+    // ese modelo (un cliente no puede "olvidar" el modelId para saltarse el filtro).
+
+    [Fact]
+    public async Task CheckoutLineaSinModelId_DerivaDelProducto_YBloqueaSiOculto_ModoErp()
+    {
+        const string clientId = "VISCK2EC-0000-4000-9000-000000000031";
+        const string nike = "visck2en-0000-4000-9000-000000000032";
+
+        await PutModel(nike, "VISCK2E NIKE", "VCK2E-NIKE-REF", "calzado", """{"Marca":"NIKE"}""");
+        await PutProduct("PRD-VCK2E-NIKE", nike, "40", "VCK2E-NIKE-40");
+        await PutClientVisibility(clientId, """[{"attributeId":"marca","valueIds":["adidas"]}]""");
+        var token = await ClientTokenAsync(clientId);
+        await SetOrdersModeAsync("erp");
+
+        var response = await Send(HttpMethod.Post, "/api/portal/orders", token, new
+        {
+            windowId = "reposic",
+            lines = new[] { Line(null, "PRD-VCK2E-NIKE", "VCK2E-NIKE-REF", 40m) }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains("VCK2E-NIKE-REF", body.GetProperty("error").GetString());
+        Assert.Equal([nike], BlockedModelIds(body));
+    }
+
+    // ── 2e. Línea SIN modelId con producto VISIBLE: el pedido se crea con el modelId
+    // derivado (y en modo portal se re-tarifica con la oferta de ese modelo).
+
+    [Fact]
+    public async Task CheckoutLineaSinModelId_ProductoVisible_Crea_ModoPortal()
+    {
+        const string clientId = "VISCK2FC-0000-4000-9000-000000000041";
+        const string adidas = "visck2fa-0000-4000-9000-000000000042";
+
+        await PutModel(adidas, "VISCK2F ADIDAS", "VCK2F-ADI-REF", "calzado", """{"Marca":"ADIDAS"}""");
+        await PutProduct("PRD-VCK2F-ADI", adidas, "40", "VCK2F-ADI-40");
+        await PutOffer("visck2fo-0000-4000-9000-000000000043", adidas, 40m);
+        await PutClientVisibility(clientId, """[{"attributeId":"marca","valueIds":["adidas"]}]""");
+        var token = await ClientTokenAsync(clientId);
+        await SetOrdersModeAsync("portal");
+
+        var response = await Send(HttpMethod.Post, "/api/portal/orders", token, new
+        {
+            windowId = "reposic",
+            lines = new[] { Line(null, "PRD-VCK2F-ADI", "VCK2F-ADI-REF", 0.01m) }
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(40m, body.GetProperty("total").GetDecimal());
+        var line = Assert.Single(body.GetProperty("lines").EnumerateArray());
+        Assert.Equal(adidas, line.GetProperty("modelId").GetString());
     }
 
     // ── 3. Comprar solo lo visible funciona (modo portal, con re-tarificación real) ──
@@ -241,6 +353,7 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         const string adidas = "visck3a0-0000-4000-9000-000000000006";
 
         await PutModel(adidas, "VISCK3 ADIDAS", "VCK3-ADI-REF", "calzado", """{"Marca":"ADIDAS"}""");
+        await PutProduct("PRD-VCK3-ADI", adidas, "40", "VCK3-ADI-40");
         await PutOffer("visck3of-0000-4000-9000-000000000007", adidas, 40m);
         await PutClientVisibility(clientId, """[{"attributeId":"marca","valueIds":["adidas"]}]""");
         var token = await ClientTokenAsync(clientId);
@@ -336,6 +449,7 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         const string model = "visck5m0-0000-4000-9000-000000000003";
 
         await PutModel(model, "VISCK5 MODELO", "VCK5-MOD-REF", "calzado", "{}");
+        await PutProduct("PRD-VCK5-MOD", model, "40", "VCK5-MOD-40");
         await PutOffer("visck5of-0000-4000-9000-000000000004", model, 40m);
         await Put($"/api/clients/{clientId}", """{"name":"Cliente agente","canShop":true}""");
         await SetOrdersModeAsync("portal");
@@ -368,6 +482,7 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         const string model = "visck6m0-0000-4000-9000-000000000002";
 
         await PutModel(model, "VISCK6 MODELO", "VCK6-MOD-REF", "calzado", "{}");
+        await PutProduct("PRD-VCK6-MOD", model, "40", "VCK6-MOD-40");
         await PutOffer("visck6of-0000-4000-9000-000000000003", model, 40m);
         await Put($"/api/clients/{clientId}", """{"name":"Cliente normal","canShop":true}""");
         await SetOrdersModeAsync("portal");
@@ -404,6 +519,7 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         const string model = "visck7m0-0000-4000-9000-000000000003";
 
         await PutModel(model, "VISCK7 MODELO", "VCK7-MOD-REF", "calzado", "{}");
+        await PutProduct("PRD-VCK7-MOD", model, "40", "VCK7-MOD-40");
         await PutOffer("visck7of-0000-4000-9000-000000000004", model, 40m);
         await Put($"/api/clients/{clientId}", """{"name":"Cliente del agente","canShop":true}""");
         await SetOrdersModeAsync("portal");
