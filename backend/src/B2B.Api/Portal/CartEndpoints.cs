@@ -215,6 +215,12 @@ public static class CartEndpoints
         {
             var actor = await PortalScope.ActorAsync(principal, db);
             if (actor is null) return Unknown();
+            // Integridad (Tarea 6b): sin cliente de ámbito no hay a quién atribuir el pedido
+            // (un agente que no ha suplantado, o el usuario de integración/admin). Antes de
+            // CUALQUIER validación o SaveChanges: hoy sin esto se colaba un Cart con ClientId
+            // null.
+            if (string.IsNullOrEmpty(actor.ClientId))
+                return Results.BadRequest(new { error = "El pedido necesita un cliente: entra como cliente o suplanta a uno." });
             if (Invalid(body, requireName: false, out var lines, out var problem)) return problem;
 
             // Visibilidad + catálogo real (Tarea 5): el checkout arma el pedido con las
@@ -342,7 +348,7 @@ public static class CartEndpoints
                         clientId: actor.ClientId, orderType: orderType, reference: body.Reference,
                         payMethodId: body.PayMethod, notes: body.Notes,
                         shippingAddress: address, lines: lines, now: DateTime.UtcNow,
-                        transportCost: transportCost);
+                        transportCost: transportCost, saleId: actor.User.AgentExternalId ?? "");
                     await SyncEndpoints.IngestDocumentAsync(db, "order", order.Id.ToString(), actor.ClientId, doc);
 
                     // JSON de origen (forma "cart" de la referencia) para el transformer a BC.

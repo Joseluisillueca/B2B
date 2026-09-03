@@ -316,6 +316,18 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         return JsonDocument.Parse(log.PayloadJson!).RootElement.Clone();
     }
 
+    // Doc nativo "order" (Tarea 6b, auditoría §7): el mismo que ve /manage y /orders,
+    // guardado por SyncEndpoints.IngestDocumentAsync — se lee del scope de BD, igual que
+    // LastOutboundOrderPayloadAsync lee el saliente simulado.
+    private async Task<JsonElement> NativeOrderPayloadAsync(string orderId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var doc = await db.SyncDocuments.SingleOrDefaultAsync(d => d.EntityType == "order" && d.ExternalId == orderId);
+        Assert.NotNull(doc);
+        return JsonDocument.Parse(doc!.Payload).RootElement.Clone();
+    }
+
     [Fact]
     public async Task PedidoDeAgente_LlevaSaleIdDelCreador()
     {
@@ -337,9 +349,16 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
             lines = new[] { Line(model, "PRD-VCK5-MOD", "VCK5-MOD-REF", 40m) }
         });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var orderId = body.GetProperty("id").GetString()!;
 
         var payload = await LastOutboundOrderPayloadAsync(clientId);
         Assert.Equal(agentId, payload.GetProperty("saleId").GetString());
+
+        // Auditoría (Tarea 6b, §7): el doc nativo (el que ve /manage) también lleva el
+        // agente creador, mismo valor que el saliente a BC.
+        var nativeDoc = await NativeOrderPayloadAsync(orderId);
+        Assert.Equal(agentId, nativeDoc.GetProperty("saleId").GetString());
     }
 
     [Fact]
@@ -361,8 +380,52 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
             lines = new[] { Line(model, "PRD-VCK6-MOD", "VCK6-MOD-REF", 40m) }
         });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var orderId = body.GetProperty("id").GetString()!;
 
         var payload = await LastOutboundOrderPayloadAsync(clientId);
         Assert.Equal("", payload.GetProperty("saleId").GetString());
+
+        var nativeDoc = await NativeOrderPayloadAsync(orderId);
+        Assert.Equal("", nativeDoc.GetProperty("saleId").GetString());
+    }
+
+    // ── 6. Integridad: el pedido exige un cliente de ámbito (Tarea 6b) ──────────────
+    // Un agente que NO ha suplantado (o un admin/integración) no tiene ClientId de
+    // ámbito: sin este guard, POST /api/portal/orders colaba un Cart con ClientId=null
+    // (visible solo para su propio UserId, pero de todos modos inconsistente: un pedido
+    // sin cliente no tiene a quién atribuirse en BC ni en /manage).
+
+    [Fact]
+    public async Task PedidoSinCliente_AgenteSinSuplantar_400()
+    {
+        const string agentId = "VISCK7AG-0000-4000-9000-000000000001";
+        const string clientId = "VISCK7CL-0000-4000-9000-000000000002";
+        const string model = "visck7m0-0000-4000-9000-000000000003";
+
+        await PutModel(model, "VISCK7 MODELO", "VCK7-MOD-REF", "calzado", "{}");
+        await PutOffer("visck7of-0000-4000-9000-000000000004", model, 40m);
+        await Put($"/api/clients/{clientId}", """{"name":"Cliente del agente","canShop":true}""");
+        await SetOrdersModeAsync("portal");
+
+        // Cartera con un cliente, pero SIN /api/agent/impersonate: el token de agente no
+        // lleva clientId, así que PortalScope.ActorAsync deja ClientId a null.
+        var agentToken = await AgentTokenAsync(agentId, "comercial-visck7@agente.test", clientIds: [clientId]);
+
+        var response = await Send(HttpMethod.Post, "/api/portal/orders", agentToken, new
+        {
+            windowId = "reposic",
+            lines = new[] { Line(model, "PRD-VCK7-MOD", "VCK7-MOD-REF", 40m) }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("El pedido necesita un cliente: entra como cliente o suplanta a uno.",
+            body.GetProperty("error").GetString());
+
+        // Nada de SaveChanges: el agente (sin cliente de ámbito) no ve ningún pedido suyo.
+        var orders = await (await Send(HttpMethod.Get, "/api/portal/orders", agentToken))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(0, orders.GetProperty("total").GetInt32());
     }
 }

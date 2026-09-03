@@ -16,7 +16,7 @@ public static class NativeOrder
         string orderId, string number, string? clientId, string? orderType,
         string? reference, string? payMethodId, string? notes,
         JsonObject? shippingAddress, IReadOnlyList<CartLine> lines, DateTime now,
-        decimal transportCost = 0)
+        decimal transportCost = 0, string? saleId = null)
     {
         decimal subtotal = lines.Sum(l => l.Qty * l.Price);
         decimal tax = Math.Round(subtotal * Iva, 2);
@@ -59,6 +59,10 @@ public static class NativeOrder
         var order = new JsonObject
         {
             ["clientId"] = clientId,                                  // acota el pedido a su cliente (ParentId)
+            // Multiagente §7 (auditoría): SystemId del comercial que creó el pedido
+            // suplantando al cliente; "" en un pedido de cliente normal. Mismo valor que
+            // SourceJson.Order manda a BC — aquí queda también en el doc que ve /manage.
+            ["saleId"] = saleId ?? "",
             ["externalReference"] = number,                          // Nº de pedido visible
             ["orderedDate"] = now.ToString("yyyy-MM-ddTHH:mm:ss") + ".000Z",
             // Tipo derivado de la ventana de servicio real (service-window.orderType),
