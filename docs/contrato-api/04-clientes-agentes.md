@@ -91,6 +91,9 @@ Resumen de endpoints de este bloque:
   "clientTypeID": "",
   "groupIds": [ "mayorista" ],
   "productSegments": [ "A+" ],
+  "visibleAttributes": [
+    { "attributeId": "categoria", "valueIds": [ "calzado" ] }
+  ],
   "bankInfos": [],
   "incotermId": "fob",
   "originatedAt": "2026-08-02T10:15:30.000Z"
@@ -136,6 +139,7 @@ Todos los campos se emiten **siempre** (el adapter no omite propiedades; los "op
 | `clientTypeID` | string | — | **Siempre `""`** |
 | `groupIds` | array[string] | `Customer."Customer Price Group"` en **minúsculas** | 0 o 1 elemento |
 | `productSegments` | array[string] | `Customer."B2B Customer Segment"` (Enum 80116: ` `, `A+`, `A`, `B`, `C`, `D`) | **El portal lo espera como array pero BC solo tiene UN segmento por cliente** → `["A+"]` o `[]` si está vacío. En **MAYÚSCULAS**, igual que los segmentos que se envían con el modelo (comentario en Cod80130, líneas 135-137) |
+| `visibleAttributes` | array[object] | Tabla `B2B Catalog Visibility` (Tab80135) con `Subject Type = Customer` y `Subject Code = Customer."No."` | **Conector NEW, aditivo.** Lista blanca de valores de atributo que el cliente puede VER y COMPRAR: `[{ "attributeId": slug(B2B Code), "valueIds": [slug(valor)...] }]`. **Se emite SIEMPRE**, también `[]` sin reglas (semántica en §4.3). El conector viejo no manda la clave |
 | `bankInfos` | array | — | **Siempre `[]`** ("vacío por ahora") |
 | `incotermId` | string | `Customer."B2B Tipo Servicio"` (Enum `B2B Service Type`) | `fob` / `usa` en minúsculas; `""` para el resto |
 | `originatedAt` | string | `CurrentDateTime` en el momento del sync | ISO 8601 `YYYY-MM-DDTHH:MM:SS.000Z` — **NO es una fecha real del cliente**, es la fecha de envío; los milisegundos son siempre `.000` y la `Z` es literal (la hora es la local del servicio BC) |
@@ -260,7 +264,10 @@ Todos los campos se emiten **siempre** (el adapter no omite propiedades; los "op
   "email": "jperez@empresa.es",
   "culture": "es_ES",
   "emailsSecondaries": [],
-  "markets": [ "es" ]
+  "markets": [ "es" ],
+  "visibleAttributes": [
+    { "attributeId": "marca", "valueIds": [ "adidas" ] }
+  ]
 }
 ```
 
@@ -268,7 +275,8 @@ Todos los campos se emiten **siempre** (el adapter no omite propiedades; los "op
 |---|---|---|---|
 | `id` | string (GUID) | `Salesperson/Purchaser.SystemId` | **Es el mismo GUID que el portal debe mandar como `saleId` en los pedidos de entrada** y que BC manda como `saleId` en pedidos salientes (§5) |
 | `parentId` | string (GUID) | SystemId del Salesperson cuyo código es `B2B Agent."Master Code"` | **OPCIONAL: se OMITE del JSON** si el agente no está en `B2B Agent` o no tiene `Master Code`. Permite jerarquía agente → intermediario/maestro |
-| `clientIds` | array[GUID] | Todos los `Customer.SystemId` con `Salesperson Code` = código del agente **y** `Sync to B2B = true` | Puede ser `[]` |
+| `clientIds` | array[GUID] | **UNIÓN** de (a) `Customer.SystemId` con `Salesperson Code` = código del agente y (b) clientes de `B2B Customer Agent` (Tab80134) con ese `Salesperson Code`; en ambos casos `Sync to B2B = true` (`Blocked` NO se mira, igual que en el sync de cliente §1); deduplicado por SystemId | Puede ser `[]`. **Conector NEW:** un mismo cliente puede aparecer en el `clientIds` de VARIOS agentes (multiagente, §4.3). El conector viejo solo manda (a) |
+| `visibleAttributes` | array[object] | Tab80135 con `Subject Type = Agent` y `Subject Code = Salesperson.Code` | **Conector NEW, aditivo.** Lista blanca de lo que el agente VE. **Se emite SIEMPRE**, también `[]` (§4.3) |
 | `groupIds` | array | — | **Siempre `[]`** |
 | `payMethods` | array | — | **Siempre `[]`** |
 | `name` | string | `Salesperson.Name` | |
@@ -280,7 +288,35 @@ Todos los campos se emiten **siempre** (el adapter no omite propiedades; los "op
 ### 4.2 Limitaciones y código muerto conocido
 
 - Existe un segundo adapter, `Cod80139.B2BAgentAdapter.al` (codeunit 80139, sobre la tabla `B2B Agent`), **que NO está cableado a ningún flujo** (ningún método del orchestrator lo usa; solo se usa `SyncAgentMaster` desde `Rep80104`). Si se reactivara tiene un bug latente: la URL llevaría el SystemId del registro `B2B Agent` pero el body llevaría el SystemId del `Salesperson` (ids distintos).
-- En ambos adapters el campo `defaultClientId` está **comentado** (no se envía), aunque el código aún calcula el primer cliente; el backend no debe esperarlo.
+- En ambos adapters el campo `defaultClientId` está **comentado** (no se envía); en el conector NEW `Cod80140` ya ni lo calcula. El backend no debe esperarlo.
+
+### 4.3 Multiagente y visibilidad de catálogo (conector NEW — estrictamente aditivo)
+
+> Fuente: conector NEW (`C:\BC_Projects\Mito - Conector B2B - NEW`). Spec aprobada: `docs/superpowers/specs/2026-09-03-catalogo-modulable-design.md` §1-2. Nada del contrato anterior cambia: solo se AÑADE la clave `visibleAttributes` a cliente y agente, y `clientIds` de agente pasa a poder solapar entre agentes.
+
+**Multiagente (cartera).** Un cliente puede tener N agentes: el principal sigue siendo `Customer."Salesperson Code"`; los adicionales se dan de alta en la tabla `B2B Customer Agent` (Tab80134, PK `Customer No.` + `Salesperson Code`), editable desde la ficha de cliente (subpágina "Agentes B2B adicionales", `Pag80147`) y desde la ficha del vendedor ("Clientes B2B (adicionales)", `Pag80148`). El agente adicional recibe al cliente en su `clientIds` con **cartera completa** (ve, suplanta y crea pedidos; el pedido queda atribuido al agente que lo creó). El portal NO necesita tabla nueva: cada doc agent conserva su propia lista y **el upsert de un agente no debe "robar" clientes a otro** (dos agentes pueden llevar el mismo `clientId`).
+
+**Visibilidad de catálogo (`visibleAttributes`).** Formato, idéntico en cliente y agente:
+
+```json
+"visibleAttributes": [
+  { "attributeId": "marca",     "valueIds": [ "adidas" ] },
+  { "attributeId": "categoria", "valueIds": [ "calzado", "textil" ] }
+]
+```
+
+| Elemento | Origen BC | Notas |
+|---|---|---|
+| Fila de regla | `B2B Catalog Visibility` (Tab80135): PK `Subject Type` (Enum80120: `Customer` / `Agent`) + `Subject Code` + `Attribute ID` + `Attribute Value ID`; clave secundaria (`Attribute ID`, `Attribute Value ID`) | Una fila por valor permitido. Lista general `Pag80149` (Visibilidad de catálogo B2B) + subpágina `Pag80150` en las fichas de cliente (sujeto Customer) y vendedor (sujeto Agent). **Solo atributos MAPEADOS** (con valores en `Item Attribute Value`): el lookup de `Attribute ID` filtra `Sync to B2B = true` y `B2B Item Field Attribute = 0`; los atributos "de campo" (valor leído de un campo del Item) no tienen valores en BC y no se pueden restringir |
+| `attributeId` | `SanitizeId(Item Attribute."B2B Code")` | Slug: minúsculas; espacios, `/ \ _ .` → `-`; colapso `--`; trim. Misma regla que `CatalogVocabulary.Slug` del portal y que los `id` de los valores del catálogo de atributos (`SanitizeId` vive ahora en `Cod80122.B2BUtils`, compartido con `Cod80114`). Atributo sin `Sync to B2B` o sin `B2B Code` → la regla se **omite** |
+| `valueIds[]` | `SanitizeId(Item Attribute Value.Value)` de cada fila del mismo atributo | Valor que ya no existe en BC → se omite; si un atributo se queda sin valores válidos se omite la regla entera (nunca se manda `valueIds: []`) |
+| Builder | `B2B Utils.BuildVisibleAttributesArray(subjectType, subjectCode)` | Lo llaman `Cod80130.BuildCustomerJson` (tras `productSegments`) y `Cod80140.InternalBuildModelJson` (tras `markets`) |
+
+**Semántica (la aplica el portal, whitelist por atributo):** sin regla para un atributo → sin restricción en ese atributo; con reglas → solo esos valores; varios atributos → intersección; sin reglas → se ve todo. Cliente: restringe lo que VE y COMPRA; agente: lo que VE; en suplantación se aplica agente ∩ cliente. Los documentos históricos no se ocultan.
+
+**La clave se emite SIEMPRE.** `visibleAttributes: []` significa "BC no restringe": el portal debe **borrar su fila de origen `bc`** para ese sujeto (así BC puede LEVANTAR una restricción); la fila `manual` de /manage nunca se toca desde la ingesta. Clave AUSENTE (conector viejo / payload parcial) → no tocar nada.
+
+**Frescura (BC → portal).** `Cod80181 "B2B Agent Sync Job"` (Job Queue cada 5 min, categoría `B2BINT`, alta desde B2B Integration Setup → "Activar sync automático de agentes"; también "Marcar todos los agentes para sync" para el bootstrap) procesa los vendedores con el nuevo flag `Salesperson/Purchaser."B2B Needs Sync"` (TabExt80121, campo 50101), cada uno con su jerarquía **maestro-primero** (misma lógica que `Rep80104`, que ahora la reutiliza) y limpia el flag al enviar OK. Marcan el flag: insert/rename/delete en Tab80134 (agente nuevo y anterior); insert/modify/rename/delete en Tab80135 con sujeto Agent; insert/modify (`Master Code`)/rename/delete en `B2B Agent` (Tab80104); cambio de `Customer."Salesperson Code"` (agente anterior Y nuevo) o de `Sync to B2B`; alta/borrado de cliente; cambios de `Name`/`E-Mail`/`B2B Culture` del vendedor; y **cambios en el maestro de atributos** (`Item Attribute`: `B2B Code`/`Name`/`Sync to B2B` o borrado; `Item Attribute Value`: `Value` o borrado) → se marcan TODOS los sujetos con reglas sobre ese atributo/valor (`MarkSubjectsWithRulesOn`, barrido por la clave secundaria de Tab80135). Las filas de Tab80135 con sujeto **Customer** marcan `Customer."B2B Needs Sync"` (lo envía el job de clientes ya existente, `Cod80169`). El borrado de un cliente o de un vendedor limpia sus filas de Tab80134/Tab80135. Cualquier vendedor referenciado por Tab80134/Tab80135 se sincroniza aunque no esté en `B2B Agent` (también en el report manual `Rep80104`). Tab80134 rechaza dar de alta como adicional al vendedor principal del cliente.
 
 ---
 
@@ -543,3 +579,4 @@ Definido en el propio `Cod80137.B2BOrderAdapter.al` (`GetUrl` + `GetRequestBody`
 6. **Inconsistencias del conector a replicar con tolerancia**: `countryIsoId` de la dirección de envío NO resuelve ISO Code (usa el código BC tal cual), `externalReference` de dirección es un GUID mientras que el de cliente es el Nº de cliente, el nombre de campo `clienteExternalReference` va en "spanglish", los status de línea van capitalizados (`Open`/`Partial`/`Delivered`) frente a los de cabecera en minúsculas (`open`/`partially-shipped`/`shipped`/`invoiced`/`canceled`), y `en_EN` (no `en_US`) en los textos multiidioma.
 7. **Adapter de agentes Cod80139 es código muerto** (solo se usa `B2B Agent Master Adapter` vía `Rep80104`, que sincroniza la jerarquía maestro-primero); `defaultClientId` está comentado y no se envía.
 8. **`culture` del usuario de cliente sale de `Country/Region."B2B Culture"`**, no del campo `B2B User Culture` del cliente.
+9. **Paridad de ids en `visibleAttributes` (conector NEW, §4.3) — la resuelve el PORTAL.** Las reglas viajan con `attributeId = slug(B2B Code)` y `valueIds = slug(valor)`, mientras que el JSON del modelo (`Cod80112.BuildAttributesJson`) emite los atributos del producto con clave `Item Attribute.Name` (valores mapeados) o `B2B Code` (atributos de campo) y el valor **en bruto**. El portal canonicaliza la clave del atributo del producto a través del maestro de atributos ya sincronizado (entidad attribute: resuelve `Name`/`code` → `code`) y sluggea clave y valor con `CatalogVocabulary.Slug`, de modo que el predicado casa sin cambios en BC. Buena práctica recomendada (NO requisito): mantener `Name = B2B Code` en los atributos de BC, que además hace más legible la configuración.

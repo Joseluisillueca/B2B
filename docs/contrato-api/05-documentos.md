@@ -48,6 +48,17 @@ Todos los documentos de este bloque se envían con el mismo pipeline
   orders (include {0} or {{$guid}} placeholder for the order ID)"*,
   `src\pages\Pag80100.B2BIntegrationSetup.al`.)
 
+  > **Excepción — pedidos de venta (Order / Blanket Order), conector NEW:** el `{orderId}`
+  > de la URL y el `id` del payload NO son necesariamente el SystemId: son el **id de
+  > comunicación** `Sales Header."B2B Sync Id"` si está informado (`Cod80137.ModelSystemId`),
+  > y solo si está vacío el SystemId. Ese campo se rellena (a) **al crear el pedido desde el
+  > portal** (`Cod80119`), con el id con el que el portal creó el pedido/línea — así el PUT de
+  > vuelta actualiza el MISMO recurso y no lo duplica —, y (b) en la **conversión de pedido
+  > abierto → pedido** (`Cod80153`), heredando el id de comunicación efectivo del abierto (su
+  > `B2B Sync Id` o, si está vacío, su SystemId). Lo mismo aplica a `items[].id`
+  > (`Sales Line."B2B Sync Id"`). Un pedido nacido en BC sigue saliendo con su SystemId.
+  > Detalle del payload en `04-clientes-agentes.md` §5.
+
 - **Respuesta esperada**: cualquier `2xx`. Si hay cuerpo, debe ser JSON válido (objeto o
   array); si no parsea, el conector lo registra como error. No se procesa ningún campo de
   la respuesta para estos documentos.
