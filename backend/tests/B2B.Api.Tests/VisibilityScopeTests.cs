@@ -61,4 +61,39 @@ public class VisibilityScopeTests
         var s = VisibilityScope.FromRules(["esto-no-es-json"]);
         Assert.True(s.Visible(Model()));
     }
+
+    [Fact] public void ParidadSlug_ConCatalogVocabulary_ColapsaGuiones()
+    {
+        var s = Scope("""[{"attributeId":"color","valueIds":["azul-marino"]}]""");
+        Assert.True(s.Visible(Model(attrsJson: """{"Color":"Azul / Marino"}""")));
+    }
+
+    [Fact] public void ReglaConValoresVacios_SeIgnora()
+    {
+        var s = Scope("""[{"attributeId":"marca","valueIds":[]}]""");
+        Assert.True(s.Visible(Model(attrsJson: "{}")));
+        Assert.True(s.Visible(Model(attrsJson: """{"Marca":"Nike"}""")));
+    }
+
+    [Fact] public void InterseccionDisjunta_NadaVisible()
+    {
+        var s = VisibilityScope.FromRules([
+            """[{"attributeId":"marca","valueIds":["adidas"]}]""",
+            """[{"attributeId":"marca","valueIds":["puma"]}]"""
+        ]);
+        Assert.False(s.Visible(Model(attrsJson: """{"Marca":"Adidas"}""")));
+        Assert.False(s.Visible(Model(attrsJson: "{}")));
+    }
+
+    [Fact] public void FamilyId_ComparaPorSlugReal()
+    {
+        var s = Scope("""[{"attributeId":"familyId","valueIds":["zapatos-de-agua"]}]""");
+        Assert.True(s.Visible(Model(family: "zapatos de agua")));
+    }
+
+    [Fact] public void IsRestricted_ReflejaSiHayReglas()
+    {
+        Assert.False(VisibilityScope.Unrestricted.IsRestricted);
+        Assert.True(Scope("""[{"attributeId":"marca","valueIds":["adidas"]}]""").IsRestricted);
+    }
 }

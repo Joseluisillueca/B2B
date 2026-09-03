@@ -39,24 +39,31 @@ public sealed class VisibilityScope
     public bool Visible(CatalogModel model)
     {
         if (_allowed is null) return true;
+        Dictionary<string, string>? attrs = null;
         foreach (var (attr, allowed) in _allowed)
         {
-            var value = attr == "familyid" ? model.FamilyId : AttributeValue(model, attr);
-            if (value is null || !allowed.Contains(Slug(value))) return false;
+            var value = attr == "familyid" ? model.FamilyId : (attrs ??= ParseAttributes(model)).GetValueOrDefault(attr);
+            if (value is null || !allowed.Contains(CatalogVocabulary.Slug(value))) return false;
         }
         return true;
     }
 
-    private static string? AttributeValue(CatalogModel model, string attrSlug)
+    // Parseo único del payload de atributos por modelo (evitamos re-parsear por cada
+    // atributo restringido). Claves ya en slug; valores no-string se ignoran.
+    private static Dictionary<string, string> ParseAttributes(CatalogModel model)
     {
+        var result = new Dictionary<string, string>();
         try
         {
-            if (JsonNode.Parse(model.AttributesJson ?? "{}") is not JsonObject obj) return null;
-            foreach (var (key, node) in obj)
-                if (Slug(key) == attrSlug) return node?.GetValue<string>();
+            if (JsonNode.Parse(model.AttributesJson ?? "{}") is JsonObject obj)
+                foreach (var (key, node) in obj)
+                {
+                    try { if (node?.GetValue<string>() is { } s) result[CatalogVocabulary.Slug(key)] = s; }
+                    catch { /* valor no-string → se ignora */ }
+                }
         }
-        catch { /* atributos rotos → como si no existieran */ }
-        return null;
+        catch { /* JSON roto → como si no hubiera atributos */ }
+        return result;
     }
 
     private static Dictionary<string, HashSet<string>>? Parse(string? json)
@@ -68,23 +75,17 @@ public sealed class VisibilityScope
             var result = new Dictionary<string, HashSet<string>>();
             foreach (var item in arr)
             {
-                var attr = Slug(item?["attributeId"]?.GetValue<string>() ?? "");
+                var attr = CatalogVocabulary.Slug(item?["attributeId"]?.GetValue<string>() ?? "");
                 if (attr.Length == 0 || item?["valueIds"] is not JsonArray values) continue;
-                var set = result.TryGetValue(attr, out var existing)
-                    ? existing : result[attr] = new HashSet<string>(StringComparer.Ordinal);
+                var slugs = new HashSet<string>(StringComparer.Ordinal);
                 foreach (var v in values)
-                    if (v?.GetValue<string>() is { Length: > 0 } s) set.Add(Slug(s));
+                    if (v?.GetValue<string>() is { Length: > 0 } s) slugs.Add(CatalogVocabulary.Slug(s));
+                if (slugs.Count == 0) continue;   // regla configurada con valueIds vacío → se ignora
+                if (result.TryGetValue(attr, out var existing)) existing.UnionWith(slugs);
+                else result[attr] = slugs;
             }
             return result.Count > 0 ? result : null;
         }
         catch { return null; }
-    }
-
-    // Paridad con SanitizeId del conector (Cod80114): minúsculas; espacio / \ _ . → '-'.
-    public static string Slug(string text)
-    {
-        var chars = text.Trim().ToLowerInvariant().Select(c =>
-            c is ' ' or '/' or '\\' or '_' or '.' ? '-' : c);
-        return new string(chars.ToArray());
     }
 }
