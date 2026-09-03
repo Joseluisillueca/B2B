@@ -591,12 +591,18 @@ public static class AgentEndpoints
             var modelIds = ParseIds(sel.ModelIdsJson);
             var clientIds = ParseIds(sel.ClientIdsJson);
 
+            // 14a-3: el detalle no enseña lo que ya no está en el surtido del agente (BC
+            // puede restringirlo después de creada la selección).
+            var visibility = await Shop.VisibilityStore.ScopeForAsync(db, null, actor.User.AgentExternalId);
             var modelRows = await db.CatalogModels.Where(m => modelIds.Contains(m.ExternalId)).ToListAsync();
             var models = modelIds.Select(mid =>
             {
                 var m = modelRows.Find(x => x.ExternalId == mid);
-                return new { id = mid, name = m is null ? mid : ModelName(m, locale), missing = m is null };
-            }).ToList();
+                return (m, row: new { id = mid, name = m is null ? mid : ModelName(m, locale), missing = m is null });
+            })
+            .Where(x => x.m is null || !visibility.IsRestricted || visibility.Visible(x.m))
+            .Select(x => x.row)
+            .ToList();
 
             var clients = new List<object>();
             foreach (var cid in clientIds)
@@ -625,26 +631,7 @@ public static class AgentEndpoints
             if (modelIds.Count == 0 || clientIds.Count == 0)
                 return Results.BadRequest(new { error = "La selección no tiene modelos o clientes." });
 
-            var modelNames = await ModelNamesAsync(db, modelIds, DocumentProjections.Locale(actor.User.Culture));
-            var mailSettings = await db.IntegrationSettings.FindAsync(1);
-            var sentCount = 0;
-            foreach (var clientId in clientIds)
-            {
-                var payload = await PortalScope.ClientPayloadAsync(db, clientId);
-                var to = ClientIdentity.Text(payload?["email"]).Trim();
-                if (to.Length == 0) continue;
-                var message = SelectionEmail(to, sel.Name, modelNames, mailSettings);
-                EmailResult result;
-                try { result = await email.SendAsync(message); }
-                catch (Exception ex) { result = new EmailResult(false, email.Transport, ex.Message); }
-                db.SentEmails.Add(new SentEmail
-                {
-                    Id = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, To = to,
-                    Subject = message.Subject, Body = message.TextBody,
-                    Transport = result.Transport, Error = result.Ok ? null : result.Error
-                });
-                sentCount++;
-            }
+            var sentCount = await SendSelectionAsync(db, email, actor, sel.Name, modelIds, clientIds);
             if (sentCount > 0) { sel.Status = "sent"; sel.SentAt = DateTime.UtcNow; }
             await db.SaveChangesAsync();
             return sentCount == 0
@@ -671,12 +658,27 @@ public static class AgentEndpoints
                 return Results.BadRequest(new { error = "Debe añadir al menos un modelo." });
             // m-F3sel-P3-1: los modelos se validan contra el catálogo (se descartan los
             // inexistentes, igual que los clientes contra la cartera) para no guardar basura.
-            var modelIds = await db.CatalogModels
+            var modelRows = await db.CatalogModels
                 .Where(m => requestedModels.Contains(m.ExternalId))
-                .Select(m => m.ExternalId)
                 .ToListAsync();
-            if (modelIds.Count == 0)
+            if (modelRows.Count == 0)
                 return Results.BadRequest(new { error = "Debe añadir al menos un modelo." });
+            // 14a-3: y contra el SURTIDO del agente (scope solo del agente: aquí no hay un
+            // cliente concreto). Un modelo fuera de su scope no se descarta en silencio:
+            // 400 nombrándolo, para que el comercial sepa qué no puede ofrecer.
+            var visibility = await Shop.VisibilityStore.ScopeForAsync(db, null, actor.User.AgentExternalId);
+            if (visibility.IsRestricted)
+            {
+                var outside = modelRows.Where(m => !visibility.Visible(m)).ToList();
+                if (outside.Count > 0)
+                    return Results.BadRequest(new
+                    {
+                        error = "Estos modelos no están en tu surtido: " + string.Join(", ",
+                            outside.Select(m => m.ExternalReference.Length > 0 ? m.ExternalReference : m.ExternalId)) + ".",
+                        modelIds = outside.Select(m => m.ExternalId).ToList()
+                    });
+            }
+            var modelIds = modelRows.Select(m => m.ExternalId).ToList();
 
             // Los clientes destino DEBEN ser de la cartera del agente (aislamiento)
             var portfolio = await PortfolioAsync(db, actor);
@@ -702,29 +704,7 @@ public static class AgentEndpoints
             };
             db.ModelSelections.Add(selection);
 
-            var sentCount = 0;
-            if (send)
-            {
-                var modelNames = await ModelNamesAsync(db, modelIds, DocumentProjections.Locale(actor.User.Culture));
-                var mailSettings = await db.IntegrationSettings.FindAsync(1);
-                foreach (var clientId in clientIds)
-                {
-                    var payload = await PortalScope.ClientPayloadAsync(db, clientId);
-                    var to = ClientIdentity.Text(payload?["email"]).Trim();
-                    if (to.Length == 0) continue;
-                    var message = SelectionEmail(to, name, modelNames, mailSettings);
-                    EmailResult result;
-                    try { result = await email.SendAsync(message); }
-                    catch (Exception ex) { result = new EmailResult(false, email.Transport, ex.Message); }
-                    db.SentEmails.Add(new SentEmail
-                    {
-                        Id = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, To = to,
-                        Subject = message.Subject, Body = message.TextBody,
-                        Transport = result.Transport, Error = result.Ok ? null : result.Error
-                    });
-                    sentCount++;
-                }
-            }
+            var sentCount = send ? await SendSelectionAsync(db, email, actor, name, modelIds, clientIds) : 0;
             // m-F3sel-P3-2: "enviada" solo si de verdad salió algún correo. Si se pidió
             // enviar pero ningún cliente tenía email, queda como borrador (no miente).
             if (send && sentCount > 0)
@@ -757,10 +737,45 @@ public static class AgentEndpoints
         return model.Name;
     }
 
-    private static async Task<List<string>> ModelNamesAsync(AppDbContext db, List<string> ids, string locale)
+    // Envía el correo de selección a cada cliente destino con email. 14a-3: la lista de
+    // cada cliente se filtra por la INTERSECCIÓN agente ∩ cliente (VisibilityStore.
+    // ScopeForAsync con los dos sujetos): un cliente nunca recibe modelos que no puede
+    // ver en su catálogo. Sin modelos visibles para ese cliente, no se le escribe.
+    // Devuelve cuántos correos salieron (el estado "sent" depende de que sea > 0).
+    private static async Task<int> SendSelectionAsync(
+        AppDbContext db, IEmailSender email, PortalActor actor, string name,
+        List<string> modelIds, List<string> clientIds)
     {
-        var models = await db.CatalogModels.Where(m => ids.Contains(m.ExternalId)).ToListAsync();
-        return [.. models.Select(m => ModelName(m, locale))];
+        var locale = DocumentProjections.Locale(actor.User.Culture);
+        var models = await db.CatalogModels.Where(m => modelIds.Contains(m.ExternalId)).ToListAsync();
+        var mailSettings = await db.IntegrationSettings.FindAsync(1);
+        var sentCount = 0;
+        foreach (var clientId in clientIds)
+        {
+            var payload = await PortalScope.ClientPayloadAsync(db, clientId);
+            var to = ClientIdentity.Text(payload?["email"]).Trim();
+            if (to.Length == 0) continue;
+
+            var visibility = await Shop.VisibilityStore.ScopeForAsync(db, clientId, actor.User.AgentExternalId);
+            var modelNames = models
+                .Where(m => !visibility.IsRestricted || visibility.Visible(m))
+                .Select(m => ModelName(m, locale))
+                .ToList();
+            if (modelNames.Count == 0) continue;
+
+            var message = SelectionEmail(to, name, modelNames, mailSettings);
+            EmailResult result;
+            try { result = await email.SendAsync(message); }
+            catch (Exception ex) { result = new EmailResult(false, email.Transport, ex.Message); }
+            db.SentEmails.Add(new SentEmail
+            {
+                Id = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, To = to,
+                Subject = message.Subject, Body = message.TextBody,
+                Transport = result.Transport, Error = result.Ok ? null : result.Error
+            });
+            sentCount++;
+        }
+        return sentCount;
     }
 
     private static string? ModelImageUri(string payload)

@@ -406,6 +406,110 @@ public class VisibilityCheckoutTests : IClassFixture<TestWebApplicationFactory>
         Assert.Contains("VCK4-NIKE-REF", openRefs);
     }
 
+    // ── 4b. Selecciones del agente (14a-3): los modelos se validan contra el scope del
+    // AGENTE (400 nombrando los que quedan fuera) y, al enviar, la lista de cada cliente
+    // destino se filtra por la intersección agente ∩ cliente.
+
+    private async Task<string> ModelNamesEmailedToAsync(string email)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var mail = await db.SentEmails.Where(m => m.To == email).OrderByDescending(m => m.CreatedAt).FirstOrDefaultAsync();
+        Assert.NotNull(mail);
+        return mail!.Body ?? "";
+    }
+
+    [Fact]
+    public async Task SeleccionDelAgente_ModeloFueraDeScope_400()
+    {
+        const string agentId = "VISCK8AG-0000-4000-9000-000000000001";
+        const string clientId = "VISCK8CL-0000-4000-9000-000000000002";
+        const string adidas = "visck8a0-0000-4000-9000-000000000003";
+        const string nike = "visck8n0-0000-4000-9000-000000000004";
+
+        await PutModel(adidas, "VISCK8 ADIDAS", "VCK8-ADI-REF", "calzado", """{"Marca":"ADIDAS"}""");
+        await PutModel(nike, "VISCK8 NIKE", "VCK8-NIKE-REF", "calzado", """{"Marca":"NIKE"}""");
+        await Put($"/api/clients/{clientId}", """{"name":"Cliente sel","canShop":true,"email":"visck8@cliente.test"}""");
+        var agentToken = await AgentTokenAsync(agentId, "comercial-visck8@agente.test", clientIds: [clientId],
+            """[{"attributeId":"marca","valueIds":["adidas"]}]""");
+
+        var response = await Send(HttpMethod.Post, "/api/agent/model-selections", agentToken, new
+        {
+            name = "Fuera de surtido", modelIds = new[] { adidas, nike }, clientIds = new[] { clientId }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains("VCK8-NIKE-REF", body.GetProperty("error").GetString());
+        Assert.DoesNotContain("VCK8-ADI-REF", body.GetProperty("error").GetString());
+
+        // Solo con lo suyo, se crea.
+        var ok = await Send(HttpMethod.Post, "/api/agent/model-selections", agentToken, new
+        {
+            name = "Solo adidas", modelIds = new[] { adidas }, clientIds = new[] { clientId }
+        });
+        Assert.Equal(HttpStatusCode.Created, ok.StatusCode);
+    }
+
+    [Fact]
+    public async Task SeleccionDelAgente_Envio_FiltraPorScopeDelClienteDestino()
+    {
+        const string agentId = "VISCK9AG-0000-4000-9000-000000000001";
+        const string clientId = "VISCK9CL-0000-4000-9000-000000000002";
+        const string adidas = "visck9a0-0000-4000-9000-000000000003";
+        const string nike = "visck9n0-0000-4000-9000-000000000004";
+        const string email = "visck9@cliente.test";
+
+        await PutModel(adidas, "VISCK9 ADIDAS", "VCK9-ADI-REF", "calzado", """{"Marca":"ADIDAS"}""");
+        await PutModel(nike, "VISCK9 NIKE", "VCK9-NIKE-REF", "calzado", """{"Marca":"NIKE"}""");
+        // Cliente restringido a adidas, con email para que el envío ocurra.
+        await Put($"/api/clients/{clientId}",
+            $$"""{"name":"Cliente sel","canShop":true,"email":"{{email}}","visibleAttributes":[{"attributeId":"marca","valueIds":["adidas"]}] }""");
+        // Agente SIN reglas: puede seleccionar los dos.
+        var agentToken = await AgentTokenAsync(agentId, "comercial-visck9@agente.test", clientIds: [clientId]);
+
+        var response = await Send(HttpMethod.Post, "/api/agent/model-selections", agentToken, new
+        {
+            name = "Envío filtrado", modelIds = new[] { adidas, nike }, clientIds = new[] { clientId }, send = true
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, body.GetProperty("sent").GetInt32());
+
+        var text = await ModelNamesEmailedToAsync(email);
+        Assert.Contains("VISCK9 ADIDAS", text);
+        Assert.DoesNotContain("VISCK9 NIKE", text);
+    }
+
+    [Fact]
+    public async Task SeleccionDelAgente_Detalle_OcultaLoQueYaNoEstaEnSuScope()
+    {
+        const string agentId = "VISCKAAG-0000-4000-9000-000000000001";
+        const string clientId = "VISCKACL-0000-4000-9000-000000000002";
+        const string adidas = "visckaa0-0000-4000-9000-000000000003";
+        const string nike = "visckan0-0000-4000-9000-000000000004";
+
+        await PutModel(adidas, "VISCKA ADIDAS", "VCKA-ADI-REF", "calzado", """{"Marca":"ADIDAS"}""");
+        await PutModel(nike, "VISCKA NIKE", "VCKA-NIKE-REF", "calzado", """{"Marca":"NIKE"}""");
+        await Put($"/api/clients/{clientId}", """{"name":"Cliente sel","canShop":true}""");
+        var agentToken = await AgentTokenAsync(agentId, "comercial-viscka@agente.test", clientIds: [clientId]);
+
+        var created = await Send(HttpMethod.Post, "/api/agent/model-selections", agentToken, new
+        {
+            name = "Antes de restringir", modelIds = new[] { adidas, nike }, clientIds = new[] { clientId }
+        });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString();
+
+        // BC restringe al agente después: el detalle deja de enseñar lo que ya no es suyo.
+        agentToken = await AgentTokenAsync(agentId, "comercial-viscka@agente.test", clientIds: [clientId],
+            """[{"attributeId":"marca","valueIds":["adidas"]}]""");
+        var detail = await (await Send(HttpMethod.Get, $"/api/agent/model-selections/{id}", agentToken))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        var ids = detail.GetProperty("models").EnumerateArray().Select(m => m.GetProperty("id").GetString()).ToList();
+        Assert.Equal([adidas], ids);
+    }
+
     // ── 5. Atribución del pedido al agente creador (Multiagente §7, Tarea 6) ────────
 
     // Lee el JSON que el portal habría mandado a BC para el evento "shoes.purchase_order.

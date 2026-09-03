@@ -248,6 +248,29 @@ public class VisibilityAdminTests : IClassFixture<TestWebApplicationFactory>
         Assert.Empty(await RowsAsync("client", clientId));
     }
 
+    // ── 3b. Borrar un cliente/agente desde /manage limpia sus filas de visibilidad
+    // (14a-3): ni la bc ni la manual sobreviven al sujeto ──────────────────────
+
+    [Theory]
+    [InlineData("client", "/api/clients/")]
+    [InlineData("agent", "/api/agents/")]
+    public async Task DeleteSubject_LimpiaSusFilasDeVisibilidad(string type, string syncRoute)
+    {
+        var subjectId = $"VISAD3B{(type == "client" ? "C" : "A")}-0000-4000-9000-000000000099";
+        var email = $"visad3b-{type}@sujeto.test";
+        // Fila bc por el hook de ingesta real + manual sembrada aparte.
+        await Put(syncRoute + subjectId,
+            $$"""{"name":"Sujeto a borrar","email":"{{email}}","externalReference":"X1","visibleAttributes":[{"attributeId":"marca","valueIds":["adidas"]}] }""");
+        await SeedVisibilityRowAsync(type, subjectId, "manual", """[{"attributeId":"marca","valueIds":["nike"]}]""");
+        Assert.Equal(2, (await RowsAsync(type, subjectId)).Count);
+
+        var admin = await _factory.GetAdminTokenAsync(_client);
+        var response = await Send(HttpMethod.Delete, $"/api/admin/entities/{type}/{subjectId}", admin);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        Assert.Empty(await RowsAsync(type, subjectId));
+    }
+
     // ── 4. Config de la cinta: PUT + GET settings; null la limpia ──────────────
 
     [Fact]

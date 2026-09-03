@@ -71,6 +71,11 @@ public static class EntityCrudEndpoints
             db.SyncDocuments.Remove(doc);
             CatalogNormalizer.Remove(db, entityType, id);       // limpia dominio (con cascada)
             await CascadeDeleteDocsAsync(db, entityType, id);   // limpia documentos hijos huérfanos
+            // 14a-3: las reglas de visibilidad (bc y manual) del cliente/agente se van con él;
+            // si no, un sujeto recreado con el mismo id "heredaría" una restricción vieja.
+            if (entityType is "client" or "agent")
+                db.CatalogVisibilities.RemoveRange(await db.CatalogVisibilities
+                    .Where(v => v.SubjectType == entityType && v.SubjectId == id).ToListAsync());
             await db.SaveChangesAsync();
             return Results.NoContent();
         }).RequireAdmin();
