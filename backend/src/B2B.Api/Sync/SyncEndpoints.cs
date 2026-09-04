@@ -261,6 +261,20 @@ public static class SyncEndpoints
         }
         else
         {
+            // Un pedido que nació en el portal vuelve de BC con el MISMO id (así se
+            // dedupica), y este upsert reemplaza el payload entero: sin esta guarda, la
+            // primera vuelta borraría las notas del comprador, el comercial que lo hizo
+            // y el cobro con tarjeta. Solo conserva lo que el ERP manda vacío.
+            if (entityType == "order")
+            {
+                var merged = PortalOrderGuard.Merge(doc.Payload, body);
+                if (!ReferenceEquals(merged, body))
+                {
+                    body = merged;
+                    try { payload = JsonNode.Parse(body); } catch { /* se queda el parseado de antes */ }
+                }
+            }
+
             doc.Payload = body;
             doc.ParentId = parentId;
             doc.LastReceivedAt = now;
