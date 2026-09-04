@@ -680,7 +680,9 @@ export default async function catalog(host) {
     tools.querySelector('#exportPdf').onclick = async event => {
       const button = event.currentTarget;
       button.disabled = true;
-      try { await api.download(`/api/portal/catalog.pdf?${apiQuery(query)}`, 'catalogo-lejan.pdf'); }
+      // El nombre real lo pone el servidor con la marca de la instancia (Content-Disposition);
+      // este es solo el respaldo si esa cabecera no llegara.
+      try { await api.download(`/api/portal/catalog.pdf?${apiQuery(query)}`, 'catalogo.pdf'); }
       finally { button.disabled = false; }
     };
   }

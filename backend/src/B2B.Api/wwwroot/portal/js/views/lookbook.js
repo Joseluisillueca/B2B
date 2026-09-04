@@ -239,7 +239,7 @@ export default async function lookbook(host) {
       if (!refs) return;
       button.disabled = true;
       try {
-        await api.download(`/api/portal/line-sheet.pdf?refs=${encodeURIComponent(refs)}&locale=${lang()}`, 'line-sheet-lejan.pdf');
+        await api.download(`/api/portal/line-sheet.pdf?refs=${encodeURIComponent(refs)}&locale=${lang()}`, 'line-sheet.pdf');
       } catch { /* api.download gestiona errores */ }
       button.disabled = false;
     };

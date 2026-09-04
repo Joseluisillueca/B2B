@@ -9,7 +9,7 @@ using QuestPDF.Infrastructure;
 
 namespace B2B.Api.Portal;
 
-// PDFs comerciales con marca lejan: ficha técnica de un producto y line-sheet de
+// PDFs comerciales con la marca de la instancia: ficha técnica de un producto y line-sheet de
 // varios, siempre con la TARIFA DEL CLIENTE (o del cliente suplantado por el agente).
 // El precio sale de CatalogService con el contexto del actor, igual que el catálogo.
 public static class PdfEndpoints
@@ -42,7 +42,7 @@ public static class PdfEndpoints
             if (row is null) return Results.NotFound();
 
             var clientName = await ClientNameAsync(db, actor);
-            var image = await LoadImageAsync(row.ImageUri, env, httpFactory);
+            var image = await LoadImageAsync(row.ImageUri, env, httpFactory, db);
 
             var pdf = new TechSheetDocument(row, clientName, image, await BrandAsync(db)).GeneratePdf();
             var safeRef = string.Concat((row.Model.ExternalReference ?? "producto")
@@ -77,11 +77,12 @@ public static class PdfEndpoints
             var clientName = await ClientNameAsync(db, actor);
             var images = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
             foreach (var r in rows)
-                images[r.Model.ExternalReference ?? ""] = await LoadImageAsync(r.ImageUri, env, httpFactory);
+                images[r.Model.ExternalReference ?? ""] = await LoadImageAsync(r.ImageUri, env, httpFactory, db);
 
             var heading = clientName.Length > 0 ? $"Selección para {clientName}" : "Selección de productos";
-            var pdf = new LineSheetDocument(rows, images, clientName, heading, "LINE-SHEET", await BrandAsync(db)).GeneratePdf();
-            return Results.File(pdf, "application/pdf", "line-sheet-lejan.pdf");
+            var brand = await BrandAsync(db);
+            var pdf = new LineSheetDocument(rows, images, clientName, heading, "LINE-SHEET", brand).GeneratePdf();
+            return Results.File(pdf, "application/pdf", FileName("line-sheet", brand));
         }).RequireAuthorization();
 
         // Catálogo completo (o filtrado) en PDF con marca y tarifa del cliente. Respeta
@@ -101,11 +102,12 @@ public static class PdfEndpoints
             var clientName = await ClientNameAsync(db, actor);
             var images = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
             foreach (var r in rows)
-                images[r.Model.ExternalReference ?? ""] = await LoadImageAsync(r.ImageUri, env, httpFactory);
+                images[r.Model.ExternalReference ?? ""] = await LoadImageAsync(r.ImageUri, env, httpFactory, db);
 
             var heading = clientName.Length > 0 ? $"Catálogo · tarifa de {clientName}" : "Catálogo";
-            var pdf = new LineSheetDocument(rows, images, clientName, heading, "CATÁLOGO", await BrandAsync(db)).GeneratePdf();
-            return Results.File(pdf, "application/pdf", "catalogo-lejan.pdf");
+            var brand = await BrandAsync(db);
+            var pdf = new LineSheetDocument(rows, images, clientName, heading, "CATÁLOGO", brand).GeneratePdf();
+            return Results.File(pdf, "application/pdf", FileName("catalogo", brand));
         }).RequireAuthorization();
     }
 
@@ -116,6 +118,17 @@ public static class PdfEndpoints
     // Marca del despliegue para la cabecera de los PDF (multi-cliente).
     private static async Task<string> BrandAsync(AppDbContext db) =>
         (await db.IntegrationSettings.FindAsync(1))?.BrandNameOrDefault ?? "MITO PROJECTS";
+
+    /// Nombre del fichero que descarga el cliente, con SU marca: "catalogo-alma-en-pena.pdf".
+    /// Estaba escrito a mano con la marca antigua, así que todas las instancias descargaban
+    /// un PDF con el nombre de otra empresa.
+    private static string FileName(string prefix, string brand)
+    {
+        var slug = new string([.. brand.ToLowerInvariant()
+            .Select(c => char.IsLetterOrDigit(c) ? c : '-')]).Trim('-');
+        while (slug.Contains("--")) slug = slug.Replace("--", "-");
+        return slug.Length > 0 ? $"{prefix}-{slug}.pdf" : $"{prefix}.pdf";
+    }
 
     private static async Task<string> ClientNameAsync(AppDbContext db, PortalActor? actor)
     {
@@ -128,9 +141,22 @@ public static class PdfEndpoints
 
     // Bytes de la imagen del producto: fichero local de /media o URL http(s). Si falla,
     // el PDF se genera igual sin foto (nunca revienta por una imagen).
-    private static async Task<byte[]?> LoadImageAsync(string? uri, IWebHostEnvironment env, IHttpClientFactory httpFactory)
+    private static async Task<byte[]?> LoadImageAsync(
+        string? uri, IWebHostEnvironment env, IHttpClientFactory httpFactory, AppDbContext db)
     {
         if (string.IsNullOrWhiteSpace(uri)) return null;
+        // Foto ALOJADA por el portal: /media/models/{id}.jpg no es un fichero en disco,
+        // es el binario que guardamos cuando el conector la manda en base64. Buscarla con
+        // File.Exists devolvía null y el PDF salía con todos los marcos vacíos, que es
+        // justo lo que pasa cuando el ERP manda las fotos embebidas y no por URL.
+        const string alojadas = "/media/models/";
+        if (uri.StartsWith(alojadas, StringComparison.OrdinalIgnoreCase))
+        {
+            var id = uri[alojadas.Length..].Split('?')[0];
+            if (id.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)) id = id[..^4];
+            var asset = await db.MediaAssets.SingleOrDefaultAsync(a => a.ExternalId == id);
+            return asset?.Bytes is { Length: > 0 } bytes ? bytes : null;
+        }
         // QuestPDF no decodifica SVG (ni otros vectoriales): se ignora y el PDF sale
         // con el marco vacío en vez de reventar.
         if (uri.Split('?')[0].EndsWith(".svg", StringComparison.OrdinalIgnoreCase)) return null;
