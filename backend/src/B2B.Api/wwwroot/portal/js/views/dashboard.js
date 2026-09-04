@@ -31,22 +31,29 @@ async function content(key) {
   return cache.get(cacheKey);
 }
 
-const tileHtml = tile => {
+const tileHtml = (tile, index) => {
   const window = tile.window === 'scheduled' ? 'scheduled' : 'replenishment';
   const label = tile.title || t(`window.${window}`);
   // Si el medio del CMS ha desaparecido, la tarjeta cae en el degradado de marca
   // en vez de enseñar el icono de imagen rota
+  // Las dos primeras están sobre el pliegue: se cargan sin esperar
   const art = tile.imageUrl
-    ? `<img src="${esc(tile.imageUrl)}" alt="${esc(tile.alt || '')}" loading="lazy" decoding="async"
-        onerror="this.remove()">`
+    ? `<img src="${esc(tile.imageUrl)}" alt="${esc(tile.alt || '')}"
+        loading="${index < 2 ? 'eager' : 'lazy'}" decoding="async" onerror="this.remove()">`
     : `<span class="t-art" aria-hidden="true"></span>`;
 
+  // Rótulo, carrito y subtítulo en UN bloque: el velo que garantiza la lectura viaja
+  // con el texto, así cubre lo que haya (una línea o dos) sin oscurecer toda la foto.
   return `
     <a class="tile" data-window="${window}" href="${esc(tile.ctaHref || href('catalog/catalog'))}">
       ${art}
-      <span class="t-cart" aria-hidden="true">${icons.cart(26)}</span>
-      <span class="t-label">${esc(label)}</span>
-      ${tile.subtitle ? `<span class="t-sub">${esc(tile.subtitle)}</span>` : ''}
+      <span class="t-body">
+        <span class="t-label">${esc(label)}</span>
+        <span class="t-foot">
+          <span class="t-cart" aria-hidden="true">${icons.cart(26)}</span>
+          ${tile.subtitle ? `<span class="t-sub">${esc(tile.subtitle)}</span>` : ''}
+        </span>
+      </span>
     </a>`;
 };
 
@@ -106,10 +113,13 @@ export default function dashboard(host) {
       </div>
     </section>
     <div class="page dash">
-      <div class="kpis" id="kpis" hidden></div>
-      <div class="tiles" id="tiles" aria-busy="true">
+      <!-- La banda va primero: después de "haz tu pedido", lo siguiente es elegir con
+           qué ventana se compra. Los KPI, debajo. data-count desde el esqueleto para
+           que la banda no cambie de alto cuando llegue el contenido del CMS. -->
+      <div class="tiles" id="tiles" data-count="2" aria-busy="true">
         <span class="tile-skeleton"></span><span class="tile-skeleton"></span>
       </div>
+      <div class="kpis" id="kpis" hidden></div>
     </div>`;
 
   const hero = host.querySelector('#hero');

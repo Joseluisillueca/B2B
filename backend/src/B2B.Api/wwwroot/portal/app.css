@@ -229,13 +229,32 @@ body:has(#hero) { background:var(--paper); }
 .hero-cta:focus-visible { outline:2px solid #fff; outline-offset:3px; }
 
 .hero-full + .page { padding-top:2.8rem; }
+
+/* ── Portada: la banda de ventanas sale al raíl ANCHO ─────────────────────────
+   Las dos tarjetas son el ACCESO al catálogo (elegir con qué ventana se pide), y
+   eran la pieza MÁS ESTRECHA de la pantalla: cabecera, cinta de pestañas, hero y
+   pie van casi a sangre, y la banda se quedaba en la columna de lectura con casi
+   400px de papel muerto a cada lado. Es un problema de ANCHO, no de tamaño: se
+   ensancha el CONTENEDOR con el mismo max() del nav para que el borde de la banda
+   caiga donde el de las pestañas, y lo demás (los KPI) vuelve a la columna de
+   lectura, con su borde a plomo con el titular del hero.
+   Nada de 100vw ni de márgenes negativos: la barra de scroll clásica metería
+   scroll horizontal en toda la portada. */
+.page.dash { max-width:none;
+  padding-inline:max(clamp(1rem,4vw,2.4rem), calc((100% - var(--maxw-wide)) / 2)); }
+.page.dash > :not(.tiles) { max-width:calc(var(--maxw) - 2 * var(--gutter)); margin-inline:auto; }
+.hero-full + .page.dash { padding-top:2.2rem; }
+/* .kpis lleva display:grid y gana al display:none del navegador para [hidden]: sin
+   esto, cuando la API de KPI falla queda una rejilla vacía con su margen. */
+.kpis[hidden] { display:none; }
 @media (prefers-reduced-motion:reduce) { .hero-media .c-slide img { animation:none; } }
 @media (max-width:48rem) { .hero-full { height:clamp(22rem,82vh,34rem); } }
 
 /* ── Portada: saludo editorial + bento de KPIs ── */
 .dash-greet { font-family:var(--display); font-weight:500; font-style:italic;
   font-size:clamp(1.5rem,3vw,2.1rem); color:var(--ink); letter-spacing:var(--brand-tracking,-.01em); margin:0 0 1.3rem; }
-.kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem; margin:0 0 2.6rem; }
+/* Los KPI van DEBAJO de la banda (ver dashboard.js): el margen deja de ir abajo */
+.kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem; margin:3rem 0 0; }
 .kpi { display:flex; flex-direction:column; gap:.35rem; background:var(--card); border:1px solid var(--line);
   border-radius:var(--r); padding:1.3rem 1.4rem; text-decoration:none; color:var(--ink);
   box-shadow:var(--shadow); transition:transform .18s var(--ease), box-shadow .18s var(--ease), border-color .18s var(--ease); }
@@ -288,40 +307,84 @@ body:has(#hero) { background:var(--paper); }
 .c-dots button:focus-visible { outline:2px solid #fff; outline-offset:1px; }
 
 .hero-skeleton { aspect-ratio:3.4/1; border-radius:var(--r); background:var(--surface); }
-.tile-skeleton { aspect-ratio:16/9; border-radius:var(--r); background:var(--surface); }
+/* Sin aspect-ratio: la altura la pone la fila de la rejilla, así el esqueleto mide
+   EXACTAMENTE lo que medirá la tarjeta y la banda no salta al pintarse. */
+.tile-skeleton { border-radius:var(--r); background:var(--surface); }
 .hero-skeleton, .tile-skeleton { background-image:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.65) 50%,transparent 80%);
   background-size:220% 100%; animation:sheen 1.4s var(--ease) infinite; }
 @keyframes sheen { from { background-position:180% 0; } to { background-position:-80% 0; } }
 
-.tiles { display:grid; grid-template-columns:repeat(2,1fr); gap:1.2rem; }
-.tile { position:relative; display:block; overflow:hidden; border-radius:var(--r); aspect-ratio:16/9;
+/* ── La banda: ALTURA DE FILA fija, columnas automáticas ──────────────────────
+   El CMS decide cuántas ventanas hay, así que la PROPORCIÓN no puede ser fija: con
+   aspect-ratio la portada cambiaba de alto cada vez que el cliente añadía o quitaba
+   una. Con grid-auto-rows la banda pesa siempre lo mismo y lo único que cambia es el
+   encuadre. El alto es ~la mitad del hero a propósito: la banda debe ser grande pero
+   SUBORDINADA; a 16/9 y ancha serían dos losas compitiendo con la campaña.
+   El suelo de 22rem apila las tarjetas solas en pantallas estrechas, sin media query. */
+.tiles { display:grid; gap:clamp(.8rem, 1vw, 1.2rem);
+  grid-template-columns:repeat(auto-fit, minmax(min(22rem,100%), 1fr));
+  grid-auto-rows:clamp(15rem, 22vw, 25rem); }
+/* Solo los extremos necesitan matiz: una sola sería un buzón y cuatro saldrían casi
+   cuadradas. Si faltara data-count, la regla de arriba ya sostiene la banda. */
+.tiles[data-count="1"] { grid-auto-rows:clamp(17rem, 27vw, 30rem); }
+.tiles[data-count="4"] { grid-auto-rows:clamp(13rem, 17vw, 20rem); }
+
+.tile { position:relative; display:block; overflow:hidden; border-radius:var(--r);
+  container-type:inline-size;   /* el rótulo se mide contra LA TARJETA, no contra la ventana */
   background:var(--ink); color:#fff; text-decoration:none; box-shadow:var(--shadow); }
-/* Sobre la foto el azul se pierde: el foco se marca en blanco con halo azul */
+/* Sobre la foto el acento se pierde: el foco se marca en blanco por dentro y con el
+   halo de marca por fuera. Ese halo vive FUERA de la caja, así que la banda conserva
+   canal lateral y nunca debe llevar overflow oculto. */
 .tile:focus-visible { outline:3px solid #fff; outline-offset:-3px; box-shadow:0 0 0 3px var(--blue); }
 .tile img, .tile .t-art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
   transition:scale .5s var(--ease); }
-.tile:hover img, .tile:hover .t-art { scale:1.04; }
+/* 1.04 sobre una tarjeta de 900px era un tirón de 36px; a este tamaño 1.02 se lee mejor */
+.tile:hover img, .tile:hover .t-art { scale:1.02; }
 /* Sin imagen en el CMS, la tarjeta se sostiene con el color de marca */
 .tile[data-window="replenishment"] .t-art { background:linear-gradient(135deg,#ff563c,#ec3013 60%,#ae1800); }
 .tile[data-window="scheduled"] .t-art { background:linear-gradient(135deg,#605d5d,#2d2b2b 70%,#201e1d); }
-/* Orden de capas: imagen/degradado (auto) · velo (1) · rótulos (2).
-   Ojo con .t-art: es el fondo de la tarjeta sin imagen y debe quedar BAJO el velo,
-   y .t-cart/.t-label/.t-sub ya son absolutos, así que solo se les sube el z-index. */
-.tile::after { content:""; position:absolute; inset:0; z-index:1;
-  background:linear-gradient(105deg,rgba(13,13,13,.45),rgba(13,13,13,.05) 45%,rgba(13,13,13,.55));
-  transition:opacity .3s var(--ease); }
-.tile:hover::after { opacity:.82; }
-.tile > .t-cart, .tile > .t-label, .tile > .t-sub { z-index:2; }
-.t-cart { position:absolute; top:1.3rem; left:1.4rem; color:#fff; opacity:.95; }
-.t-label { position:absolute; right:1.6rem; bottom:1.1rem; font-size:clamp(1.5rem,3vw,2.9rem);
-  font-weight:500; letter-spacing:-.03em; line-height:1.1; text-shadow:0 2px 18px rgba(13,13,13,.45); }
-.t-sub { position:absolute; right:1.7rem; bottom:.55rem; font-size:.85rem; color:#e6e6ec; }
-.tile:has(.t-sub) .t-label { bottom:2.1rem; }
+/* Se retira el velo diagonal a inset:0: oscurecía la foto ENTERA para proteger un
+   texto que vive abajo y, aun así, no llegaba a contraste AA sobre una foto clara.
+   Además el hover lo ACLARABA, bajando la legibilidad justo al interactuar. Ahora el
+   ::after es solo la respuesta al puntero, y oscurece.
+   Capas: imagen (auto) · velo de hover (1) · rótulos (2). */
+.tile::after { content:""; position:absolute; inset:0; z-index:1; pointer-events:none;
+  background:rgba(13,13,13,.16); opacity:0; transition:opacity .3s var(--ease); }
+.tile:hover::after, .tile:focus-visible::after { opacity:1; }
+
+/* ── Rótulos: un bloque abajo a la izquierda, con su propio velo ──────────────
+   El velo va en el BLOQUE DE TEXTO, no en la tarjeta: cubre exactamente el texto —una
+   línea o dos, en cualquier idioma— y se desvanece dentro de su padding, sin depender
+   del alto de la caja. Sobre una foto reventada de blanco mantiene el contraste AA del
+   rótulo y del subtítulo. El casi-negro es fijo a propósito: es un velo FOTOGRÁFICO,
+   no una superficie de marca. A cambio, los dos tercios de arriba quedan limpios.
+   A la izquierda porque es donde arranca todo el texto de la página, y así los rótulos
+   forman una línea continua a lo largo de la banda con 2, 3 o 4 tarjetas. */
+.t-body { position:absolute; left:0; right:0; bottom:0; z-index:2;
+  display:flex; flex-direction:column; align-items:flex-start; gap:.35rem;
+  padding:3.6rem 1.5rem 1.3rem;
+  background:linear-gradient(to top, rgba(13,13,13,.84), rgba(13,13,13,.80) 62%, rgba(13,13,13,0)); }
+/* cqw y no vw: con cuatro tarjetas el rótulo se dimensionaba con la VENTANA y salía
+   enorme dentro de una caja estrecha. La declaración en vw va delante como respaldo:
+   si el navegador no entiende cqw, invalida la segunda y sobrevive la primera. */
+.t-label { font-size:clamp(1.25rem,2.2vw,2.4rem); font-size:clamp(1.25rem,4.4cqw,2.4rem);
+  font-weight:500; line-height:1.1; text-wrap:balance;
+  letter-spacing:var(--brand-tracking,-.02em); text-transform:var(--brand-caps,none); }
+/* El carrito baja al bloque de texto: un icono de interfaz flotando sobre una foto de
+   campaña es lo más "plantilla" de la pieza, y obligaba a un segundo velo arriba. */
+.t-foot { display:inline-flex; align-items:center; gap:.5rem; }
+.t-cart { color:#fff; opacity:.95; display:inline-flex; }
+.t-cart svg { width:20px; height:20px; }
+/* Fuera el resplandor de 18px del rótulo: a este tamaño ensuciaba el trazo sin aportar
+   contraste, que ahora lo da el velo del bloque. */
+.t-sub { font-size:.85rem; letter-spacing:.02em; color:#e6e6ec; }
 
 @media (prefers-reduced-motion:reduce) {
   .c-track { transition:none; }
   .hero-skeleton, .tile-skeleton { animation:none; }
-  .tile img, .tile .t-art { transition:none; }
+  .tile img, .tile .t-art, .tile::after { transition:none; }
+  /* Sin esto el zoom seguía ocurriendo al pasar el ratón, solo que de golpe */
+  .tile:hover img, .tile:hover .t-art { scale:1; }
 }
 
 /* ══════════════ Pantallas sin chrome (login / credenciales) ══════════════ */
@@ -1564,9 +1627,10 @@ table.grid .num { white-space:nowrap; }
   .h-user .who { display:none; }
 }
 @media (max-width:62rem) {
-  /* Las dos tarjetas dejan de caber en fila mucho antes que el resto del layout */
-  .tiles { grid-template-columns:1fr; }
-  .tile { aspect-ratio:2/1; }
+  /* Las columnas ya las decide auto-fit con su suelo de 22rem: la banda se apila
+     sola. Aquí solo se sube la fila, porque una tarjeta a todo el ancho con la
+     altura de escritorio quedaría como un buzón. */
+  .tiles, .tiles[data-count="1"], .tiles[data-count="4"] { grid-auto-rows:clamp(14rem, 30vw, 22rem); }
 
   /* El rail de facetas y el panel de totales dejan de ser columnas: el catálogo y
      el checkout se apilan. Sin esto la columna de contenido se quedaba sin ancho
@@ -1612,8 +1676,9 @@ table.grid .num { white-space:nowrap; }
   .carousel, .hero-skeleton { aspect-ratio:16/9; }
   .c-arrow { display:none; }
   .c-caption { padding:1.4rem 1.2rem 2.4rem; }
-  .t-cart { top:1rem; left:1rem; }
-  .t-label { right:1.1rem; bottom:.8rem; }
+  /* Móvil: la banda es lo único en pantalla, así que la foto va algo más alta */
+  .tiles, .tiles[data-count="1"], .tiles[data-count="4"] { grid-auto-rows:clamp(12rem, 56vw, 19rem); }
+  .t-body { padding:2.8rem 1.1rem 1.1rem; }
   /* El FAB del asistente (fijo abajo-derecha) tapaba el pager en móvil (P3):
      se reserva hueco inferior para que el último control quede por encima. */
   .page { padding:1.2rem 1rem 6rem; }
