@@ -186,6 +186,13 @@ public static class CatalogService
         var offers = await db.Offers.ToListAsync();
         var windows = await db.ServiceWindows.ToListAsync();
         var imageDocs = await db.SyncDocuments.Where(d => d.EntityType == "model-image").ToListAsync();
+        // Fotos alojadas por nosotros: el conector puede mandar la imagen en base64 y
+        // dejar la `uri` vacía (es lo que hace en modo imagen). Guardamos el binario en
+        // MediaAsset y lo servimos en /media/models/{id}.jpg, así que aquí basta con
+        // saber QUÉ modelos tienen binario para poder apuntar a él. Solo los ids: el
+        // contenido no se toca.
+        var hostedImages = (await db.MediaAssets.Select(a => a.ExternalId).ToListAsync())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var vocabulary = await CatalogVocabulary.LoadAsync(db);
 
         var window = PickWindow(windows, query.Window);
@@ -204,8 +211,10 @@ public static class CatalogService
         var offersByModel = offers
             .GroupBy(o => o.ModelId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
-        var imageByModel = imageDocs.ToDictionary(d => d.ExternalId, ImageUri, StringComparer.OrdinalIgnoreCase);
-        var imagesByModel = imageDocs.ToDictionary(d => d.ExternalId, Images, StringComparer.OrdinalIgnoreCase);
+        var imageByModel = imageDocs.ToDictionary(
+            d => d.ExternalId, d => ImageUri(d, hostedImages), StringComparer.OrdinalIgnoreCase);
+        var imagesByModel = imageDocs.ToDictionary(
+            d => d.ExternalId, d => Images(d, hostedImages), StringComparer.OrdinalIgnoreCase);
 
         var windowKey = window?.ExternalId;
         var all = models
@@ -465,27 +474,38 @@ public static class CatalogService
     private static string Label(string familyId) =>
         familyId.Length == 0 ? familyId : char.ToUpperInvariant(familyId[0]) + familyId[1..];
 
-    private static string? ImageUri(SyncDocument doc)
+    private static string? ImageUri(SyncDocument doc, IReadOnlySet<string> hostedImages)
     {
         try
         {
-            return (JsonNode.Parse(doc.Payload) as JsonObject)?["images"]?[0]?["image"]?["uri"]?.GetValue<string>();
+            var uri = (JsonNode.Parse(doc.Payload) as JsonObject)?["images"]?[0]?["image"]?["uri"]?.GetValue<string>();
+            if (!string.IsNullOrWhiteSpace(uri)) return uri;
         }
-        catch (JsonException) { return null; }
-        catch (InvalidOperationException) { return null; }
+        catch (JsonException) { }
+        catch (InvalidOperationException) { }
+        // Sin uri en el documento, pero con la foto alojada: la servimos nosotros.
+        return Hosted(doc.ExternalId, hostedImages);
     }
+
+    /// Ruta de la foto que aloja el propio portal, o null si de ese modelo no hay binario
+    private static string? Hosted(string modelId, IReadOnlySet<string> hostedImages) =>
+        hostedImages.Contains(modelId) ? $"/media/models/{modelId}.jpg" : null;
 
     // Galería completa del modelo: todas las uris de payload["images"][*]["image"]["uri"].
     // El visor multi-ángulo de la ficha las usa como fotogramas del giro.
-    private static List<string> Images(SyncDocument doc)
+    private static List<string> Images(SyncDocument doc, IReadOnlySet<string> hostedImages)
     {
         try
         {
-            if ((JsonNode.Parse(doc.Payload) as JsonObject)?["images"] is not JsonArray array) return [];
+            if ((JsonNode.Parse(doc.Payload) as JsonObject)?["images"] is not JsonArray array)
+                return Hosted(doc.ExternalId, hostedImages) is { } sola ? [sola] : [];
             var uris = new List<string>();
             foreach (var node in array)
                 if (node?["image"]?["uri"]?.GetValue<string>() is { Length: > 0 } uri)
                     uris.Add(uri);
+            // Modo imagen del conector: las entradas llegan con la uri vacía y la foto
+            // la alojamos nosotros. Sin esto la ficha se quedaba sin visor.
+            if (uris.Count == 0 && Hosted(doc.ExternalId, hostedImages) is { } alojada) uris.Add(alojada);
             return uris;
         }
         catch (JsonException) { return []; }

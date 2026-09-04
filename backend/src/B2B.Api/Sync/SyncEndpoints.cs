@@ -127,6 +127,11 @@ public static class SyncEndpoints
 
                     img.Remove("base64");
                     img.Remove("data");
+                    // El conector manda la uri vacía cuando envía la foto en base64: la
+                    // rellenamos con la ruta en la que la servimos, para que el documento
+                    // se explique solo a quien lo lea en crudo (Comunicación BC, soporte).
+                    if (CatalogNormalizer.Text(img["uri"]).Length == 0)
+                        img["uri"] = $"/media/models/{id}.jpg";
                     break;   // una imagen por modelo
                 }
             }
