@@ -43,9 +43,11 @@ export default async function lookbook(host) {
   const body = host.querySelector('#lbBody');
   const selBar = host.querySelector('#lbSelBar');
 
-  const [hero, stories, catalog] = await Promise.all([
-    content('lookbook.hero'), content('lookbook.stories'), loadCatalog()
-  ]);
+  const [hero, stories] = await Promise.all([content('lookbook.hero'), content('lookbook.stories')]);
+  // Los productos del raíl los elige el CMS uno a uno, así que se piden POR ID. Antes se
+  // traía una PÁGINA del catálogo y se buscaban dentro: con más de 100 artículos, los que
+  // caían fuera de esa página desaparecían del raíl sin ningún aviso.
+  const catalog = await loadCatalog([...new Set(stories.flatMap(story => story.refs || []).map(String))]);
   const byId = new Map(catalog.map(p => [String(p.modelId), p]));
 
   // Limpia de la preselección lo que ya se ha tallado (tiene líneas en el carrito)
@@ -256,9 +258,11 @@ export default async function lookbook(host) {
     body.querySelectorAll('[data-add]').forEach(b => paintAdd(b, state.isPreselected(b.dataset.add)));
   }
 
-  async function loadCatalog() {
+  async function loadCatalog(ids) {
+    if (!ids.length) return [];
     try {
-      const data = await api.get(`/api/shop/catalog?take=200&locale=${encodeURIComponent(lang())}`);
+      const data = await api.get(`/api/shop/catalog?locale=${encodeURIComponent(lang())}`
+        + `&ids=${encodeURIComponent(ids.join(','))}`);
       return data?.items || data?.models || [];
     } catch { return []; }
   }

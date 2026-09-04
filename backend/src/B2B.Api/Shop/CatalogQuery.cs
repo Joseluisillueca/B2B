@@ -16,6 +16,8 @@ public sealed record CatalogQuery
     // por la URL. La descarga de stock usa ExportTake, que no es una página.
     public const int DefaultTake = 24;
     public const int MaxTake = 100;
+    /// Tope de la lista explícita de `ids`: un raíl del CMS no lleva cientos de artículos
+    public const int MaxIds = 100;
     public const int ExportTake = int.MaxValue;
 
     public string? Search { get; init; }
@@ -55,6 +57,15 @@ public sealed record CatalogQuery
             Window = Trimmed(query["window"]),
             Skip = Math.Max(0, Int(query["skip"], 0)),
             Take = Math.Clamp(Int(query["take"], DefaultTake), 1, MaxTake),
+            // `ids`: pedir artículos CONCRETOS en vez de una página. Lo necesita el raíl
+            // "Compra el look" del lookbook, cuyos productos los elige el CMS uno a uno y
+            // no tienen por qué caer en las primeras 100 filas del catálogo. Sigue pasando
+            // por el mismo pipeline, así que respeta el surtido del cliente, su tarifa y la
+            // regla de la foto: pedir un id no salta ningún filtro.
+            Ids = (query["ids"].ToString() ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Take(MaxIds)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase),
             // Mismo criterio que el resto de endpoints del portal: idioma desconocido
             // o ausente cae en español (B2B.Api.Portal.DocumentProjections.Locale)
             Locale = B2B.Api.Portal.DocumentProjections.Locale(query["locale"])

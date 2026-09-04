@@ -17,6 +17,9 @@ public static class ShopEndpoints
             var actor = await PortalScope.ActorAsync(principal, db);
             var visibility = await VisibilityStore.ScopeForAsync(db, actor?.ClientId, actor?.User.AgentExternalId);
             var query = CatalogQuery.From(request.Query);
+            // Con una lista explícita de artículos (`ids`), la página es la lista entera:
+            // quien pide diez artículos espera diez fichas, no las 24 de una paginación.
+            if (query.Ids.Count > 0) query = query with { Skip = 0, Take = query.Ids.Count };
             var page = await CatalogService.QueryAsync(db, Prices(actor), query, DateTimeOffset.UtcNow, visibility);
             var favorites = await FavoritesAsync(db, actor);
             var settings = await db.IntegrationSettings.FindAsync(1);
