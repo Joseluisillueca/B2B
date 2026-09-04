@@ -143,13 +143,26 @@ app.UseStaticFiles(new StaticFileOptions
     // incluso en incógnito. Forzamos revalidación para que dev/demo vean siempre lo último.
     OnPrepareResponse = ctx =>
     {
+        var headers = ctx.Context.Response.Headers;
         if (app.Environment.IsDevelopment())
         {
-            var headers = ctx.Context.Response.Headers;
             headers["Cache-Control"] = "no-store, no-cache, must-revalidate";
             headers["Pragma"] = "no-cache";
             headers["Expires"] = "0";
+            return;
         }
+
+        // En producción NO se enviaba ninguna cabecera de caché, así que el navegador
+        // aplicaba su heurística y podía servir el portal viejo durante horas después de
+        // un despliegue: el cliente veía la versión anterior y no había forma de saberlo
+        // sin un recargado forzado. Cada fichero se guarda igual, pero se REVALIDA: si no
+        // ha cambiado, el servidor responde 304 y no se transfiere nada.
+        var path = ctx.Context.Request.Path.Value ?? "";
+        headers["Cache-Control"] = path.StartsWith("/media/", StringComparison.OrdinalIgnoreCase)
+            // Los ficheros subidos por el CMS llevan un sufijo único en el nombre: si el
+            // contenido cambia, cambia la URL. Esos sí pueden guardarse a largo plazo.
+            ? "public, max-age=31536000, immutable"
+            : "no-cache";
     }
 });
 
