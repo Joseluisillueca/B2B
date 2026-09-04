@@ -420,6 +420,15 @@ export async function connectionsView(main) {
           <span><b>Los gobierna el ERP</b> — el pedido queda a la espera; los maestros y pedidos los maneja Business Central.</span></label>
         <div style="margin-top:.9rem"><button type="button" class="btn-primary" id="ordersModeSave">Guardar modo</button></div>
       </div></section>
+    <section class="biz-section"><header class="acc-head biz-head"><h2>${icons.box(20)}Catálogo <span class="grid-chip ${s.requireModelImage ? 'ok' : 'off'}">${s.requireModelImage ? 'Solo con foto' : 'Todos'}</span></h2></header>
+      <div class="biz-card">
+        <p class="lead" style="margin:0 0 .8rem">Qué artículos llegan al escaparate.</p>
+        <label style="display:flex;gap:.55rem;align-items:flex-start;margin:.5rem 0;cursor:pointer">
+          <input type="checkbox" id="requireModelImage" ${s.requireModelImage ? 'checked' : ''} style="margin-top:.25rem">
+          <span><b>Enseñar solo los artículos con foto</b> — los que todavía no tienen ninguna imagen se quedan fuera del catálogo, del buscador, de los relacionados y del PDF, hasta que la tengan. Útil mientras el ERP va subiendo fotos.</span></label>
+        <p class="acc-hint">Afecta también a los recuentos: no se anuncian artículos que no se enseñan. Se aplica al momento, sin resincronizar nada.</p>
+        <div style="margin-top:.9rem"><button type="button" class="btn-primary" id="catalogOptionsSave">Guardar catálogo</button></div>
+      </div></section>
     <section class="biz-section"><header class="acc-head biz-head"><h2>${icons.image(20)}Marca del portal</h2></header>
       <div class="biz-card">
         <p class="lead" style="margin:0 0 .8rem">El nombre, el color y el logo se aplican al portal, al back-office, a los emails y a los PDFs. Vacío = marca por defecto (MITO PROJECTS, rojo).</p>
@@ -471,6 +480,17 @@ export async function connectionsView(main) {
     if (!mode) return;
     try { const r = await api.intSaveOrdersMode(mode); flash(`Modo de pedidos guardado: ${r.ordersMode === 'portal' ? 'Comunica a Business Central' : 'ERP'}.`); connectionsView(main); }
     catch (e) { flash(e.body?.error || e.message, 'err'); }
+  };
+
+  // Catálogo de la instancia — su propio endpoint, igual que el modo de pedidos.
+  main.querySelector('#catalogOptionsSave').onclick = async () => {
+    const solo = main.querySelector('#requireModelImage').checked;
+    try {
+      await api.intSaveCatalogOptions(solo);
+      flash(solo ? 'Guardado: el portal solo enseña los artículos con foto.'
+                 : 'Guardado: el portal enseña todos los artículos.');
+      connectionsView(main);
+    } catch (e) { flash(e.body?.error || e.message, 'err'); }
   };
 
   // ── Marca del portal (nombre + color + logo) + tokens de estilo ─────────────

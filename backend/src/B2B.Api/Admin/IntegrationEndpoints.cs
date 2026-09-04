@@ -35,6 +35,8 @@ public static class IntegrationEndpoints
                 // Config de la cinta del catálogo (JSON parseado o null; se guarda con
                 // PUT /api/admin/integration/ribbon, en VisibilityEndpoints).
                 catalogRibbon = VisibilityEndpoints.ParseNode(s.CatalogRibbonJson),
+                // Catálogo: ocultar los artículos que todavía no tienen foto.
+                s.RequireModelImage,
                 bcConfigured = s.BcConfigured, hasSecret = !string.IsNullOrEmpty(s.BcClientSecret),
             });
         }).RequireAdmin();
@@ -74,6 +76,19 @@ public static class IntegrationEndpoints
 
         // Modo de pedidos (portal = comunica a BC / erp = los gobierna BC). Endpoint dedicado
         // para el conmutador de Conexiones, sin tocar la configuración de BC.
+        // Catálogo de la instancia: por ahora, solo la regla de la foto. Endpoint propio y
+        // pequeño, como el de la cinta o el de la marca: el PUT de settings es de la conexión
+        // con BC y no debe cargarse ajustes de escaparate.
+        app.MapPut("/api/admin/integration/catalog", async (CatalogOptionsBody body, AppDbContext db) =>
+        {
+            var s = await db.IntegrationSettings.FindAsync(1);
+            if (s is null) { s = new IntegrationSettings { Id = 1 }; db.IntegrationSettings.Add(s); }
+            s.RequireModelImage = body.RequireModelImage;
+            s.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+            return Results.Ok(new { ok = true, s.RequireModelImage });
+        }).RequireAdmin();
+
         app.MapPut("/api/admin/integration/orders-mode", async (OrdersModeBody body, AppDbContext db) =>
         {
             var mode = (body.Mode ?? "").Trim().ToLowerInvariant();
@@ -444,4 +459,6 @@ public sealed record TransformTest(string? Transformer, string? Input);
 public sealed record EmailPreview(string? EventKey, string? Subject, string? BodyHtml, string? Layout);
 public sealed record EmailLayoutBody(string? Layout);
 public sealed record OrdersModeBody(string? Mode);
+public sealed record CatalogOptionsBody(bool RequireModelImage);
+
 public sealed record BrandingBody(string? Name, string? Color, string? LogoUrl, JsonElement? Tokens = null);

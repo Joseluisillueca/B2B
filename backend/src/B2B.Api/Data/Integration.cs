@@ -50,6 +50,12 @@ public class IntegrationSettings
     // familias). La computa por actor GET /api/shop/ribbon (VisibilityEndpoints).
     public string? CatalogRibbonJson { get; set; }
 
+    /// Un artículo sin ninguna foto se ve pobre en una tienda de moda, y mientras el ERP
+    /// va cargando fotos hay artículos a medias. Con esto activado, el portal los oculta
+    /// hasta que tengan imagen. Por instancia: cada marca decide. Por defecto NO se filtra
+    /// (una instancia sin fotos se quedaría con el catálogo vacío sin avisar).
+    public bool RequireModelImage { get; set; }
+
     // Valores efectivos (no mapeados por EF): con respaldo a la marca por defecto.
     public string BrandNameOrDefault => string.IsNullOrWhiteSpace(BrandName) ? "MITO PROJECTS" : BrandName!.Trim();
     public string BrandColorOrDefault => string.IsNullOrWhiteSpace(BrandColor) ? "#ec3013" : BrandColor!.Trim();

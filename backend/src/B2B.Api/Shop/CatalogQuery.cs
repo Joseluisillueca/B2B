@@ -170,6 +170,7 @@ public static class CatalogService
         AppDbContext db, PortalActorPrices prices, CatalogQuery query, DateTimeOffset now,
         VisibilityScope? visibility = null)
     {
+        var settings = await db.IntegrationSettings.FindAsync(1);
         var models = await db.CatalogModels.Where(m => m.Active).ToListAsync();
         // Visibilidad por actor ANTES de todo (incluido el recorte por Ids de relacionados):
         // así catálogo, facetas/cinta, búsqueda, ficha, relacionados, PDFs y CSV quedan
@@ -221,6 +222,14 @@ public static class CatalogService
             .Select(model => Build(model, productsByModel, offersByModel, stockByProduct, imageByModel, imagesByModel,
                 context, windowKey, now, vocabulary, query.Locale))
             .ToList();
+
+        // "Solo artículos con foto" (ajuste de la instancia): se filtra AQUÍ, sobre las filas
+        // ya construidas, para que la foto se resuelva con las mismas reglas que la pinta
+        // —uri del documento o imagen alojada por el portal— y para que el recorte alcance
+        // por igual al listado, las facetas, la cinta, el buscador, los relacionados, el PDF
+        // y el CSV. El recuento también baja: no se anuncian artículos que no se enseñan.
+        if (settings?.RequireModelImage == true)
+            all = all.Where(row => !string.IsNullOrWhiteSpace(row.ImageUri)).ToList();
 
         var filtered = all.Where(row => Matches(row, query)).ToList();
         var page = Sort(filtered, query).Skip(query.Skip).Take(query.Take).ToList();

@@ -81,6 +81,9 @@ export const api = {
   intPreviewEmail: b => request('POST', '/api/admin/integration/preview-email', b),
   intSaveEmailLayout: layout => request('PUT', '/api/admin/integration/email-layout', { layout }),
   intSaveOrdersMode: mode => request('PUT', '/api/admin/integration/orders-mode', { mode }),
+  // Escaparate de la instancia (hoy solo la regla de la foto); endpoint propio, como la cinta
+  intSaveCatalogOptions: requireModelImage =>
+    request('PUT', '/api/admin/integration/catalog', { requireModelImage }),
   // Marca del portal: { name, color, logoUrl, tokens }. Vacíos = volver a la marca por
   // defecto. `tokens` es el estilo extendido de la instancia (tipografía, colores, formas,
   // favicon, textos); null o {} lo limpia y cada token ausente = el valor de siempre.
