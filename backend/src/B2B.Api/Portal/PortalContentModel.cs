@@ -24,7 +24,11 @@ public static class PortalContentModel
     public const string CommonLocale = "*";
     public const string DefaultLocale = "es";
 
-    private static readonly string[] ImageBlocks = ["dashboard.hero", "dashboard.tiles", "login.background", "lookbook.hero"];
+    // lookbook.hero NO está: su apertura puede ser solo texto. Sobre papel (heroStyle=paper) el
+    // portal pinta un índice tipográfico con title/subtitle/cta e ignora la imagen; en las demás
+    // marcas, con imagen sigue siendo el carrusel y sin ella cae al titular de siempre. Los
+    // otros tres bloques siguen exigiendo imagen: sin ella no tienen nada que pintar.
+    private static readonly string[] ImageBlocks = ["dashboard.hero", "dashboard.tiles", "login.background"];
     private static readonly string[] ServiceWindows = ["replenishment", "scheduled"];
     private static readonly string[] TextFields = ["alt", "title", "subtitle", "ctaText"];
     private const int MaxItems = 24;

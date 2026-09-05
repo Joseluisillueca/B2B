@@ -23,7 +23,7 @@ import { icons } from '../icons.js';
 // ── Definición de bloques (portada + historias) ─────────────────────────────
 const LB_BLOCKS = [
   { key: 'lookbook.hero', title: 'Portada del lookbook', kind: 'lb-hero',
-    help: 'Carrusel de apertura del lookbook. Medida recomendada: 2880×1200 px o mayor (apaisado).' },
+    help: 'Apertura del lookbook. En una marca sobre papel es un índice tipográfico sin foto: el título es la palabra de temporada (corta, p. ej. «SS27»), el subtítulo la línea de estado («Abierta a pedidos.») y el botón la acción; la imagen se ignora y puede quedar vacía. En las demás marcas, con imagen es un carrusel (2880×1200 px o mayor).' },
   { key: 'lookbook.stories', title: 'Historias', kind: 'lb-story',
     help: 'Cada historia: una foto, un texto editorial, un color de acento y los productos de su raíl «Compra el look».' },
 ];
@@ -147,7 +147,7 @@ export default async function lookbook(main) {
     </label>`;
   }
 
-  function emptyThumb(kind) { return `<span>sin imagen<br>${kind === 'lb-hero' ? 'apaisada' : '4:3'}</span>`; }
+  function emptyThumb(kind) { return `<span>sin imagen<br>${kind === 'lb-hero' ? 'apertura tipográfica' : '4:3'}</span>`; }
 
   function itemActions(index, total) {
     return `

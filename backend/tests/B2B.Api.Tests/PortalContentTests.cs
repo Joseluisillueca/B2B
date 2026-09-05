@@ -239,10 +239,27 @@ public class PortalContentTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Fact]
-    public async Task Admin_LookbookHero_ExigeImagen()
+    public async Task Admin_LookbookHero_AdmiteSoloTexto()
     {
-        // lookbook.hero es un bloque de imagen: una portada sin imageUrl no se guarda
-        var response = await SendAsync(HttpMethod.Put, "/api/admin/content/lookbook.hero?locale=es",
+        // lookbook.hero ya no es un bloque de imagen: sobre papel el portal abre con un índice
+        // tipográfico (title = palabra de temporada, subtitle = estado, cta) y la foto sobra.
+        var put = await SendAsync(HttpMethod.Put, "/api/admin/content/lookbook.hero?locale=es",
+            """{ "items": [ { "title": "SS27", "subtitle": "Abierta a pedidos.", "ctaText": "Ver la colección" } ] }""");
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+        var body = await (await SendAsync(HttpMethod.Get, "/api/admin/content/lookbook.hero?locale=es"))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        var item = Assert.Single(body.GetProperty("items").EnumerateArray());
+        Assert.Equal("SS27", item.GetProperty("title").GetString());
+        Assert.Equal("Abierta a pedidos.", item.GetProperty("subtitle").GetString());
+        Assert.Equal("", item.GetProperty("imageUrl").GetString());
+    }
+
+    [Fact]
+    public async Task Admin_DashboardHero_SigueExigiendoImagen()
+    {
+        // La relajación es solo del lookbook: la portada de inicio sin foto no tiene nada que pintar
+        var response = await SendAsync(HttpMethod.Put, "/api/admin/content/dashboard.hero?locale=es",
             """{ "items": [ { "title": "Sin imagen" } ] }""");
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

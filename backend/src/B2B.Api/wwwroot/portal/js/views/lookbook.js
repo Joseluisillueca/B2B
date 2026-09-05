@@ -7,12 +7,16 @@
 // Reutiliza: contenido del CMS (portal_content lookbook.*), el carrusel de la portada,
 // la tarjeta .pcard del catálogo, favoritos y la preselección de state.js. No inventa
 // embudo: alimenta favoritos → (preselección) → carrito → pedido.
+//
+// Portada: carrusel con las diapositivas del CMS que traen imagen o vídeo; sobre papel
+// (heroStyle = paper) un ÍNDICE tipográfico sin fotografía (ver indexBlock).
 
 import { api } from '../api.js';
 import { t, lang } from '../i18n.js';
 import { esc, eur } from '../format.js';
 import { state } from '../state.js';
 import { go, href } from '../router.js';
+import { getTokens } from '../branding.js';
 import { carousel } from '../ui/carousel.js';
 import { icons } from '../ui/icons.js';
 import { openViewerModal } from '../ui/viewer.js';
@@ -25,6 +29,13 @@ const main = item => priceOf(item, preferred()) ?? priceOf(item, preferred() ===
 const productHref = item => `${href('product')}/${encodeURIComponent(item.reference || item.modelId)}`;
 const favLabel = on => t(on ? 'catalog.favoriteOff' : 'catalog.favorite');
 
+// ¿Marca sobre papel? El mismo atributo del que cuelga el bloque CSS de la marca, para que
+// JS y hoja de estilo no discrepen nunca. branding.js lo pone antes de que arranque el
+// router (boot.js espera a initBranding), así que aquí ya es fiable.
+const onPaper = () => document.documentElement.dataset.heroStyle === 'paper';
+// Ancla de cada historia por posición (lb-s01…): el índice de la apertura salta a ellas.
+const storyId = n => `lb-s${String(n).padStart(2, '0')}`;
+
 async function content(key) {
   try {
     const data = await api.get(`/api/portal/content/${key}?locale=${encodeURIComponent(lang())}`);
@@ -33,9 +44,12 @@ async function content(key) {
 }
 
 export default async function lookbook(host) {
+  // Sobre papel la apertura es el índice tipográfico: la clase va en el cascarón para que el
+  // esqueleto de carga ya tenga su altura y su papel, sin placa gris ni salto al pintar.
+  const paper = onPaper();
   host.innerHTML = `
     <div class="page lookbook">
-      <div class="lb-hero" id="lbHero"><div class="hero-skeleton"></div></div>
+      <div class="lb-hero${paper ? ' lb-hero-index' : ''}" id="lbHero"><div class="hero-skeleton"></div></div>
       <div id="lbBody" aria-live="polite"><div class="skeleton"></div></div>
     </div>
     <div id="lbSelBar"></div>`;
@@ -57,20 +71,44 @@ export default async function lookbook(host) {
   const carted = new Set(state.cartLines().map(l => String(l.modelId)));
   for (const p of state.preselections()) if (carted.has(String(p.modelId))) state.unpreselect(p.modelId);
 
-  // ── Portada (carrusel reutilizado) ─────────────────────────────────────────
-  if (hero.length) {
+  // ── Portada ─────────────────────────────────────────────────────────────────
+  // Sobre papel (BLOCCO 5) el lookbook abre como su índice impreso (p02): sin fotos, seis
+  // entradas numeradas que anclan a cada historia y la palabra gigante. Los textos salen del
+  // primer bloque lookbook.hero del CMS (title = la palabra, subtitle = línea de estado,
+  // kicker = cabecera de página, ctaText/ctaHref = la acción); su imagen, si la hay, se
+  // ignora a propósito. Las otras marcas conservan el carrusel con las diapositivas que
+  // traen imagen o vídeo; sin ninguna (el bloque ya admite elementos solo de texto) cae al
+  // titular de siempre en vez de dejar el hueco vacío.
+  const slides = hero.filter(slide => slide?.imageUrl || slide?.videoUrl);
+  if (paper) {
+    heroHost.innerHTML = indexBlock(hero[0] || {}, stories);
+    bindIndex();
+  } else if (slides.length) {
     heroHost.innerHTML = '';
-    carousel(heroHost, hero, { label: t('lookbook.heroLabel') });
+    carousel(heroHost, slides, { label: t('lookbook.heroLabel') });
   } else {
     heroHost.innerHTML = `<div class="lb-hero-fallback"><h1>${esc(t('lookbook.title'))}</h1></div>`;
   }
+
+  // "Ver todo el catálogo" (cierre y, sobre papel, la acción del índice) abre el catálogo
+  // en la ventana de PROGRAMACIÓN si la instancia la tiene: el lookbook es la campaña, y
+  // abrirlo en reposición —donde la colección nueva aún dice "Consultar"— era un callejón
+  // sin salida. La preferencia se escribe ANTES de navegar (el router intercepta el clic
+  // después). Sin ventana programada no se toca nada.
+  const toScheduled = () => {
+    if (windows.some(w => w.orderType === 'SCHEDULED') && state.prefs.window !== 'scheduled')
+      state.prefs = { ...state.prefs, window: 'scheduled' };
+  };
+  // La acción del índice solo si lleva al catálogo (el CMS puede apuntar a otro sitio)
+  const indexCta = heroHost.querySelector('[data-to-catalog]');
+  if (indexCta?.getAttribute('href') === href('catalog/catalog')) indexCta.addEventListener('click', toScheduled);
 
   // ── Historias ───────────────────────────────────────────────────────────────
   if (!stories.length) {
     body.innerHTML = `<div class="page"><p class="lb-empty">${esc(t('lookbook.empty'))}</p></div>`;
     return;
   }
-  body.innerHTML = `<div class="lb-stories">${stories.map(story => storyBlock(story, byId)).join('')}
+  body.innerHTML = `<div class="lb-stories">${stories.map((story, i) => storyBlock(story, byId, i + 1)).join('')}
     <div class="lb-close">
       <p>${esc(t('lookbook.closeLead'))}</p>
       <a class="btn-primary" href="${href('catalog/catalog')}">${esc(t('lookbook.toCatalog'))} ${icons.right(15)}</a>
@@ -79,19 +117,12 @@ export default async function lookbook(host) {
   bindProducts();
   bindRails();
   renderSelBar();
-
-  // "Ver todo el catálogo" abre el catálogo en la ventana de PROGRAMACIÓN si la
-  // instancia la tiene: el lookbook es la campaña, y abrirlo en reposición —donde la
-  // colección nueva aún dice "Consultar"— era un callejón sin salida. La preferencia
-  // se escribe ANTES de navegar (el router intercepta el clic después). Sin ventana
-  // programada no se toca nada.
-  body.querySelector('.lb-close a')?.addEventListener('click', () => {
-    if (windows.some(w => w.orderType === 'SCHEDULED') && state.prefs.window !== 'scheduled')
-      state.prefs = { ...state.prefs, window: 'scheduled' };
-  });
+  body.querySelector('.lb-close a')?.addEventListener('click', toScheduled);
 
   // ── Bloques de historia ───────────────────────────────────────────────────
-  function storyBlock(story, map) {
+  // n = posición (1…): da el id al que salta el índice de la apertura. El id y el tabindex
+  // del h2 van sin gatear: son anclas inertes, sin efecto visual en las otras marcas.
+  function storyBlock(story, map, n) {
     const refs = (story.refs || []).map(id => map.get(String(id))).filter(Boolean);
     const side = story.layout === 'left' ? 'lb-left' : 'lb-right';
     const accent = /^#[0-9a-fA-F]{3,8}$/.test(story.accent || '') ? story.accent : 'var(--accent)';
@@ -99,13 +130,13 @@ export default async function lookbook(host) {
     // foto del primer producto del raíl (evita el efecto "imagen rota").
     const media = story.imageUrl || (refs[0] && refs[0].imageUri) || '';
     return `
-      <section class="lb-story ${side}" style="--lb-accent:${esc(accent)}">
+      <section class="lb-story ${side}" id="${storyId(n)}" style="--lb-accent:${esc(accent)}">
         <div class="lb-story-media">
           ${media ? `<img src="${esc(media)}" alt="${esc(story.alt || story.title || '')}" loading="lazy" decoding="async">` : ''}
         </div>
         <div class="lb-story-text">
           ${story.kicker ? `<span class="lb-kicker">${esc(story.kicker)}</span>` : ''}
-          <h2>${esc(story.title || '')}</h2>
+          <h2 tabindex="-1">${esc(story.title || '')}</h2>
           ${story.body ? `<p>${esc(story.body)}</p>` : ''}
         </div>
         ${refs.length ? `
@@ -126,7 +157,70 @@ export default async function lookbook(host) {
       </section>`;
   }
 
-  // Tarjeta de producto (reutiliza .pcard del catálogo) + preselección
+  // ── Índice de la apertura (solo sobre papel) ────────────────────────────────
+  // Orden del DOM = orden de LECTURA (cabecera, h1 = la palabra, entradas, pie); el CSS lo
+  // recoloca con grid-template-areas para que la palabra quede la última y cortada por el
+  // filete. Cada entrada enlaza con href="#id" por semántica, pero el salto lo hace JS
+  // (bindIndex): un cambio de hash dispara popstate y el router re-resolvería la ruta
+  // (repinta la vista y vuelve arriba).
+  function indexBlock(cover, list) {
+    const norm = s => String(s || '').replace(/[.\s]+$/, '').trim().toLowerCase();
+    const tagline = String(getTokens().tagline || '').trim();
+    const lookbookWord = t('nav.lookbook');
+    const word = String(cover.title || '').trim() || lookbookWord;
+    // El claim (token tagline) va a la derecha de la cabecera salvo que ya esté en la
+    // palabra o en la línea de estado: nada se dice dos veces en la misma pantalla.
+    const showTag = tagline && norm(word) !== norm(tagline) && !norm(cover.subtitle).includes(norm(tagline));
+    const ctaHref = cover.ctaHref || href('catalog/catalog');
+    const ctaText = cover.ctaText || t('lookbook.toCatalog');
+    // El h1 accesible dice «Lookbook SS27», no solo la cifra: el prefijo va solo para lectores
+    // (sr-only) y se omite si la palabra ya es «Lookbook». Los «01…06» visibles van aria-hidden:
+    // el <ol> ya numera para el lector de pantalla.
+    return `
+      <section class="lb-index" aria-labelledby="lbIndexWord">
+        <div class="lb-ix-head">
+          <p class="lb-ix-kicker">${esc(cover.kicker || t('lookbook.indexLabel'))}</p>
+          ${showTag ? `<p class="lb-ix-tag">${esc(tagline)}</p>` : ''}
+        </div>
+        <div class="lb-ix-wordbox"><h1 class="lb-ix-word" id="lbIndexWord">${
+          norm(word) === norm(lookbookWord) ? '' : `<span class="sr-only">${esc(lookbookWord)} </span>`
+        }<span class="lb-ix-glyphs">${esc(word)}</span></h1></div>
+        ${list.length ? `
+        <nav class="lb-ix-nav" aria-label="${esc(t('lookbook.indexLabel'))}">
+          <ol class="lb-ix-list">
+            ${list.map((story, i) => `
+              <li><a href="#${storyId(i + 1)}" data-jump="${storyId(i + 1)}">
+                <span class="lb-ix-num" aria-hidden="true">${String(i + 1).padStart(2, '0')}</span>
+                <span class="lb-ix-name">${esc(story.kicker || story.title || '')}</span>
+                ${story.kicker && story.title ? `<span class="lb-ix-title">${esc(story.title)}</span>` : ''}
+              </a></li>`).join('')}
+          </ol>
+        </nav>` : ''}
+        <div class="lb-ix-foot">
+          ${cover.subtitle ? `<p class="lb-ix-sub">${esc(cover.subtitle)}</p>` : ''}
+          <a class="lb-ix-cta" href="${esc(ctaHref)}" data-to-catalog>${esc(ctaText)} ${icons.right(14)}</a>
+        </div>
+      </section>`;
+  }
+
+  // Salto a la historia sin tocar la URL (ver indexBlock). Respeta «reducir movimiento» y
+  // lleva el foco al título de la historia (teclado y lectores), no a toda la sección.
+  // Se enlaza antes de pintar las historias: da igual, el querySelector se hace en el clic.
+  function bindIndex() {
+    const behavior = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    heroHost.querySelectorAll('[data-jump]').forEach(link => {
+      link.addEventListener('click', event => {
+        const target = body.querySelector(`#${link.dataset.jump}`);
+        if (!target) return;
+        event.preventDefault();
+        target.scrollIntoView({ behavior, block: 'start' });
+        target.querySelector('h2')?.focus({ preventScroll: true });
+      });
+    });
+    fitWord(heroHost.querySelector('.lb-ix-word'));
+  }
+
+  // ── Tarjeta de producto (reutiliza .pcard del catálogo) + preselección ──────
   function pcard(item) {
     const price = main(item);
     const on = state.isPreselected(item.modelId);
@@ -309,4 +403,30 @@ export default async function lookbook(host) {
       return data?.items || data?.models || [];
     } catch { return []; }
   }
+}
+
+// La palabra gigante del índice llena EXACTAMENTE la columna, sea «SS27» o «Lookbook»: se
+// mide su anchura natural a 100px y se escala (tope 22rem; suelo 2.25rem, con el que un título
+// de 13 caracteres como «Own your code» aún cabe entero a 390px; por debajo el CSS la recorta
+// por la derecha antes que romper la línea). El .99 deja un pelo de margen para que
+// el último glifo no roce el recorte. Se repite al cargar la webfont (Archivo llega después
+// del primer pintado y es más ancha que el respaldo) y al cambiar el ancho; el listener se
+// retira solo cuando el router sustituye la vista (nodo desconectado). A nivel de módulo,
+// como content(): no depende de nada de la vista.
+function fitWord(word) {
+  const glyphs = word?.querySelector('.lb-ix-glyphs');
+  if (!glyphs) return;
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  let raf = 0;
+  const fit = () => {
+    if (!word.isConnected) { removeEventListener('resize', onResize); return; }
+    word.style.fontSize = '100px';
+    const natural = glyphs.getBoundingClientRect().width || 1;
+    const size = Math.min(22 * rem, Math.max(2.25 * rem, 100 * word.clientWidth / natural * .99));
+    word.style.fontSize = `${size}px`;
+  };
+  const onResize = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(fit); };
+  addEventListener('resize', onResize);
+  fit();
+  document.fonts?.ready.then(fit);
 }

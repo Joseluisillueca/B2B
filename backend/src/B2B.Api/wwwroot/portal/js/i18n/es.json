@@ -205,6 +205,7 @@
   "lookbook.toCatalog": "Ver todo el catálogo",
   "lookbook.prev": "Productos anteriores",
   "lookbook.next": "Más productos",
+  "lookbook.indexLabel": "Índice",
   "login.required": "Introduce tu email y tu contraseña.",
   "login.badCredentials": "Email o contraseña incorrectos.",
   "login.serverError": "No hemos podido conectar. Inténtalo de nuevo en unos segundos.",
