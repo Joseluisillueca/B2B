@@ -107,6 +107,75 @@ Para que el checkout **envíe el pedido a BC**, el despliegue debe estar en modo
 
 ---
 
+## PARTE 4 · Catálogo y marca de una instancia (ejemplo real: BLOCCO 5 en Way2Growth)
+
+Lo que sigue es lo que se configuró para que el portal de Way2Growth enseñe la colección
+BLOCCO 5 con su identidad. Vale como plantilla para cualquier marca.
+
+### 4.1 URLs del conector (Setup de BC → Sync URLs)
+Todas llevan `%1` al final salvo ofertas, empresa y búsqueda de pedidos. Sustituye el dominio
+por el de la instancia:
+
+| Entidad | URL |
+|---|---|
+| Artículos (modelos) | `https://<instancia>/api/catalog/models/%1` |
+| Variantes | `https://<instancia>/api/catalog/products/%1` |
+| Imágenes | `https://<instancia>/api/catalog/model-images/%1` |
+| Atributos | `https://<instancia>/api/catalog/attributes/%1` |
+| Familias / categorías | `.../api/catalog/families/%1` · `.../api/catalog/categories/%1` |
+| Ofertas (tarifas) | `https://<instancia>/api/catalog/offers` (sin %1; admite lotes) |
+| Stock | `https://<instancia>/api/stock/inventory/%1` |
+| Ventanas de servicio | `https://<instancia>/api/core/service-windows/%1` |
+| Formas de pago / almacenes | `.../api/core/payment-methods/%1` · `.../api/core/warehouses/%1` |
+| Clientes / grupos / direcciones | `.../api/clients/%1` · `.../api/clients/groups/%1` |
+| Agentes | `https://<instancia>/api/agents/%1` |
+| Pedidos (envío y búsqueda) | `.../api/orders/%1` · `.../api/orders/search` (sin %1) |
+| Albaranes / facturas | `.../api/documents/delivery-notes/%1` · `.../api/documents/invoices/%1` |
+| Empresa | `https://<instancia>/api/core/b2binfo` (sin %1) |
+
+Un `404` en el log de sincronización casi siempre es una URL sin el `%1`.
+
+### 4.2 Atributos: qué marcar en BC (Item Attributes)
+- **Sync to B2B** en todos los atributos que el comprador deba ver o filtrar. En Blocco 5:
+  `LINE` (BUND RETRO / BUND FANTASY / VAGUE / ELAN), `COLOR NAME`, `COLOR CODE`,
+  `STYLE CODE`, `UPPER MATERIAL`, `GENDER` y la talla.
+- **B2B Related Products** en el atributo que agrupa "el mismo modelo en otro color". En
+  Blocco 5 es `LINE`: cada artículo llega con sus hermanos de línea y la ficha enseña la
+  carta de colores. Marca UNO solo.
+- **B2B Cross Selling** en un atributo que agrupe artículos distintos que se venden juntos
+  (colección, temporada, familia de material). Tiene que ser un atributo cuyo VALOR compartan
+  varios artículos: uno que sea distinto en cada artículo (un código, un nombre de color) no
+  genera ninguna sugerencia. Si no hay ninguno con sentido, no marques nada.
+- Al cambiar cualquiera de estas dos casillas hay que **reenviar los artículos**: las
+  relaciones se calculan al enviar cada uno, no se recalculan solas.
+
+### 4.3 Nombre de color en la ficha
+El portal saca el color de cada artículo del atributo de color (`COLOR`, `COLOR NAME`,
+`COLOUR`…). Si el ERP no manda ese atributo, usa la convención del nombre "MODELO — COLOR"
+(raya con espacios). Con el atributo no hace falta renombrar nada en BC.
+
+### 4.4 Cinta del catálogo (Gestión → Cinta del catálogo)
+Si la marca tiene una sola familia en BC (Blocco 5 tiene `sneaker`), la cinta se queda sin
+navegación. Marca el atributo que estructura la colección (en Blocco 5, `LINE`), oculta la
+familia única y ordena las entradas como las presenta la marca: BUND RETRO · BUND FANTASY ·
+VAGUE · ELAN. Los nombres de línea, familia y color **no se traducen**: el mismo texto en
+todos los idiomas.
+
+### 4.5 Marca (Gestión → Conexiones → Marca)
+Nombre, color de acento, logotipo (y su versión clara para fondos oscuros), favicon y los
+tokens de estilo. Para Blocco 5: papel blanco, superficie `#f0efed`, tinta `#111111`,
+cabecera blanca, radios `0px`, tipografía Archivo con rango de pesos
+(`https://fonts.googleapis.com/css2?family=Archivo:wght@400..900&display=swap`), filetes de
+sección rojos de `1px`, fondo de paneles `#f0efed` y acento secundario igual al de marca.
+Mayúsculas automáticas y espaciado entre letras se dejan vacíos: los nombres de producto
+van en caja de título. Todo se aplica en vivo; vaciar un token vuelve al valor por defecto.
+
+### 4.6 Escaparate
+- **Solo artículos con foto** (Conexiones → Catálogo): actívalo cuando el ERP ya haya subido
+  las imágenes; con él encendido, un artículo sin foto no aparece en ningún sitio.
+- El **catálogo en PDF**, el **line-sheet** y la **ficha técnica** salen ya con la paleta y el
+  nombre de la marca de la instancia.
+
 ## Diagnóstico (si algo falla)
 - **Notificaciones realizadas** (`/manage`): estado por canal. `errors` trae el detalle (p. ej.
   `HTTP 401` = token/permA; `HTTP 400` = payload/propiedad; `HTTP 404` = URL base/companyId).

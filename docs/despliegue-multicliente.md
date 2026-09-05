@@ -7,7 +7,7 @@ y su conexión a Business Central.
 
 ```
 GitHub (main) ──► Railway proyecto "b2b mito"
-                  ├─ b2b-api          + Postgres        ← Way2Growth (MITO PROJECTS)
+                  ├─ b2b-api          + Postgres        ← Way2Growth (marca BLOCCO 5)
                   └─ b2b-almaenpena   + Postgres-gsZN   ← ALMA EN PENA
                   └─ (siguiente cliente…)
 ```
@@ -54,6 +54,24 @@ de integración.
 Railway → service → Settings → Custom Domain (p.ej. `b2b.cliente.com`) + CNAME en su DNS.
 Actualizar `Portal__BaseUrl` al dominio final.
 
+## Medios del portal: en la base de datos, sin volúmenes
+
+Lo que sube el CMS (portada, tarjetas, lookbook, logos, tipografía, favicon) se guarda en la
+**base de datos** (`PortalMediaFile`) y lo sirve el propio portal en `/media/portal/{nombre}`.
+El disco del contenedor es efímero (cada despliegue lo estrena vacío) y Railway limita los
+volúmenes por proyecto (tres), así que **una instancia nueva no necesita ningún volumen**:
+sus medios sobreviven a todo y viajan con la copia de seguridad de la base.
+
+Los medios de demostración que trae el producto viajan dentro de la imagen (`MediaSeed/`) y
+se sirven detrás de las subidas. Si una instancia antigua tuviera ficheros en disco (o un
+volumen montado en `wwwroot/media/portal`), se siguen sirviendo: la prioridad es base de
+datos → disco → demostración. `Media:Root` permite apuntar esa carpeta de compatibilidad a
+otra ruta.
+
+Antes de desplegar una instancia por primera vez con esta versión, listar sus medios con
+`GET /api/admin/media` (origen `disco`) por si hubiera subidas antiguas que convenga volver
+a subir desde Gestión para que pasen a la base de datos.
+
 ## Actualizar TODAS las instancias
 Hoy: `railway up --service <cada-servicio>` tras cada push (el asistente lo hace).
 Recomendado al crecer: conectar los servicios al repo de GitHub (auto-deploy de `main`)
@@ -63,7 +81,7 @@ para que un push actualice todas las instancias a la vez.
 
 | Cliente | Servicio | URL | BD |
 |---|---|---|---|
-| Way2Growth (MITO PROJECTS) | `b2b-api` | https://b2b-api-production-9b41.up.railway.app | `Postgres` |
+| Way2Growth (marca BLOCCO 5) | `b2b-api` | https://b2b-api-production-9b41.up.railway.app | `Postgres` |
 | ALMA EN PENA | `b2b-almaenpena` | https://b2b-almaenpena-production.up.railway.app | `Postgres-gsZN` |
 
 Las credenciales de cada instancia viven en las variables de su servicio en Railway

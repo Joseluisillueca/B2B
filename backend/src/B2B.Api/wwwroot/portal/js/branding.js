@@ -38,6 +38,12 @@
 //   faviconUrl        → href del <link rel=icon>
 //   logoUrlDark       → logo alternativo para fondos oscuros (ver brandMark)
 //   tagline/supportEmail → textos del login (ver brandTagline/brandSupport)
+//   card              → --brand-card   (fondo de paneles y de la banda de pestañas)
+//   rule/ruleWidth    → --brand-rule/--brand-rule-w  (color y grosor de los filetes de
+//                       CAPÍTULO: los 2px de tinta que abren cada bloque, no los hilos)
+//   accent            → --accent/--accent-deep/--accent-soft  (segundo acento: favoritos,
+//                       barras de los cuadros de mando, avisos; se deriva como el color
+//                       de marca, ver applyTokenVars)
 
 const KEY = 'b2b_branding';
 const DEFAULTS = { name: 'MITO PROJECTS', color: '#ec3013', logoUrl: null };
@@ -166,8 +172,9 @@ const asFilter = value => {
 const TOKEN_SPEC = {
   logoUrlDark: asUrl, faviconUrl: asUrl, fontUrl: asUrl,
   fontFamily: asFamily, caps: asBool,
-  tracking: asLength, radius: asLength, radiusButton: asLength,
+  tracking: asLength, radius: asLength, radiusButton: asLength, ruleWidth: asLength,
   paper: asColor, surface: asColor, ink: asColor, headerBg: asColor, headerInk: asColor,
+  card: asColor, rule: asColor, accent: asColor,
   heroFilter: asFilter, tagline: asTagline, supportEmail: asEmail
 };
 
@@ -257,7 +264,10 @@ const MANAGED_VARS = [
   '--brand-paper', '--brand-surface', '--brand-ink',
   '--header-bg', '--header-ink', '--header-veil',
   '--r', '--r-sm', '--r-btn', '--hero-filter',
-  '--brand-caps', '--brand-tracking', '--brand-font'
+  '--brand-caps', '--brand-tracking', '--brand-font',
+  '--brand-card', '--brand-rule', '--brand-rule-w',
+  // Los TRES del segundo acento: si faltara uno, al vaciar el token se quedaría pegado.
+  '--accent', '--accent-deep', '--accent-soft'
 ];
 
 function applyTokenVars(style) {
@@ -293,6 +303,20 @@ function applyTokenVars(style) {
   if (tokens.tracking) style.setProperty('--brand-tracking', tokens.tracking);
   if (tokens.caps) style.setProperty('--brand-caps', 'uppercase');
   if (tokens.fontFamily) style.setProperty('--brand-font', `"${tokens.fontFamily}"`);
+  if (tokens.card) style.setProperty('--brand-card', tokens.card);
+  if (tokens.rule) style.setProperty('--brand-rule', tokens.rule);
+  if (tokens.ruleWidth) style.setProperty('--brand-rule-w', tokens.ruleWidth);
+  // Segundo acento de la instancia. Se deriva igual que el color de marca y por la misma
+  // razón: --accent-deep se usa como TEXTO sobre el papel (cifra del KPI de deuda, kicker
+  // del lookbook, chips), así que pasa por readableOnPaper() y no por un oscurecido fijo.
+  // --accent se deja crudo porque es FONDO con tinta blanca encima, y --accent-soft usa el
+  // mismo 0.14 que --blue-soft: con accent = color de marca los dos coinciden EXACTAMENTE,
+  // que es lo que significa «un solo acento».
+  if (tokens.accent) {
+    style.setProperty('--accent', tokens.accent);
+    style.setProperty('--accent-deep', readableOnPaper(tokens.accent));
+    style.setProperty('--accent-soft', tint(tokens.accent, 0.14));
+  }
 }
 
 /** Webfont de la instancia. UN solo elemento (id "brand-font"), reutilizado entre

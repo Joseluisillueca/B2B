@@ -170,12 +170,16 @@ const TOKEN_COLORS = [
   ['ink', 'Texto principal', '#201e1d', 'El color de los textos y los titulares.'],
   ['headerBg', 'Fondo de la cabecera', '#201e1d', 'La barra superior del portal (hoy, negra).'],
   ['headerInk', 'Texto de la cabecera', '#f3f2f2', 'Nombre, menús e iconos sobre esa barra.'],
+  ['card', 'Fondo de paneles', '#f8f4f4', 'Banda de pestañas, tarjetas, resumen del pedido y cajón del carrito.'],
+  ['rule', 'Color de los filetes de sección', '#111111', 'Las reglas que abren cada bloque: cabecera de tabla, KPI, precio, resumen del pedido.'],
+  ['accent', 'Acento secundario', '#e15b47', 'Favoritos, avisos de deuda, barras de los cuadros de mando. Ponlo igual que el color de marca si quieres un único acento.'],
 ];
 // Medidas con unidad: [clave, etiqueta, ejemplo, ayuda]
 const TOKEN_SIZES = [
   ['radius', 'Redondeo general', '12px', 'Esquinas de tarjetas, campos y fotos. Hoy el portal va a 0px (esquina viva).'],
   ['radiusButton', 'Redondeo de botones', '50px', 'Solo los botones. 50px los deja en forma de píldora.'],
   ['tracking', 'Espaciado entre letras', '.06em', 'Separa las letras de titulares y botones. Admite px, rem, em o %.'],
+  ['ruleWidth', 'Grosor de los filetes de sección', '1px', 'Hoy el portal usa 2px. A 1px las reglas se leen como filete editorial.'],
 ];
 // ── Espejo de la validación del servidor (IntegrationEndpoints.NormalizeBrandTokens) ──
 // Ni más laja ni más estricta: lo que pasa aquí lo acepta el PUT, y lo que aquí se rechaza

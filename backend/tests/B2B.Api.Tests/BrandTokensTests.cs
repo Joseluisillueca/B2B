@@ -45,6 +45,13 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
         }
         """;
 
+    // Los cuatro tokens de la EXTENSIÓN (BLOCCO 5): filete de capítulo (color y grosor),
+    // fondo de paneles y segundo acento. Van APARTE de AlmaTokens a propósito: el juego de
+    // ALMA tiene que seguir siendo el de una instancia que NO los usa (ver prueba 13).
+    private const string Blocco5Tokens = """
+        {"card": "#F0EFED", "rule": "#E70917", "ruleWidth": "1px", "accent": "#e70917"}
+        """;
+
     // ── Utilidades ─────────────────────────────────────────────────────────────
 
     private async Task<HttpResponseMessage> PutBranding(string json)
@@ -150,6 +157,14 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
         // caps admite también el false explícito (theming que apaga las mayúsculas).
         (await PutTokens("""{"caps":false}""")).EnsureSuccessStatusCode();
         Assert.False((await PublicTokensAsync()).GetProperty("caps").GetBoolean());
+
+        // Los cuatro de la extensión: los colores salen en minúsculas y la medida tal cual.
+        (await PutTokens(Blocco5Tokens)).EnsureSuccessStatusCode();
+        var blocco = await PublicTokensAsync();
+        Assert.Equal("#f0efed", blocco.GetProperty("card").GetString());
+        Assert.Equal("#e70917", blocco.GetProperty("rule").GetString());
+        Assert.Equal("1px", blocco.GetProperty("ruleWidth").GetString());
+        Assert.Equal("#e70917", blocco.GetProperty("accent").GetString());
     }
 
     // ── 3. Tokens desconocidos: se ignoran EN SILENCIO ─────────────────────────
@@ -201,6 +216,9 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("ink", "#GGGGGG")]
     [InlineData("headerBg", "#12345")]
     [InlineData("headerInk", "rgb(0,0,0)")]
+    [InlineData("card", "rojo")]
+    [InlineData("rule", "rgb(0,0,0)")]
+    [InlineData("accent", "#GGGGGG")]
     public async Task Tokens_ColorInvalido_400(string token, string value)
     {
         await ResetAsync();
@@ -304,6 +322,8 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("radius", ".px")]              // SIN radios (var() inválida → esquinas a 0)
     [InlineData("radiusButton", "1.2.3px")]
     [InlineData("tracking", "-.em")]
+    [InlineData("ruleWidth", "1")]             // sin unidad
+    [InlineData("ruleWidth", "calc(1px)")]
     public async Task Tokens_MedidaInvalida_400(string token, string value)
     {
         await ResetAsync();
@@ -501,5 +521,25 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal(JsonValueKind.Null, (await PublicTokensAsync()).ValueKind);
+    }
+
+    // ── 13. Extensión (card/rule/ruleWidth/accent): sin ellos NADA se mueve ────
+
+    // La garantía de que la otra instancia (ALMA EN PENA) no cambia al crecer la lista
+    // cerrada: su JSON de siempre, que no trae ninguno de los cuatro, se normaliza y se
+    // publica EXACTAMENTE igual que antes —mismas claves, mismo orden, ningún token
+    // inventado con valor por defecto—. El literal es la salida del servidor ANTERIOR a
+    // la extensión, capturada tal cual; si alguna vez deja de cuadrar, el portal de ALMA
+    // ha cambiado sin que nadie tocara su marca.
+    [Fact]
+    public async Task Tokens_SinLosCuatroDeLaExtension_ElJsonNormalizadoEsElDeAntes()
+    {
+        await ResetAsync();
+
+        (await PutTokens(AlmaTokens)).EnsureSuccessStatusCode();
+
+        const string antes = """{"logoUrlDark":"/media/alma-logo-dark.svg","faviconUrl":"/media/alma-favicon.png","fontUrl":"/media/GillSansMTLight.woff2","fontFamily":"GillSansMTLight","caps":true,"tracking":".06em","radius":"12px","radiusButton":"50px","paper":"#ffffff","surface":"#f5f5f5","ink":"#111111","headerBg":"#000000","headerInk":"#ffffff","heroFilter":"none","tagline":"Bienvenido a ALMA EN PENA","supportEmail":"soporte@almaenpena.com"}""";
+        Assert.Equal(antes, (await PublicTokensAsync()).GetRawText());
+        Assert.Equal(antes, (await AdminSettingsAsync()).GetProperty("brandTokens").GetRawText());
     }
 }

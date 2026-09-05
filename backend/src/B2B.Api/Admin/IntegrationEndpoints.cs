@@ -282,9 +282,18 @@ public static class IntegrationEndpoints
     private const int BrandTokensRawMaxChars = 64 * 1024;         // corte barato del texto crudo
     private const int BrandTokenUrlMax = 500;
 
-    private static readonly string[] BrandColorTokens = ["paper", "surface", "ink", "headerBg", "headerInk"];
+    // Colores (#rrggbb). `card` (fondo de paneles), `rule` (color de los filetes de capítulo)
+    // y `accent` (segundo acento: favoritos, barras de cuadros de mando, avisos) entraron con
+    // la extensión de BLOCCO 5; van en esta misma lista para reutilizar el validador de color
+    // y no añadir ninguna regla nueva. Viven en la columna JSON BrandTokensJson, así que
+    // ampliar la lista NO exige migración y una instancia que no los manda no se entera.
+    private static readonly string[] BrandColorTokens =
+        ["paper", "surface", "ink", "headerBg", "headerInk", "card", "rule", "accent"];
     private static readonly string[] BrandUrlTokens = ["logoUrlDark", "faviconUrl", "fontUrl"];
-    private static readonly string[] BrandLengthTokens = ["tracking", "radius", "radiusButton"];
+    // Medidas CSS con unidad. `ruleWidth` es el grosor de los filetes de capítulo y va junto a
+    // `rule` a propósito: el color sin el grosor da un filete rojo de 2px, que ya no es un
+    // filete sino una barra (el gesto de marca es la hairline).
+    private static readonly string[] BrandLengthTokens = ["tracking", "radius", "radiusButton", "ruleWidth"];
 
     private static readonly Regex BrandHexColor = new("^#[0-9a-fA-F]{6}$", RegexOptions.Compiled);
     // Medida CSS de verdad: un solo punto decimal y al menos un dígito. "..px" y "1.2.3px"

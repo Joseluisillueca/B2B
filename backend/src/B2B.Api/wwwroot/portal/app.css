@@ -13,7 +13,11 @@
      se lee con var(--token, <valor de MITO>). SIN tokens el valor por defecto es el de
      siempre, así que el portal de MITO PROJECTS no cambia ni un píxel. */
   --ink:var(--brand-ink,#201e1d); --ink-2:#605d5d; --ink-3:#7d7979;
-  --paper:var(--brand-paper,#f3f2f2); --surface:var(--brand-surface,#eae9e9); --card:#f8f4f4; --line:#d3cfcf;
+  --paper:var(--brand-paper,#f3f2f2); --surface:var(--brand-surface,#eae9e9);
+  /* --line se queda como literal A PROPÓSITO: son 69 hilos de 1px casi invisibles donde la
+     temperatura del gris no se nota, y abrirlo a un token invita a ponerlos en rojo, lo
+     que dejaría ilegible la retícula de GESTIÓN (/manage carga este mismo app.css). */
+  --card:var(--brand-card,#f8f4f4); --line:#d3cfcf;
   --gutter:clamp(1.25rem, 5vw, 4rem); --maxw:1240px;
   /* Ancho AMPLIO para superficies de rejilla (catálogo): casi a sangre en pantallas
      grandes, con solo --gutter de canal lateral. Cap alto para no volverse absurdo en
@@ -35,6 +39,11 @@
   --accent:#e15b47; --accent-deep:#ae1800; --accent-soft:#fff2ef;
   --ok:#1f7a45; --low:#b07d18; --out:#ec3013;
   --r:0px; --r-sm:0px;
+  /* Filete de CAPÍTULO (los 2px que abren cada bloque: cabecera de tabla, KPI, precio,
+     resumen del pedido…; NO los hilos de --line): color y grosor de marca. Sin tokens
+     resuelve a «2px solid var(--ink)», que es exactamente lo de hoy. Los sitios cuyo
+     filete iba en gris (--line / --line-control) conservan ese gris como respaldo. */
+  --rule:var(--brand-rule,var(--ink)); --rule-w:var(--brand-rule-w,2px);
   --shadow:0 1px 2px color-mix(in srgb,#2d2b2b 14%,transparent);
   --shadow-card:0 3px 10px color-mix(in srgb,#2d2b2b 16%,transparent);
   --ease:cubic-bezier(.16,1,.3,1);
@@ -77,7 +86,8 @@ main { flex:1; outline:none; }
 /* ══════════════ Header verde de marca ══════════════ */
 #chrome-header { position:sticky; top:0; z-index:20; background:var(--header-bg); color:var(--header-ink);
   display:flex; align-items:center; gap:1.1rem; padding:0 clamp(1rem,4vw,2.4rem); height:var(--header-h);
-  border-bottom:1px solid rgba(0,0,0,.14); }
+  /* Solo el COLOR toma el token del filete; el hilo se queda en 1px a propósito. */
+  border-bottom:1px solid var(--brand-rule,rgba(0,0,0,.14)); }
 /* Wordmark serif en crema; el italic de Fraunces le da carácter editorial */
 #chrome-header .brand { font-size:1.7rem; font-style:normal; color:var(--header-ink); text-decoration:none; line-height:1; }
 
@@ -461,7 +471,7 @@ body[data-chrome="credentials"] { background:var(--ink); }
 .cred-panel { display:grid; place-items:center; padding:2rem clamp(1.5rem,5vw,4rem); }
 .cred-wrap { width:min(30rem,100%); }
 .cred-h { font-family:var(--display); font-weight:800; font-size:2rem; letter-spacing:var(--brand-tracking,-.02em); margin:0;
-  padding-bottom:1rem; border-bottom:2px solid var(--ink); }
+  padding-bottom:1rem; border-bottom:var(--rule-w) solid var(--rule); }
 .cred-lead { color:var(--ink-2); font-size:.95rem; line-height:1.5; max-width:30rem; margin:1.1rem 0 0; }
 .cred-cards { display:flex; flex-direction:column; gap:.8rem; margin-top:1.5rem; }
 
@@ -1588,8 +1598,11 @@ table.grid .num { white-space:nowrap; }
 .as-title { font-family:var(--display); font-style:italic; font-size:1.15rem; display:flex; align-items:center; gap:.45rem; }
 .as-sub { grid-column:1 / -1; margin:0; font-size:.78rem; color:var(--header-ink-2); }
 .as-close { color:var(--header-ink); padding:.25rem; border-radius:6px; }
-.as-close:hover { background:rgba(255,255,255,.14); }
-.as-close:focus-visible { outline:2px solid #fff; outline-offset:1px; }
+/* Hover y anillo de foco en el color del velo de la cabecera, no en blanco fijo: sobre una
+   cabecera CLARA (token headerBg) el blanco era invisible y el foco no se veía (WCAG 2.4.7).
+   Con la cabecera negra por defecto el velo ES blanco, así que no cambia nada. */
+.as-close:hover { background:color-mix(in srgb, var(--header-veil) 14%, transparent); }
+.as-close:focus-visible { outline:2px solid var(--header-veil); outline-offset:1px; }
 
 .as-log { flex:1; overflow-y:auto; overscroll-behavior:contain; padding:1rem; display:flex; flex-direction:column; gap:.7rem; }
 .as-msg { max-width:85%; padding:.6rem .8rem; border-radius:14px; font-size:.9rem; line-height:1.5; white-space:normal; }
@@ -2168,7 +2181,7 @@ h1.title, .hero-title, .dash-greet, .kpi-value, .c-caption strong, .login-h, .cr
 .hero-cta { border-radius:var(--r-btn,var(--r,0)) !important; }
 
 /* KPIs de portada: cifra sobre REGLA superior de 2px (sin tarjeta ni sombra) */
-.kpi { background:none; border:0; border-top:2px solid var(--ink); border-radius:0; padding:.9rem 0 0; }
+.kpi { background:none; border:0; border-top:var(--rule-w) solid var(--rule); border-radius:0; padding:.9rem 0 0; }
 .kpi:hover { transform:none; box-shadow:none; }
 .kpi-accent { background:none; border-top-color:var(--blue); }
 .kpi-value { font-weight:800; }
@@ -2177,7 +2190,7 @@ h1.title, .hero-title, .dash-greet, .kpi-value, .c-caption strong, .login-h, .cr
 /* ── Auditoría Modernist: paleta vieja → rojo/neutro, tablas planas, B/N ── */
 /* Tablas de documento: sin caja ni sombra; cabecera con regla 2px (no barra gris) */
 table.grid { background:none !important; border:0 !important; box-shadow:none !important; }
-table.grid th { background:none !important; border-bottom:2px solid var(--ink) !important; color:var(--muted); }
+table.grid th { background:none !important; border-bottom:var(--rule-w) solid var(--rule) !important; color:var(--muted); }
 
 /* Puntos de estado (rail) → rojo (activo/negativo) o neutro (cerrado); fuera semáforo */
 .srail-dot.tone-blue, .srail-dot.tone-lime, .srail-dot.tone-amber,
@@ -2196,7 +2209,7 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 
 
 /* Cuadros de mando: KPI como cifra sobre regla superior de 2px (igual que portada) */
-.bd-kpi { background:none; border:0; border-top:2px solid var(--ink); border-radius:0; padding:.9rem 0 0; box-shadow:none; }
+.bd-kpi { background:none; border:0; border-top:var(--rule-w) solid var(--rule); border-radius:0; padding:.9rem 0 0; box-shadow:none; }
 .bd-kpi-value { font-weight:800; }
 
 /* Semáforo de disponibilidad de la matriz: solo rojo/neutro (fuera el ámbar) */
@@ -2208,7 +2221,7 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
   letter-spacing:.05em; font-size:.8rem; padding:.7rem var(--gutter); }
 
 /* Reglas 2px entre grupos de facetas (referencia 03) */
-.rail section + section { border-top:2px solid var(--line-control); padding-top:1.4rem; }
+.rail section + section { border-top:var(--rule-w) solid var(--brand-rule,var(--line-control)); padding-top:1.4rem; }
 
 /* Conmutador de vista segmentado del catálogo (Listado / Cuadrícula), activo rojo */
 /* Sin overflow:hidden: el raíl del foco global (:focus-visible, outline-offset:2px) se
@@ -2227,7 +2240,7 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 /* Listados de documentos: rail de estados vertical → TABS horizontales (ref. 04/09) */
 .page.docs { display:block; }
 .docs-rail { border-right:0; padding:0; margin:.2rem 0 1.6rem; }
-.srail { flex-direction:row; flex-wrap:wrap; gap:0; border-bottom:2px solid var(--line-control); }
+.srail { flex-direction:row; flex-wrap:wrap; gap:0; border-bottom:var(--rule-w) solid var(--brand-rule,var(--line-control)); }
 .srail-item { border:0; border-bottom:2px solid transparent; border-radius:0; padding:.6rem 1rem;
   font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); width:auto; }
 .srail-item:hover { background:none; color:var(--ink); }
@@ -2247,7 +2260,7 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 .login-card .submit, .ck-side .btn-primary, .ck-side .btn-primary.block,
 .docs-main .btn-primary, .cta.block, .btn-primary.block { justify-content:flex-start; text-align:left; padding-left:1.1rem; }
 /* Checkout: resumen con borde 2px sin sombra; h1 visible */
-.ck-side { border:2px solid var(--ink) !important; box-shadow:none !important; }
+.ck-side { border:var(--rule-w) solid var(--rule) !important; box-shadow:none !important; }
 .page.checkout > .cat-headline > h1.title { position:static !important; width:auto !important; height:auto !important;
   clip:auto !important; clip-path:none !important; overflow:visible !important; white-space:normal !important;
   margin:0 !important; padding:0 !important; }
@@ -2264,14 +2277,14 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 
 /* ── Ficha de producto (cap. 05): chips de atributo, PVD+PVP, botón ancho ── */
 .product-attrs { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center;
-  margin:1.6rem 0 0; padding:1.5rem 0 0; border-top:2px solid var(--line); }
+  margin:1.6rem 0 0; padding:1.5rem 0 0; border-top:var(--rule-w) solid var(--brand-rule,var(--line)); }
 .product-attrs .tag { display:inline-flex; align-items:center; font-size:.72rem; font-weight:700;
   letter-spacing:.06em; text-transform:uppercase; color:var(--ink); background:none;
   border:1px solid var(--line-control); border-radius:var(--r,0); padding:.3rem .7rem; }
 .product-attrs .tag-avail { border:2px solid var(--blue); color:var(--accent-deep); }
 /* PVD y PVP recomendado, uno al lado del otro, cifra sobre etiqueta */
 .product-price { display:flex; align-items:flex-end; gap:2.6rem; margin:1.6rem 0 0; padding:1.5rem 0 0;
-  border-top:2px solid var(--line); }
+  border-top:var(--rule-w) solid var(--brand-rule,var(--line)); }
 .pp-col { display:flex; flex-direction:column; gap:.2rem; }
 .pp-col span { font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2); }
 .pp-col b { font-family:var(--display); font-size:2rem; line-height:1; letter-spacing:-.02em; }
@@ -2279,7 +2292,7 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 /* Encabezado "CANTIDAD POR TALLA" sobre la matriz */
 .product-sizes-h { font-family:var(--display); font-size:.8rem; font-weight:800; letter-spacing:.06em;
   text-transform:uppercase; color:var(--ink); margin:0 0 .9rem; padding-bottom:.55rem;
-  border-bottom:2px solid var(--ink); }
+  border-bottom:var(--rule-w) solid var(--rule); }
 /* Botón "Añadir a REPOSICIÓN" a ancho completo: etiqueta izquierda + total derecha */
 .product-order { display:block; margin-top:1.6rem; }
 .product-order .btn-primary { display:flex; width:100%; align-items:center; justify-content:space-between;
@@ -2307,7 +2320,7 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 /* ── Cuadros de mando (cap. 09): paneles sin tarjeta, título sobre regla 2px ── */
 .bd-panel { background:none; border:0; border-radius:0; padding:0; }
 .bd-panel h2 { text-transform:uppercase; font-weight:800; font-size:.85rem; letter-spacing:.05em;
-  padding-bottom:.6rem; border-bottom:2px solid var(--ink); margin:0 0 1.1rem; }
+  padding-bottom:.6rem; border-bottom:var(--rule-w) solid var(--rule); margin:0 0 1.1rem; }
 .bd-grid { gap:2.2rem 2rem; }
 /* Cifra encima de cada barra (modo minimalista) */
 .ch-val { fill:var(--ink); font-family:var(--display); font-weight:800; font-size:15px; }
@@ -2317,7 +2330,7 @@ table.grid th { background:none !important; border-bottom:2px solid var(--ink) !
 /* Raíl horizontal compartido: la ficha ("Completa la gama", a lo ancho, regla de
    capítulo en tinta) y el checkout (".related-compact", bajo las líneas y discreto
    para no estorbar la compra). Sin relacionados la sección no se pinta (JS). */
-.related { margin:3.6rem 0 0; padding-top:2rem; border-top:2px solid var(--ink);
+.related { margin:3.6rem 0 0; padding-top:2rem; border-top:var(--rule-w) solid var(--rule);
   opacity:0; translate:0 14px;
   transition:opacity .5s var(--ease), translate .5s var(--ease); }
 .related.on { opacity:1; translate:0 0; }

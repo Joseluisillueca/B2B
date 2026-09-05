@@ -239,9 +239,21 @@ export default async function product(host, route) {
     // escritorio, 5 en móvil, y "+N" que lleva con scroll suave al raíl completo.
     const cross = related.filter(entry => entry.relation === 'cross');
     if (cross.length && slot) {
-      // Pie de color: los nombres siguen "MODELO — COLOR" (raya em — o en –, con
-      // espacios); sin raya no hay pie
-      const colorOf = name => {
+      // Pie de color. Primero el ATRIBUTO de color del artículo, si el ERP lo manda
+      // ("COLOR", "COLOR NAME", "COLOUR"...): es el dato de verdad y no depende de cómo
+      // esté escrito el nombre. Si no hay atributo, la convención "MODELO — COLOR" (raya
+      // em — o en –, con espacios); sin ninguna de las dos no hay pie. Un ERP que nombra
+      // "BUND RETRO Field Yellow", sin raya, dejaba la carta de colores sin nombres.
+      const colorAttribute = attributes => {
+        const entries = Object.entries(attributes || {});
+        const hit = entries.find(([key]) => /^colou?r(\s|_|-)?(name)?$/i.test(String(key).trim()))
+          || entries.find(([key]) => /colou?r/i.test(String(key)) && !/code/i.test(String(key)));
+        const value = hit ? hit[1] : '';
+        return Array.isArray(value) ? String(value[0] || '') : String(value || '');
+      };
+      const colorOf = (name, attributes) => {
+        const fromAttribute = colorAttribute(attributes).trim();
+        if (fromAttribute) return fromAttribute;
         const parts = String(name || '').split(/\s[—–]\s/);
         return parts.length > 1 ? parts.pop().trim() : '';
       };
@@ -252,7 +264,7 @@ export default async function product(host, route) {
         : `<span class="alsoin-art" aria-hidden="true">${icons.shoe(32)}</span>`;
 
       const swatch = ({ card }) => {
-        const color = colorOf(card.name);
+        const color = colorOf(card.name, card.attributes);
         // Sin stock en ninguna talla (availability solo "consult"): foto atenuada + AGOTADO
         const out = (card.availability || []).includes('consult');
         // El PVD del hermano SOLO cuando difiere del artículo abierto (igual es ruido)
@@ -271,7 +283,7 @@ export default async function product(host, route) {
       };
 
       // Color actual primero; si el nombre no lleva raya, la fila queda como antes
-      const ownColor = colorOf(item.name);
+      const ownColor = colorOf(item.name, item.attributes);
       const current = ownColor ? `
         <span class="alsoin-thumb alsoin-current" aria-current="true" title="${esc(item.name || '')}">
           <span class="alsoin-pic">${pic(item.imageUri)}</span>
