@@ -2486,7 +2486,11 @@ h1.title, .product-name, .item h2, .pcard-name, .t-label, .sel-panel h2 { font-w
    modo que el contraste del texto deja de depender de la foto (el saludo blanco itálico
    medía 2,5:1 sobre una foto clara). Portada, banda de ventanas y hero del lookbook. */
 html[data-hero-style="paper"] .hero-full { height:auto; display:grid; overflow:visible; background:var(--paper); }
-html[data-hero-style="paper"] .hero-media { position:relative; inset:auto; aspect-ratio:21/9; max-height:62vh; }
+/* La foto va a todo el ancho y su alto sale del ancho, no de la ventana: con un tope en
+   vh la caja se encogía y dejaba papel a la derecha. 2,4:1 es la proporción de los
+   recortes de campaña; en móvil sube a 16:9 para que no quede una tira. */
+html[data-hero-style="paper"] .hero-media { position:relative; inset:auto; width:100%; aspect-ratio:2.4/1; max-height:none; }
+@media (max-width:48rem) { html[data-hero-style="paper"] .hero-media { aspect-ratio:16/9; } }
 html[data-hero-style="paper"] .hero-full::after { display:none; }
 html[data-hero-style="paper"] .hero-overlay { position:static; color:var(--ink); padding:1.6rem var(--gutter) 0; }
 html[data-hero-style="paper"] .hero-kicker { font-style:normal; opacity:1; color:var(--ink-2); }
