@@ -2673,82 +2673,95 @@ html[data-hero-style="paper"] .item-attrs .tag[title]::before { content:attr(tit
    el resto de la marca: lookbook.js solo pinta .lb-index bajo data-hero-style="paper", así
    que ALMA y MITO conservan su carrusel byte a byte. */
 
-/* El aire tras el índice lo pone el padding-top (2.6rem) de la primera historia, no el hero:
-   su filete inferior ES el borde superior de la historia 01 (que nace sin border-top). */
+/* El aire tras el índice lo pone el padding-top de la primera historia (3.5rem, más abajo), no
+   el hero: su filete inferior ES el borde superior de la historia 01 (que nace sin border-top). */
 html[data-hero-style="paper"] .lb-hero-index { margin-bottom:0; }
 /* Mientras llega el CMS: papel, sin brillo y a la altura del índice (≈640px medidos a 390 y
    a 1900), para que la página no salte cuando se pinta. Nada de placa gris: después no hay foto. */
 html[data-hero-style="paper"] .lb-hero-index .hero-skeleton { aspect-ratio:auto; min-height:min(40rem,80vh); border-radius:0;
   background:var(--paper); background-image:none; animation:none; }
 
-/* Orden VISUAL: cabecera de página, índice, línea de estado + acción, palabra. El DOM va en
-   orden de LECTURA (cabecera, h1 = palabra, índice, pie): el lector de pantalla oye el título
-   antes que las seis entradas, y el tabulado (entradas → acción) coincide con lo visible.
-   El filete inferior es el «borde de página» que corta la palabra. */
+/* Orden VISUAL: cabecera de página (solo si el CMS trae kicker), índice, línea de estado + acción,
+   palabra. El DOM va en orden de LECTURA (cabecera, h1 = palabra, índice, pie): el lector de
+   pantalla oye el título antes que las seis entradas, y el tabulado (entradas → acción) coincide
+   con lo visible. El filete inferior es el «borde de página» que corta la palabra.
+   --ix-x es EL MISMO padding de #chrome-nav (misma expresión; si cambia allí, cambiar aquí): el
+   «01», el pie y la palabra caen a plomo con el logo y la pestaña CATÁLOGO, no con la columna de
+   lectura de las historias. p02 abre a página y p03 en adelante lleva márgenes: los filetes
+   sangran y el texto va al margen de página, no a una columna centrada dentro de ellos. */
 html[data-hero-style="paper"] .lb-index { display:grid; grid-template-areas:"head" "nav" "foot" "word";
+  --ix-x:max(clamp(1rem,4vw,2.4rem), calc((100% - var(--maxw-wide)) / 2));
   background:var(--paper); color:var(--ink); border-bottom:var(--rule-w) solid var(--rule); }
 
-/* Cabecera de página (p03-p22 llevan «LOOKBOOK 2027SS» arriba a la izquierda, en rojo y
-   expandido): el kicker del CMS o «Índice». A la derecha, en tinta, el claim de la marca
-   (token tagline): ocupa el sitio del monograma de la referencia, pequeño y sin competir.
-   Mayúscula con tracking abierto; el kicker toma la ANCHURA de los titulares (125 % aquí). */
+/* Cabecera de página SOLO si el CMS trae kicker (p03-p22 llevan «LOOKBOOK 2027SS» arriba a la
+   izquierda, en rojo y expandido). Sin él no se pinta: la pestaña LOOKBOOK del chrome ya rotula la
+   página y su filete rojo hace de primer filete del índice (p02: el asiento 01 viene inmediatamente,
+   sin rótulo). Con kicker es una cabecera corrida con aire, no un séptimo asiento de 55px. */
 html[data-hero-style="paper"] .lb-ix-head { grid-area:head; display:flex; flex-wrap:wrap; justify-content:space-between;
-  align-items:baseline; gap:.4rem 1.5rem; width:100%; max-width:var(--maxw); margin:0 auto; padding:1.5rem var(--gutter) .95rem; }
-html[data-hero-style="paper"] .lb-ix-kicker, html[data-hero-style="paper"] .lb-ix-tag { margin:0; font-size:.74rem; line-height:1.3;
-  letter-spacing:.12em; text-transform:uppercase; }
+  align-items:baseline; gap:.4rem 1.5rem; width:100%; padding:2.4rem var(--ix-x) 1rem; }
 /* --blue-text, no --blue: es la variante del rojo que branding.js garantiza legible para texto
    PEQUEÑO sobre el papel de la instancia (con #e70917 sobre blanco, 4,72:1, es el mismo rojo). */
-html[data-hero-style="paper"] .lb-ix-kicker { color:var(--blue-text); font-weight:800; font-stretch:var(--brand-display-stretch,100%); }
-html[data-hero-style="paper"] .lb-ix-tag { color:var(--ink); font-weight:600; }
+html[data-hero-style="paper"] .lb-ix-kicker { margin:0; font-size:.74rem; line-height:1.3; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--blue-text); font-weight:800; font-stretch:var(--brand-display-stretch,100%); }
 
-/* Entradas: el <li> ocupa TODO el ancho y lleva el filete (a sangre, como p02); el <a> sangra
-   su texto hasta la columna de las historias con el mismo max() que usa la columna de lectura,
-   así el «01» cae a plomo con el kicker de la historia a la que lleva. */
+/* Entradas: el <li> ocupa TODO el ancho y lleva el filete (a sangre, como p02); el <a> sangra su
+   texto hasta el margen de página (--ix-x). El primer filete del índice es el de las pestañas del
+   chrome (con el suyo habría doble línea); solo con cabecera el asiento 01 recupera el suyo. */
 html[data-hero-style="paper"] .lb-ix-nav { grid-area:nav; }
 html[data-hero-style="paper"] .lb-ix-list { list-style:none; margin:0; padding:0; }
 html[data-hero-style="paper"] .lb-ix-list li { border-top:var(--rule-w) solid var(--rule); }
+html[data-hero-style="paper"] .lb-ix-list li:first-child { border-top:0; }
+html[data-hero-style="paper"] .lb-ix-head ~ .lb-ix-nav li:first-child { border-top:var(--rule-w) solid var(--rule); }
 html[data-hero-style="paper"] .lb-ix-list li:last-child { border-bottom:var(--rule-w) solid var(--rule); }
 html[data-hero-style="paper"] .lb-ix-list a { display:grid; grid-template-columns:3.5rem 17rem minmax(0,1fr); column-gap:1rem;
-  align-items:baseline; padding:.95rem max(var(--gutter), calc((100% - var(--maxw)) / 2 + var(--gutter)));
-  color:var(--ink); text-decoration:none; }
+  align-items:baseline; padding:.7rem var(--ix-x); color:var(--ink); text-decoration:none; }
 /* Número: rojo, expandido y tabular (los «01…06» de p02 son numerales negros expandidos en rojo). */
 html[data-hero-style="paper"] .lb-ix-num { font-size:.9rem; font-weight:800; letter-spacing:.04em; color:var(--blue-text);
   font-stretch:var(--brand-display-stretch,100%); font-variant-numeric:tabular-nums; }
-/* Nombre del capítulo (kicker de la historia) en tinta y mayúscula; el titular en caja de frase
-   y tinta secundaria (#605d5d sobre blanco = 6,5:1). */
-html[data-hero-style="paper"] .lb-ix-name { font-size:.8rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; line-height:1.35; }
-html[data-hero-style="paper"] .lb-ix-title { font-size:1rem; line-height:1.4; color:var(--ink-2); }
+/* Nombre del capítulo (kicker de la historia) y titular, los dos en TINTA: una sola voz por fila
+   (p02 es numeral rojo + nombre en negro; ningún gris de «texto de ayuda» que se active al pasar
+   el puntero). El nombre comparte cuerpo con el numeral, en regular y con poco tracking. */
+html[data-hero-style="paper"] .lb-ix-name { font-size:.9rem; font-weight:500; letter-spacing:.04em; text-transform:uppercase; line-height:1.35; }
+html[data-hero-style="paper"] .lb-ix-title { font-size:1rem; line-height:1.4; color:var(--ink); }
+/* Un kicker o título sin espacios no invade la columna vecina ni ensancha el documento. */
+html[data-hero-style="paper"] :is(.lb-ix-name,.lb-ix-title,.lb-ix-kicker,.lb-ix-label,.lb-ix-sub) { overflow-wrap:anywhere; min-width:0; }
 /* Solo con puntero: en táctil el subrayado se quedaría pegado a la última entrada tocada. */
 @media (hover:hover) {
   html[data-hero-style="paper"] .lb-ix-list a:hover .lb-ix-name { text-decoration:underline; text-underline-offset:.14em; text-decoration-color:var(--blue); }
-  html[data-hero-style="paper"] .lb-ix-list a:hover .lb-ix-title { color:var(--ink); }
 }
 html[data-hero-style="paper"] .lb-ix-list a:focus-visible { outline:2px solid var(--blue); outline-offset:-2px; }
 
-/* Pie del índice: la línea de estado del CMS («Abierta a pedidos.») justo encima de la palabra
-   —se leen juntas: «Abierta a pedidos. SS27»— y la acción como ENLACE rojo en mayúscula, no
-   como botón: la referencia no tiene un solo bloque de color y el único rojo grande de esta
-   pantalla debe ser la palabra. El botón relleno queda para el cierre de la página. */
-html[data-hero-style="paper"] .lb-ix-foot { grid-area:foot; display:flex; flex-wrap:wrap; justify-content:space-between;
-  align-items:baseline; gap:.6rem 2rem; width:100%; max-width:var(--maxw); margin:0 auto; padding:1.4rem var(--gutter) 0; }
+/* Pie del índice: la línea de estado del CMS («Abierta a pedidos.») y, seguida en el orden de
+   lectura (no en la esquina opuesta), la acción como ENLACE rojo en mayúscula, no como botón: la
+   referencia no tiene un solo bloque de color y el único rojo grande de esta pantalla debe ser la
+   palabra. El botón relleno queda para el cierre de la página. */
+html[data-hero-style="paper"] .lb-ix-foot { grid-area:foot; display:flex; flex-wrap:wrap; justify-content:flex-start;
+  align-items:baseline; gap:.6rem 2.5rem; width:100%; padding:1rem var(--ix-x) 0; }
 html[data-hero-style="paper"] .lb-ix-sub { margin:0; font-size:1.05rem; font-weight:500; color:var(--ink); }
+/* padding-block compensado con margen negativo: área táctil de 36px (44 en móvil; WCAG 2.5.8) con
+   la misma línea base y sin mover nada del layout. */
 html[data-hero-style="paper"] .lb-ix-cta { display:inline-flex; align-items:center; gap:.4rem; font-size:.8rem; font-weight:800;
-  letter-spacing:.1em; text-transform:uppercase; color:var(--blue-text); text-decoration:none; font-stretch:var(--brand-display-stretch,100%); }
+  letter-spacing:.1em; text-transform:uppercase; color:var(--blue-text); text-decoration:none; font-stretch:var(--brand-display-stretch,100%);
+  padding-block:.5rem; margin-block:-.5rem; }
 html[data-hero-style="paper"] .lb-ix-cta:hover { text-decoration:underline; text-underline-offset:.16em; }
 html[data-hero-style="paper"] .lb-ix-cta:focus-visible { outline:2px solid var(--blue); outline-offset:3px; }
 
-/* La PALABRA: Archivo 900 a 125 % (los tokens de titular), rojo de marca, UNA línea que llena
-   exactamente la columna (lookbook.js mide y fija el font-size; los 6rem son el respaldo antes
-   de medir). Con line-height:1 las mayúsculas de Archivo van de ~.14em a ~.84em de la caja: un
-   alto de .64em enseña el 70 % superior de la mayúscula y el filete del contenedor la corta,
-   la misma proporción con la que p10/p22 cortan «Bund» y «VAGUE» (p02 corta «Index» algo más;
-   a 70 % el «SS27» se sigue leyendo de un vistazo). overflow:clip (no crea contenedor de
-   scroll) también la recorta por la DERECHA si el suelo de 2.25rem no cabe (palabra muy larga en
-   móvil): nunca hay scroll horizontal. min-width:0 en el ítem de grid es obligatorio: sin él
-   el min-content del nowrap ensancha la pista y el documento (661px de scrollWidth a 390px).
+/* La PALABRA: Archivo 900 a 125 % (los tokens de titular), rojo de marca, UNA línea anclada al
+   margen izquierdo (lookbook.js mide y fija el font-size: llena la caja o, si eso la haría más
+   alta, el tope de altura del 19 % de la página bajo la cabecera, la proporción de «Index» en p02;
+   los 6rem son el respaldo antes de medir). Con line-height:1 las mayúsculas de Archivo van de
+   ~.14em a ~.84em de la caja: un alto de .64em enseña el 70 % superior de la mayúscula y el filete
+   del contenedor la corta, la misma proporción con la que p10/p22 cortan «Bund» y «VAGUE» (p02
+   corta «Index» algo más; a 70 % el «SS27» se sigue leyendo de un vistazo). overflow:clip (no crea
+   contenedor de scroll) también la recorta por la DERECHA si el suelo de 2.25rem no cabe (palabra
+   muy larga en móvil): nunca hay scroll horizontal. min-width:0 en el ítem de grid es obligatorio:
+   sin él el min-content del nowrap ensancha la pista y el documento (661px de scrollWidth a 390px).
    El tracking va fijo, no por token: el token es para etiquetas, no para un cuerpo de 300px. */
-html[data-hero-style="paper"] .lb-ix-wordbox { grid-area:word; min-width:0; overflow:clip; width:100%; max-width:var(--maxw);
-  margin:1.4rem auto 0; padding:0 var(--gutter); }
+html[data-hero-style="paper"] .lb-ix-wordbox { grid-area:word; min-width:0; overflow:clip; width:100%; margin:.9rem 0 0; padding:0 var(--ix-x); }
+/* El claim de la marca (token tagline), pequeño y en rojo, justo encima de la palabra: es el hueco
+   «Collection» sobre «Bund»/«VAGUE» de p10/p22. Solo si no se dice ya en la palabra o en el pie. */
+html[data-hero-style="paper"] .lb-ix-label { margin:0 0 .2rem; font-size:.74rem; line-height:1.3; font-weight:800; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--blue-text); font-stretch:var(--brand-display-stretch,100%); }
 html[data-hero-style="paper"] .lb-ix-word { margin:0; font-family:var(--display); font-weight:var(--brand-display-weight,800);
   font-stretch:var(--brand-display-stretch,100%); letter-spacing:-.02em; text-transform:none; color:var(--blue);
   font-size:6rem; line-height:1; height:.64em; overflow:clip; white-space:nowrap; }
@@ -2759,13 +2772,22 @@ html[data-hero-style="paper"] .lb-ix-glyphs { display:inline-block; margin-left:
 /* Las entradas del índice llevan a la historia por JS (scrollIntoView): que el kicker no quede
    bajo la cabecera pegajosa (66px). Gateado: en ALMA nadie salta a una historia. */
 html[data-hero-style="paper"] .lb-story { scroll-margin-top:calc(var(--header-h) + 1rem); }
+/* Aire entre el filete que corta la palabra y la placa de la historia 01 (56px, como estado →
+   palabra): la palabra lee como pie de su índice, no como pie de la foto de abajo. */
+html[data-hero-style="paper"] .lb-story:first-child { padding-top:3.5rem; }
 
-/* Móvil (390px): el titular baja bajo el nombre del capítulo, en la misma columna de texto;
-   la palabra sigue llenando el ancho (SS27 ≈ 105px de cuerpo). Bloque entero ≈ 640px: cabe en
-   una pantalla de 844 y la placa de la historia 01 asoma debajo. */
+/* Móvil (390px): p02 literal —un asiento = una línea (el titular ya lo dice la historia), la
+   palabra a sangre («Index» nace en x=0) y llenando el ancho (SS27 ≈ 115px de cuerpo). El margen
+   del texto es el del logo (--gutter = 20px). Bloque ≈530px: la placa de la historia 01 entra en
+   la primera pantalla. */
 @media (max-width:48rem) {
+  html[data-hero-style="paper"] .lb-index { --ix-x:var(--gutter); }
   html[data-hero-style="paper"] .lb-ix-head { padding-top:1.2rem; }
-  html[data-hero-style="paper"] .lb-ix-list a { grid-template-columns:2.4rem minmax(0,1fr); padding-block:.75rem; row-gap:.1rem; }
-  html[data-hero-style="paper"] .lb-ix-title { grid-column:2; font-size:.92rem; }
-  html[data-hero-style="paper"] .lb-ix-wordbox { margin-top:1.1rem; }
+  html[data-hero-style="paper"] .lb-ix-title { display:none; }
+  html[data-hero-style="paper"] .lb-ix-list a { grid-template-columns:2.4rem minmax(0,1fr); padding-block:.7rem; }
+  html[data-hero-style="paper"] .lb-ix-cta { padding-block:.75rem; margin-block:-.75rem; }
+  html[data-hero-style="paper"] .lb-ix-wordbox { padding-inline:0; margin-top:.9rem; }
+  html[data-hero-style="paper"] .lb-ix-label { padding-inline:var(--ix-x); }
+  html[data-hero-style="paper"] .lb-ix-glyphs { margin-left:0; }
+  html[data-hero-style="paper"] .lb-story:first-child { padding-top:2.6rem; }
 }

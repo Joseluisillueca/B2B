@@ -50,7 +50,7 @@ export default async function lookbook(host) {
   host.innerHTML = `
     <div class="page lookbook">
       <div class="lb-hero${paper ? ' lb-hero-index' : ''}" id="lbHero"><div class="hero-skeleton"></div></div>
-      <div id="lbBody" aria-live="polite"><div class="skeleton"></div></div>
+      <div id="lbBody"><div class="skeleton"></div></div>
     </div>
     <div id="lbSelBar"></div>`;
 
@@ -119,6 +119,16 @@ export default async function lookbook(host) {
   renderSelBar();
   body.querySelector('.lb-close a')?.addEventListener('click', toScheduled);
 
+  // Deep link (/lookbook#lb-s03 abierto en pestaña nueva o compartido): las historias se pintan
+  // tras el fetch, así que nadie más lee el hash. Diferido a la siguiente vuelta porque el router
+  // hace scrollTo(0,0) justo al volver de esta vista. Neutro: sin hash de historia no hace nada.
+  const deep = /^#lb-s\d{2}$/.test(location.hash) && body.querySelector(location.hash);
+  if (deep) setTimeout(() => {
+    if (!deep.isConnected) return;
+    deep.scrollIntoView({ block: 'start' });
+    deep.querySelector('h2')?.focus({ preventScroll: true });
+  }, 0);
+
   // ── Bloques de historia ───────────────────────────────────────────────────
   // n = posición (1…): da el id al que salta el índice de la apertura. El id y el tabindex
   // del h2 van sin gatear: son anclas inertes, sin efecto visual en las otras marcas.
@@ -168,26 +178,28 @@ export default async function lookbook(host) {
     const tagline = String(getTokens().tagline || '').trim();
     const lookbookWord = t('nav.lookbook');
     const word = String(cover.title || '').trim() || lookbookWord;
-    // El claim (token tagline) va a la derecha de la cabecera salvo que ya esté en la
-    // palabra o en la línea de estado: nada se dice dos veces en la misma pantalla.
+    // Cabecera de página SOLO si el CMS trae kicker: sin ella la pestaña LOOKBOOK del chrome ya
+    // rotula la página y su filete hace de primer filete del índice (p02 no lleva rótulo).
+    const kicker = String(cover.kicker || '').trim();
+    // El claim (token tagline) va justo encima de la palabra (el hueco «Collection» de p10/p22)
+    // salvo que ya esté en la palabra o en la línea de estado: nada se dice dos veces.
     const showTag = tagline && norm(word) !== norm(tagline) && !norm(cover.subtitle).includes(norm(tagline));
     const ctaHref = cover.ctaHref || href('catalog/catalog');
-    const ctaText = cover.ctaText || t('lookbook.toCatalog');
+    // Sin ctaText (o en blanco) la acción es «Ver todo el catálogo»: la misma etiqueta que el cierre.
+    const ctaText = String(cover.ctaText || '').trim() || t('lookbook.toCatalog');
     // El h1 accesible dice «Lookbook SS27», no solo la cifra: el prefijo va solo para lectores
     // (sr-only) y se omite si la palabra ya es «Lookbook». Los «01…06» visibles van aria-hidden:
-    // el <ol> ya numera para el lector de pantalla.
+    // el <ol> numera para el lector de pantalla (role="list" explícito: WebKit retira la
+    // semántica de lista a un <ol> con list-style:none y VoiceOver oiría seis enlaces sueltos).
     return `
       <section class="lb-index" aria-labelledby="lbIndexWord">
-        <div class="lb-ix-head">
-          <p class="lb-ix-kicker">${esc(cover.kicker || t('lookbook.indexLabel'))}</p>
-          ${showTag ? `<p class="lb-ix-tag">${esc(tagline)}</p>` : ''}
-        </div>
-        <div class="lb-ix-wordbox"><h1 class="lb-ix-word" id="lbIndexWord">${
+        ${kicker ? `<div class="lb-ix-head"><p class="lb-ix-kicker">${esc(kicker)}</p></div>` : ''}
+        <div class="lb-ix-wordbox">${showTag ? `<p class="lb-ix-label">${esc(tagline)}</p>` : ''}<h1 class="lb-ix-word" id="lbIndexWord">${
           norm(word) === norm(lookbookWord) ? '' : `<span class="sr-only">${esc(lookbookWord)} </span>`
         }<span class="lb-ix-glyphs">${esc(word)}</span></h1></div>
         ${list.length ? `
         <nav class="lb-ix-nav" aria-label="${esc(t('lookbook.indexLabel'))}">
-          <ol class="lb-ix-list">
+          <ol class="lb-ix-list" role="list">
             ${list.map((story, i) => `
               <li><a href="#${storyId(i + 1)}" data-jump="${storyId(i + 1)}">
                 <span class="lb-ix-num" aria-hidden="true">${String(i + 1).padStart(2, '0')}</span>
@@ -210,6 +222,9 @@ export default async function lookbook(host) {
     const behavior = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
     heroHost.querySelectorAll('[data-jump]').forEach(link => {
       link.addEventListener('click', event => {
+        // Ctrl/Cmd/Shift/Alt+clic y el botón central son del navegador (pestaña nueva, etc.):
+        // el enlace debe comportarse como enlace.
+        if (event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
         const target = body.querySelector(`#${link.dataset.jump}`);
         if (!target) return;
         event.preventDefault();
@@ -405,28 +420,46 @@ export default async function lookbook(host) {
   }
 }
 
-// La palabra gigante del índice llena EXACTAMENTE la columna, sea «SS27» o «Lookbook»: se
-// mide su anchura natural a 100px y se escala (tope 22rem; suelo 2.25rem, con el que un título
-// de 13 caracteres como «Own your code» aún cabe entero a 390px; por debajo el CSS la recorta
-// por la derecha antes que romper la línea). El .99 deja un pelo de margen para que
-// el último glifo no roce el recorte. Se repite al cargar la webfont (Archivo llega después
-// del primer pintado y es más ancha que el respaldo) y al cambiar el ancho; el listener se
-// retira solo cuando el router sustituye la vista (nodo desconectado). A nivel de módulo,
-// como content(): no depende de nada de la vista.
+// La palabra gigante del índice, sea «SS27» o «Lookbook», anclada al margen izquierdo: se mide
+// su anchura natural a 100px y se escala hasta llenar la caja (byWidth: manda en móvil) o, si
+// eso la haría más alta, hasta el tope de ALTURA (byHeight: .5em de tinta visible = 19 % de la
+// página bajo la cabecera, la proporción de «Index» en p02; manda en escritorio y portátil, y
+// deja aire a la derecha como p10/p22). Suelo 2.25rem, con el que un título de 13 caracteres
+// como «Own your code» aún cabe entero a 390px; por debajo el CSS la recorta por la derecha antes
+// que romper la línea. El .99 deja un pelo de margen para que el último glifo no roce el recorte.
+// Se repite al cambiar el ancho, al cargar cualquier fuente (fonts.ready + loadingdone) y, por el
+// ResizeObserver sobre el span, cuando su anchura real cambia por lo que sea (la webfont expandida
+// que inyecta branding.js en Safari, zoom de texto, espaciado de usuario): la medida no depende de
+// qué fuente estaba cargada en el instante del primer pintado. Todo se retira solo cuando el router
+// sustituye la vista (nodo desconectado). A nivel de módulo, como content(): no depende de nada de
+// la vista.
 function fitWord(word) {
   const glyphs = word?.querySelector('.lb-ix-glyphs');
   if (!glyphs) return;
-  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const root = getComputedStyle(document.documentElement);
+  const rem = parseFloat(root.fontSize) || 16;
+  const headerH = parseFloat(root.getPropertyValue('--header-h')) || 66;
   let raf = 0;
+  const stop = () => {
+    removeEventListener('resize', onResize);
+    document.fonts?.removeEventListener('loadingdone', onResize);
+    observer?.disconnect();
+  };
   const fit = () => {
-    if (!word.isConnected) { removeEventListener('resize', onResize); return; }
+    if (!word.isConnected) { stop(); return; }
     word.style.fontSize = '100px';
     const natural = glyphs.getBoundingClientRect().width || 1;
-    const size = Math.min(22 * rem, Math.max(2.25 * rem, 100 * word.clientWidth / natural * .99));
-    word.style.fontSize = `${size}px`;
+    const byWidth = 100 * word.clientWidth / natural * .99;
+    const byHeight = .38 * (innerHeight - headerH);
+    word.style.fontSize = `${Math.max(2.25 * rem, Math.min(byWidth, byHeight))}px`;
   };
   const onResize = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(fit); };
+  // El ajuste es determinista (misma anchura natural → mismo cuerpo), así que el observador no
+  // se realimenta: tras un fit que no cambia el cuerpo no hay nueva notificación.
+  const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(onResize) : null;
   addEventListener('resize', onResize);
+  document.fonts?.addEventListener('loadingdone', onResize);
+  observer?.observe(glyphs);
   fit();
   document.fonts?.ready.then(fit);
 }

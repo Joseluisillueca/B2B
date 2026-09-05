@@ -23,9 +23,9 @@ import { icons } from '../icons.js';
 // ── Definición de bloques (portada + historias) ─────────────────────────────
 const LB_BLOCKS = [
   { key: 'lookbook.hero', title: 'Portada del lookbook', kind: 'lb-hero',
-    help: 'Apertura del lookbook. En una marca sobre papel es un índice tipográfico sin foto: el título es la palabra de temporada (corta, p. ej. «SS27»), el subtítulo la línea de estado («Abierta a pedidos.») y el botón la acción; la imagen se ignora y puede quedar vacía. En las demás marcas, con imagen es un carrusel (2880×1200 px o mayor).' },
+    help: 'Apertura del lookbook. En una marca sobre papel es un índice tipográfico sin foto: el título es la palabra de temporada (8 caracteres como máximo, p. ej. «SS27»: se pinta a página completa y no se parte), el subtítulo la línea de estado («Abierta a pedidos.», con fechas si la campaña las tiene) y el botón la acción (vacío = «Ver todo el catálogo», la misma etiqueta que el cierre); el kicker solo si se quiere un rótulo encima del índice (normalmente vacío: la pestaña LOOKBOOK ya rotula la página); la imagen se ignora y puede quedar vacía. En las demás marcas, con imagen es un carrusel (2880×1200 px o mayor).' },
   { key: 'lookbook.stories', title: 'Historias', kind: 'lb-story',
-    help: 'Cada historia: una foto, un texto editorial, un color de acento y los productos de su raíl «Compra el look».' },
+    help: 'Cada historia: una foto, un texto editorial, un color de acento y los productos de su raíl «Referencias del look».' },
 ];
 const LB_LAYOUTS = [['right', 'Foto a la derecha'], ['left', 'Foto a la izquierda']];
 
@@ -58,7 +58,7 @@ export default async function lookbook(main) {
       <div>
         <p class="crumbs">Contenido</p>
         <h1 class="title">Lookbook</h1>
-        <p class="lead">La portada y las historias editoriales del lookbook, con su raíl «Compra el look».
+        <p class="lead">La portada y las historias editoriales del lookbook, con su raíl «Referencias del look».
           El portal usa el idioma pedido y, si no lo tiene, el contenido <b>Común</b>.</p>
       </div>
     </div>
@@ -223,7 +223,7 @@ export default async function lookbook(main) {
           </div>
           <div class="lbk-row">
             <div class="lbk-refs">
-              <div class="lbk-refs-title">Productos del raíl «Compra el look»${item.refs && item.refs.length ? ` · ${item.refs.length}` : ''}</div>
+              <div class="lbk-refs-title">Productos del raíl «Referencias del look»${item.refs && item.refs.length ? ` · ${item.refs.length}` : ''}</div>
               <div class="lbk-chips">${(item.refs || []).map(refChip).join('')}</div>
               <div class="lbk-picker">
                 <input type="search" data-ref-search aria-label="Buscar producto para el raíl"
@@ -291,7 +291,7 @@ export default async function lookbook(main) {
     const chips = cItem.querySelector('.lbk-chips');
     if (chips) chips.innerHTML = (item.refs || []).map(refChip).join('');
     const title = cItem.querySelector('.lbk-refs-title');
-    if (title) title.textContent = `Productos del raíl «Compra el look»${item.refs && item.refs.length ? ` · ${item.refs.length}` : ''}`;
+    if (title) title.textContent = `Productos del raíl «Referencias del look»${item.refs && item.refs.length ? ` · ${item.refs.length}` : ''}`;
     const list = cItem.querySelector('.lbk-picker-list');
     if (list) list.innerHTML = pickerResults(searchValue || '', item.refs || []);
     const preview = cItem.querySelector('[data-preview]');
