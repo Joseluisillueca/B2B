@@ -25,6 +25,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ModelSelection> ModelSelections => Set<ModelSelection>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
+    public DbSet<PortalMediaFile> PortalMediaFiles => Set<PortalMediaFile>();
     public DbSet<IntegrationSettings> IntegrationSettings => Set<IntegrationSettings>();
     public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();

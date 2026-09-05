@@ -22,4 +22,10 @@
     <PackageReference Include="Stripe.net" Version="52.3.0" />
   </ItemGroup>
 
+  <!-- Medios de demostración: viajan en la imagen fuera de wwwroot (para que un volumen
+       montado en wwwroot/media/portal no los tape) y se siembran al arrancar. -->
+  <ItemGroup>
+    <Content Include="MediaSeed\**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

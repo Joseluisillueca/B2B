@@ -67,7 +67,7 @@ public class AdminMediaTests : IClassFixture<TestWebApplicationFactory>
         Assert.EndsWith(".png", url);
         Assert.DoesNotContain(' ', url);
         Assert.Equal(Png.Length, body.GetProperty("size").GetInt64());
-        Assert.True(File.Exists(Path.Combine(_factory.MediaRoot, name)));
+        Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync("/media/portal/" + name)).StatusCode);
 
         var list = await (await SendAsync(HttpMethod.Get, "/api/admin/media")).Content.ReadFromJsonAsync<JsonElement>();
         Assert.Contains(list.GetProperty("items").EnumerateArray(), i => i.GetProperty("url").GetString() == url);
@@ -98,7 +98,7 @@ public class AdminMediaTests : IClassFixture<TestWebApplicationFactory>
         var name = body.GetProperty("name").GetString()!;
         Assert.EndsWith(".svg", body.GetProperty("url").GetString());
         Assert.Equal("image/svg+xml", body.GetProperty("contentType").GetString());
-        Assert.True(File.Exists(Path.Combine(_factory.MediaRoot, name)));
+        Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync("/media/portal/" + name)).StatusCode);
 
         var list = await (await SendAsync(HttpMethod.Get, "/api/admin/media")).Content.ReadFromJsonAsync<JsonElement>();
         Assert.Contains(list.GetProperty("items").EnumerateArray(), i => i.GetProperty("name").GetString() == name);
@@ -110,12 +110,12 @@ public class AdminMediaTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("""<svg xmlns="http://www.w3.org/2000/svg"><a href="javascript:alert(1)"><rect/></a></svg>""")]
     public async Task Subida_DeUnSvgConScript_Devuelve400YNoEscribeNada(string svg)
     {
-        var antes = Directory.Exists(_factory.MediaRoot) ? Directory.GetFiles(_factory.MediaRoot).Length : 0;
+        var antes = await CuantosAsync();
 
         var response = await UploadAsync(System.Text.Encoding.UTF8.GetBytes(svg), "trampa.svg", "image/svg+xml");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var despues = Directory.Exists(_factory.MediaRoot) ? Directory.GetFiles(_factory.MediaRoot).Length : 0;
+        var despues = await CuantosAsync();
         Assert.Equal(antes, despues);
     }
 
@@ -147,7 +147,7 @@ public class AdminMediaTests : IClassFixture<TestWebApplicationFactory>
         var url = body.GetProperty("url").GetString()!;
         Assert.EndsWith(".woff2", url);
         Assert.DoesNotContain(' ', url);
-        Assert.True(File.Exists(Path.Combine(_factory.MediaRoot, name)));
+        Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync("/media/portal/" + name)).StatusCode);
 
         // Y se lista: lo que no aparece en la biblioteca no se puede borrar desde Gestión.
         var list = await (await SendAsync(HttpMethod.Get, "/api/admin/media")).Content.ReadFromJsonAsync<JsonElement>();
@@ -166,7 +166,7 @@ public class AdminMediaTests : IClassFixture<TestWebApplicationFactory>
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         var name = body.GetProperty("name").GetString()!;
         Assert.EndsWith(".ico", body.GetProperty("url").GetString());
-        Assert.True(File.Exists(Path.Combine(_factory.MediaRoot, name)));
+        Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync("/media/portal/" + name)).StatusCode);
 
         var list = await (await SendAsync(HttpMethod.Get, "/api/admin/media")).Content.ReadFromJsonAsync<JsonElement>();
         Assert.Contains(list.GetProperty("items").EnumerateArray(), i => i.GetProperty("name").GetString() == name);
@@ -178,14 +178,14 @@ public class AdminMediaTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("trampa.ico")]
     public async Task Subida_DeUnBinarioFalso_Devuelve400YNoEscribeNada(string fileName)
     {
-        var antes = Directory.Exists(_factory.MediaRoot) ? Directory.GetFiles(_factory.MediaRoot).Length : 0;
+        var antes = await CuantosAsync();
 
         var response = await UploadAsync(
             System.Text.Encoding.UTF8.GetBytes("<html><script>alert(1)</script></html>"),
             fileName, "application/octet-stream");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var despues = Directory.Exists(_factory.MediaRoot) ? Directory.GetFiles(_factory.MediaRoot).Length : 0;
+        var despues = await CuantosAsync();
         Assert.Equal(antes, despues);
     }
 
@@ -200,14 +200,14 @@ public class AdminMediaTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("truco.ico", "text/html")]
     public async Task Subida_ConTipoNoPermitido_Devuelve400YNoEscribeNada(string fileName, string contentType)
     {
-        var antes = Directory.Exists(_factory.MediaRoot) ? Directory.GetFiles(_factory.MediaRoot).Length : 0;
+        var antes = await CuantosAsync();
 
         var response = await UploadAsync(Png, fileName, contentType);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.False(string.IsNullOrWhiteSpace(body.GetProperty("error").GetString()));
-        var despues = Directory.Exists(_factory.MediaRoot) ? Directory.GetFiles(_factory.MediaRoot).Length : 0;
+        var despues = await CuantosAsync();
         Assert.Equal(antes, despues);
     }
 
@@ -232,7 +232,7 @@ public class AdminMediaTests : IClassFixture<TestWebApplicationFactory>
         var name = subida.GetProperty("name").GetString()!;
 
         Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(HttpMethod.Delete, $"/api/admin/media/{name}")).StatusCode);
-        Assert.False(File.Exists(Path.Combine(_factory.MediaRoot, name)));
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync("/media/portal/" + name)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Delete, $"/api/admin/media/{name}")).StatusCode);
     }
 
@@ -252,5 +252,12 @@ public class AdminMediaTests : IClassFixture<TestWebApplicationFactory>
         {
             File.Delete(testigo);
         }
+    }
+
+    // Los medios viven en la base de datos: lo que hay se cuenta por el listado, no por el disco
+    private async Task<int> CuantosAsync()
+    {
+        var list = await (await SendAsync(HttpMethod.Get, "/api/admin/media")).Content.ReadFromJsonAsync<JsonElement>();
+        return list.GetProperty("items").GetArrayLength();
     }
 }

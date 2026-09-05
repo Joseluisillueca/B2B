@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json.Nodes;
+using B2B.Api.Admin;
 using B2B.Api.Data;
 using B2B.Api.Shop;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +29,7 @@ public static class PdfEndpoints
         // Ficha técnica de un producto (enciende el botón "Descargar ficha técnica").
         app.MapGet("/api/portal/product/{reference}/tech-sheet.pdf", async (
             string reference, HttpRequest request, ClaimsPrincipal principal,
-            AppDbContext db, IWebHostEnvironment env, IHttpClientFactory httpFactory) =>
+            AppDbContext db, IWebHostEnvironment env, IHttpClientFactory httpFactory, IConfiguration config) =>
         {
             var actor = await PortalScope.ActorAsync(principal, db);
             var visibility = await VisibilityStore.ScopeForAsync(db, actor?.ClientId, actor?.User.AgentExternalId);
@@ -42,7 +43,7 @@ public static class PdfEndpoints
             if (row is null) return Results.NotFound();
 
             var clientName = await ClientNameAsync(db, actor);
-            var image = await LoadImageAsync(row.ImageUri, env, httpFactory, db);
+            var image = await LoadImageAsync(row.ImageUri, env, httpFactory, db, config);
 
             var pdf = new TechSheetDocument(row, clientName, image, await BrandAsync(db)).GeneratePdf();
             var safeRef = string.Concat((row.Model.ExternalReference ?? "producto")
@@ -55,7 +56,7 @@ public static class PdfEndpoints
         // el PDF con el token.
         app.MapGet("/api/portal/line-sheet.pdf", async (
             HttpRequest request, ClaimsPrincipal principal,
-            AppDbContext db, IWebHostEnvironment env, IHttpClientFactory httpFactory) =>
+            AppDbContext db, IWebHostEnvironment env, IHttpClientFactory httpFactory, IConfiguration config) =>
         {
             var actor = await PortalScope.ActorAsync(principal, db);
             var visibility = await VisibilityStore.ScopeForAsync(db, actor?.ClientId, actor?.User.AgentExternalId);
@@ -77,7 +78,7 @@ public static class PdfEndpoints
             var clientName = await ClientNameAsync(db, actor);
             var images = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
             foreach (var r in rows)
-                images[r.Model.ExternalReference ?? ""] = await LoadImageAsync(r.ImageUri, env, httpFactory, db);
+                images[r.Model.ExternalReference ?? ""] = await LoadImageAsync(r.ImageUri, env, httpFactory, db, config);
 
             var heading = clientName.Length > 0 ? $"Selección para {clientName}" : "Selección de productos";
             var brand = await BrandAsync(db);
@@ -89,7 +90,7 @@ public static class PdfEndpoints
         // los mismos filtros que la barra del catálogo (línea, silueta, disponibilidad…).
         app.MapGet("/api/portal/catalog.pdf", async (
             HttpRequest request, ClaimsPrincipal principal,
-            AppDbContext db, IWebHostEnvironment env, IHttpClientFactory httpFactory) =>
+            AppDbContext db, IWebHostEnvironment env, IHttpClientFactory httpFactory, IConfiguration config) =>
         {
             var actor = await PortalScope.ActorAsync(principal, db);
             var visibility = await VisibilityStore.ScopeForAsync(db, actor?.ClientId, actor?.User.AgentExternalId);
@@ -102,7 +103,7 @@ public static class PdfEndpoints
             var clientName = await ClientNameAsync(db, actor);
             var images = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
             foreach (var r in rows)
-                images[r.Model.ExternalReference ?? ""] = await LoadImageAsync(r.ImageUri, env, httpFactory, db);
+                images[r.Model.ExternalReference ?? ""] = await LoadImageAsync(r.ImageUri, env, httpFactory, db, config);
 
             var heading = clientName.Length > 0 ? $"Catálogo · tarifa de {clientName}" : "Catálogo";
             var brand = await BrandAsync(db);
@@ -142,9 +143,19 @@ public static class PdfEndpoints
     // Bytes de la imagen del producto: fichero local de /media o URL http(s). Si falla,
     // el PDF se genera igual sin foto (nunca revienta por una imagen).
     private static async Task<byte[]?> LoadImageAsync(
-        string? uri, IWebHostEnvironment env, IHttpClientFactory httpFactory, AppDbContext db)
+        string? uri, IWebHostEnvironment env, IHttpClientFactory httpFactory, AppDbContext db, IConfiguration config)
     {
         if (string.IsNullOrWhiteSpace(uri)) return null;
+        // Medios del CMS (/media/portal/…): pueden estar en la base de datos (subidas), en
+        // la carpeta de medios (subidas antiguas en disco) o dentro de la imagen (demo).
+        // El mismo resolvedor que usa el endpoint que los sirve.
+        if (uri.StartsWith(MediaEndpoints.UrlPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var leido = await MediaEndpoints.ReadAsync(uri[MediaEndpoints.UrlPrefix.Length..].Split('?')[0], db, config, env);
+            if (leido is { } medio && !medio.ContentType.Contains("svg", StringComparison.OrdinalIgnoreCase))
+                return medio.Bytes;
+            return null;
+        }
         // Foto ALOJADA por el portal: /media/models/{id}.jpg no es un fichero en disco,
         // es el binario que guardamos cuando el conector la manda en base64. Buscarla con
         // File.Exists devolvía null y el PDF salía con todos los marcos vacíos, que es

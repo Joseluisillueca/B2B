@@ -122,6 +122,7 @@ using (var scope = app.Services.CreateScope())
         PortalContentSeed.EnsureDemoContent(db);
 }
 
+
 // Fuera de desarrollo, una excepción no controlada se convierte en ProblemDetails
 // (sin stack trace). En desarrollo sigue mandando la página de excepción detallada.
 if (!app.Environment.IsDevelopment())
@@ -136,35 +137,35 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseDefaultFiles();
-app.UseStaticFiles(new StaticFileOptions
+// Cabeceras de caché de TODOS los estáticos (portal, back-office y medios).
+Action<Microsoft.AspNetCore.StaticFiles.StaticFileResponseContext> cabecerasDeCache = ctx =>
 {
-    // En desarrollo el portal son módulos ES (boot.js → router → vistas) y CSS que el
-    // navegador cachea con fuerza; tras cada cambio se seguía viendo la versión vieja
-    // incluso en incógnito. Forzamos revalidación para que dev/demo vean siempre lo último.
-    OnPrepareResponse = ctx =>
+    var headers = ctx.Context.Response.Headers;
+    if (app.Environment.IsDevelopment())
     {
-        var headers = ctx.Context.Response.Headers;
-        if (app.Environment.IsDevelopment())
-        {
-            headers["Cache-Control"] = "no-store, no-cache, must-revalidate";
-            headers["Pragma"] = "no-cache";
-            headers["Expires"] = "0";
-            return;
-        }
-
-        // En producción NO se enviaba ninguna cabecera de caché, así que el navegador
-        // aplicaba su heurística y podía servir el portal viejo durante horas después de
-        // un despliegue: el cliente veía la versión anterior y no había forma de saberlo
-        // sin un recargado forzado. Cada fichero se guarda igual, pero se REVALIDA: si no
-        // ha cambiado, el servidor responde 304 y no se transfiere nada.
-        var path = ctx.Context.Request.Path.Value ?? "";
-        headers["Cache-Control"] = path.StartsWith("/media/", StringComparison.OrdinalIgnoreCase)
-            // Los ficheros subidos por el CMS llevan un sufijo único en el nombre: si el
-            // contenido cambia, cambia la URL. Esos sí pueden guardarse a largo plazo.
-            ? "public, max-age=31536000, immutable"
-            : "no-cache";
+        headers["Cache-Control"] = "no-store, no-cache, must-revalidate";
+        headers["Pragma"] = "no-cache";
+        headers["Expires"] = "0";
+        return;
     }
-});
+
+    // En producción NO se enviaba ninguna cabecera de caché, así que el navegador
+    // aplicaba su heurística y podía servir el portal viejo durante horas después de
+    // un despliegue: el cliente veía la versión anterior y no había forma de saberlo
+    // sin un recargado forzado. Cada fichero se guarda igual, pero se REVALIDA: si no
+    // ha cambiado, el servidor responde 304 y no se transfiere nada.
+    var path = ctx.Context.Request.Path.Value ?? "";
+    headers["Cache-Control"] = path.StartsWith("/media/", StringComparison.OrdinalIgnoreCase)
+        // Los ficheros subidos por el CMS llevan un sufijo único en el nombre: si el
+        // contenido cambia, cambia la URL. Esos sí pueden guardarse a largo plazo.
+        ? "public, max-age=31536000, immutable"
+        : "no-cache";
+};
+app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = cabecerasDeCache });
+
+// Los medios del portal (/media/portal/…) NO los sirven los estáticos sino un endpoint
+// propio (MediaEndpoints): viven en la base de datos, con respaldo en disco para
+// instancias anteriores y en la imagen para la demostración.
 
 app.UseRateLimiter();
 app.UseAuthentication();
