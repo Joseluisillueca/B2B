@@ -2795,13 +2795,44 @@ html[data-hero-style="paper"] .lb-story:first-child { padding-top:3.5rem; }
 /* ══════════════ Marca sobre papel · film de portada ══════════════
    El vídeo del hero es una PLACA sobre el papel, como las páginas de producto del libro (p14-p21):
    nunca más alta que el 60 % de la ventana (a 1920×1080 el titular, «Explorar el catálogo» y el
-   arranque de las ventanas entran en la primera pantalla; hoy, a sangre 2,4:1, el H1 cae bajo el
-   pliegue) ni más estrecha que la columna de lectura (--maxw): así la regla de los puntos de arriba
-   —que resta --maxw del ancho del carrusel— los sigue dejando a plomo con el H1. Por debajo de
-   1240 px de ventana el hero sigue a sangre; en móvil, 16:9 a todo el ancho, como hasta ahora. El
-   film NO se recorta: sigue a 2,4:1 (object-fit:cover de la base, l. 223, no tiene nada que cortar). */
-html[data-hero-style="paper"] .hero-media { width:min(100%, max(var(--maxw), calc(60vh * 2.4))); justify-self:center; }
-@media (max-width:48rem) { html[data-hero-style="paper"] .hero-media { width:100%; } }
+   arranque de las ventanas entran en la primera pantalla; a sangre 2,4:1 el H1 caería bajo el
+   pliegue). En móvil, 16:9 a todo el ancho, como hasta ahora. El film NO se recorta: sigue a 2,4:1
+   (object-fit:cover de la base, l. 223, no tiene nada que cortar). El ancho de la placa, el margen
+   único y el pliegue en apaisado corto van en el bloque «ronda 4» de abajo. */
+/* ══════════════ Marca sobre papel · film de portada, ronda 4 (juez) ══════════════
+   UN solo margen de contenido: el borde de la placa. El cromo (logo, pestañas) sigue en su margen
+   de página (clamp(1rem,4vw,2.4rem), el de #chrome-nav); la placa, sus puntos, el saludo, el H1,
+   el CTA, las ventanas y los KPI cuelgan del mismo borde, como el pie de cada placa en p14-p21.
+   La placa mide --hero-h de alto (60 vh; 56 vh en apaisado de ≤ 768 px, para que «Explorar el
+   catálogo» entre entero a 1366×768 y 1280×720) y nunca es más ancha que el margen del cromo ni
+   que el raíl ancho (--maxw-wide). Sustituye a la regla de width de la ronda anterior. */
+html[data-hero-style="paper"] { --hero-h:60vh; --hero-w:min(calc(100% - 2 * clamp(1rem,4vw,2.4rem)), calc(var(--hero-h) * 2.4), var(--maxw-wide)); }
+html[data-hero-style="paper"] .hero-media { width:var(--hero-w); justify-self:center; }
+html[data-hero-style="paper"] .hero-overlay { width:var(--hero-w); max-width:none; padding-inline:0; justify-self:center; }
+/* Los puntos nacen en el borde de la placa (antes: sangría de la columna de lectura) */
+html[data-hero-style="paper"] .hero-media .c-dots { padding-left:0; }
+/* Ventanas y KPI: el 100 % aquí es el contenido de .page.dash, que ya descuenta el margen del cromo */
+html[data-hero-style="paper"] .page.dash .tiles,
+html[data-hero-style="paper"] .page.dash > :not(.tiles) { max-width:min(100%, calc(var(--hero-h) * 2.4), var(--maxw-wide)); margin-inline:auto; }
+/* Mientras llega la imagen de la diapositiva 2: placa gris, no el --ink-2 de la base (#605d5d) */
+html[data-hero-style="paper"] .hero-media .carousel { background:var(--surface); }
+/* Anillo de foco de la diapositiva por dentro: overflow-x:clip se comía los lados */
+html[data-hero-style="paper"] .hero-media .c-slide:focus-visible { outline-offset:-3px; }
+/* Apaisado corto (portátil 1366×768 / 1280×720, iPad apaisado): ritmo vertical más prieto bajo la placa */
+@media (min-width:48rem) and (max-height:60rem) {
+  html[data-hero-style="paper"] .hero-media { margin-bottom:2.2rem; }
+  html[data-hero-style="paper"] .hero-overlay { padding-top:.5rem; }
+  html[data-hero-style="paper"] .hero-title { font-size:clamp(2.6rem, min(7vw, 9vh), 5.5rem); margin-bottom:.5rem; }
+}
+@media (min-width:48rem) and (max-height:48rem) {
+  html[data-hero-style="paper"] { --hero-h:56vh; }
+}
+@media (max-width:48rem) {
+  html[data-hero-style="paper"] .hero-media { width:100%; }
+  html[data-hero-style="paper"] .hero-overlay { width:100%; padding-inline:var(--gutter); }
+  /* ventanas al margen del texto (20 px), no al del cromo (16 px) */
+  html[data-hero-style="paper"] .page.dash .tiles { max-width:none; margin-inline:calc(var(--gutter) - clamp(1rem,4vw,2.4rem)); }
+}
 /* Mientras llega el póster: placa gris, no negro. Ancho/alto/cover ya vienen de la base (l. 223);
    el filtro B/N de la l. 2220 lo anula el token heroFilter:'none' de la instancia. */
 html[data-hero-style="paper"] .hero-media .c-video { display:block; background:var(--surface); }

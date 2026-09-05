@@ -179,6 +179,15 @@ Todo se aplica en vivo; vaciar un token vuelve al valor por defecto.
   las imágenes; con él encendido, un artículo sin foto no aparece en ningún sitio.
 - El **catálogo en PDF**, el **line-sheet** y la **ficha técnica** salen ya con la paleta y el
   nombre de la marca de la instancia.
+- **Film de marca en la portada** (Gestión → Portada → bloque de cabecera): cada diapositiva
+  admite, además de la imagen, un **vídeo** (`mp4` H.264 sin audio, ≤ 5 MB) y un **vídeo móvil**
+  16:9 opcional. La imagen de la diapositiva hace de póster: conviene que sea el primer
+  fotograma del vídeo, para que el arranque no salte. Medidas usadas en Blocco 5: 1920×800
+  (2,4:1) a 24 fps en escritorio y 960×540 en móvil, ambos en bucle de 11 s. El portal
+  reproduce el vídeo solo cuando la diapositiva está activa y en pantalla, lo pausa al
+  cambiar de pestaña, y muestra el póster si el usuario tiene «reducir movimiento» o ahorro
+  de datos; el botón de pausa del carrusel también detiene el vídeo. Los vídeos se sirven
+  desde `/media/portal/…` con soporte de rangos (necesario en iPhone) y caché de un año.
 
 ## Diagnóstico (si algo falla)
 - **Notificaciones realizadas** (`/manage`): estado por canal. `errors` trae el detalle (p. ej.

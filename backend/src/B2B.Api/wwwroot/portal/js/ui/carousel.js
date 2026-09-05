@@ -117,7 +117,7 @@ export function carousel(host, slides, { label = '' } = {}) {
         <div class="c-dots">
           ${items.map((_, i) => `<button type="button" data-go="${i}"
             aria-label="${esc(t('carousel.goTo', { n: i + 1 }))}"></button>`).join('')}
-          <button type="button" class="c-play" data-play aria-pressed="false"
+          <button type="button" class="c-play" data-play
             aria-label="${esc(t('carousel.pause'))}">${icons.pause(14)}</button>
         </div>` : ''}
     </div>`;
@@ -143,6 +143,8 @@ export function carousel(host, slides, { label = '' } = {}) {
   // Sin slides de vídeo (las otras marcas) `videos` es [null, …]: nada de lo de abajo actúa.
   const videos = slideNodes.map(node => node.querySelector('video.c-video'));
   const hasVideo = videos.some(Boolean);
+  // Último currentTime visto de cada vídeo: sirve para detectar el cierre del bucle.
+  const lastTimes = videos.map(() => 0);
 
   // Si el mp4 falla (404, códec, red) el <video> se cambia por su póster: nunca un hueco negro.
   const fallbackToPoster = video => {
@@ -170,7 +172,7 @@ export function carousel(host, slides, { label = '' } = {}) {
         video.play().catch(() => {});   // autoplay bloqueado (ahorro de batería): queda el póster
       } else if (!video.paused) {
         video.pause();
-        if (i !== index) video.currentTime = 0;   // al volver arranca en el fotograma del póster
+        if (i !== index) { video.currentTime = 0; lastTimes[i] = 0; }   // al volver arranca en el fotograma del póster
       }
     });
   };
@@ -178,9 +180,11 @@ export function carousel(host, slides, { label = '' } = {}) {
   if (hasVideo) {
     // Fuera de pantalla (el comprador ya está en las ventanas o los KPI) el vídeo se para;
     // al volver, sigue. Pestaña oculta: igual. El listener se suelta cuando el router quita el nodo.
+    // La cabecera es pegajosa: lo que queda debajo de ella no cuenta como «en pantalla».
     if ('IntersectionObserver' in window) {
+      const header = document.querySelector('#chrome-header');
       const io = new IntersectionObserver(([entry]) => { onScreen = entry.isIntersecting; syncVideos(); },
-        { threshold: 0.25 });
+        { threshold: 0.25, rootMargin: `-${header ? header.offsetHeight : 0}px 0px 0px 0px` });
       io.observe(root);
     }
     const onVisibility = () => {
@@ -205,11 +209,28 @@ export function carousel(host, slides, { label = '' } = {}) {
     syncVideos();
   };
 
+  // ¿Se mueve algo? El pase (si no está en pausa) o el film de la diapositiva activa. El botón
+  // enseña UN estado: ⏸ mientras algo se mueve, ▶ cuando todo está quieto. Un solo nombre
+  // cambiante y sin aria-pressed (el patrón APG de reproducir/pausar).
+  const moving = () => !paused || !!(videos[index] && videos[index].isConnected && !videos[index].paused);
   const paintPlay = () => {
     if (!playBtn) return;
-    playBtn.setAttribute('aria-pressed', String(paused));
-    playBtn.setAttribute('aria-label', t(paused ? 'carousel.play' : 'carousel.pause'));
-    playBtn.innerHTML = paused ? icons.play(14) : icons.pause(14);
+    const on = moving();
+    playBtn.setAttribute('aria-label', t(on ? (hasVideo ? 'carousel.pauseAll' : 'carousel.pause')
+                                            : (hasVideo ? 'carousel.playAll' : 'carousel.play')));
+    playBtn.innerHTML = on ? icons.pause(14) : icons.play(14);
+  };
+
+  const stop = () => { clearTimeout(timer); timer = 0; };
+
+  // La siguiente diapositiva de imagen se pide en cuanto se arma el pase: con loading="lazy"
+  // y a un ancho de distancia (translateX) el navegador no la pedía hasta empezar la
+  // transición y pintaba ~1 s la caja vacía. No toca el DOM.
+  const warmNext = () => {
+    const slide = items[(index + 1) % items.length];
+    if (!slide || videoOf(slide)) return;
+    const url = (isMobile() && slide.imageUrlMobile) || slide.imageUrl;
+    if (url && !isVideo(url)) new Image().src = url;
   };
 
   const goTo = (next, manual = false) => {
@@ -217,35 +238,67 @@ export function carousel(host, slides, { label = '' } = {}) {
     paint();
     // Tocar el carrusel equivale a pausarlo: el botón lo dice
     if (manual) pause();
+    else { stop(); start(); }   // reloj a cero: la nueva diapositiva tiene sus 6,5 s enteros
+    paintPlay();
   };
-
-  const stop = () => { clearInterval(timer); timer = 0; };
 
   const pause = () => { paused = true; stop(); paintPlay(); };
   const play = () => { paused = false; start(); paintPlay(); };
 
+  // Pase automático con setTimeout, no setInterval: cada diapositiva arranca su propio reloj.
+  // En una diapositiva de vídeo el film manda: el pase avanza cuando el bucle se cierra (abajo,
+  // 'timeupdate'), nunca por reloj a mitad de plano; el reloj queda de red por si el vídeo se
+  // atasca (currentTime sin avanzar entre dos ticks) o no llegó a reproducirse (queda el póster).
+  let tickTime = -1;
+  const tick = () => {
+    timer = 0;
+    // El router puede haber cambiado de vista: aquí se acaba el carrusel
+    if (!root.isConnected) return;
+    const video = videos[index];
+    if (video && video.isConnected && !video.paused && video.currentTime !== tickTime) {
+      tickTime = video.currentTime;
+      return start();
+    }
+    if (!document.hidden && !root.matches(':hover, :focus-within')) goTo(index + 1);
+    else start();
+  };
   const start = () => {
     if (!many || timer || paused) return;
-    timer = setInterval(() => {
-      // El router puede haber cambiado de vista: aquí se acaba el carrusel
-      if (!root.isConnected) return stop();
-      if (!document.hidden && !root.matches(':hover, :focus-within')) goTo(index + 1);
-    }, AUTOPLAY_MS);
+    timer = setTimeout(tick, AUTOPLAY_MS);
+    warmNext();
   };
+
+  videos.forEach((video, i) => {
+    if (!video) return;
+    // Cierre del bucle (currentTime vuelve a 0): con el pase armado, es el momento de pasar.
+    video.addEventListener('timeupdate', () => {
+      const wrapped = video.currentTime + 1 < lastTimes[i];
+      lastTimes[i] = video.currentTime;
+      if (wrapped && i === index && timer && !paused && !document.hidden
+          && !root.matches(':hover, :focus-within')) goTo(index + 1);
+    });
+    // El icono sigue al estado real del vídeo (autoplay bloqueado, pestaña oculta…)
+    ['play', 'pause'].forEach(type => video.addEventListener(type, paintPlay));
+  });
 
   if (many) {
     root.querySelector('.prev').onclick = () => goTo(index - 1, true);
     root.querySelector('.next').onclick = () => goTo(index + 1, true);
     dots.forEach((dot, i) => { dot.onclick = () => goTo(i, true); });
     playBtn.onclick = () => {
-      stopped = !paused;             // pulsar «pausa» para también el vídeo; «reproducir» lo reanuda
-      if (paused) play(); else pause();
+      // Una pulsación lo para TODO (pase y film); la siguiente lo reanuda todo
+      if (moving()) { stopped = true; pause(); } else { stopped = false; play(); }
       syncVideos();
+      paintPlay();
     };
 
     root.addEventListener('keydown', event => {
-      if (event.key === 'ArrowRight') goTo(index + 1, true);
-      else if (event.key === 'ArrowLeft') goTo(index - 1, true);
+      if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+      const fromSlide = !!event.target.closest('.c-slide');
+      goTo(index + (event.key === 'ArrowRight' ? 1 : -1), true);
+      // El foco no se queda en una diapositiva oculta (aria-hidden): pasa a la nueva
+      if (fromSlide) (slideNodes[index].tagName === 'A' ? slideNodes[index] : playBtn).focus({ preventScroll: true });
+      event.preventDefault();
     });
 
     // Swipe en tableta, que es donde se compra en tienda
