@@ -256,7 +256,9 @@ export const getTokens = () => brand.tokens;
 // y el color oscuro —el caso ALMA: headerBg #ffffff con marca negra— o al revés, así
 // que el logo alternativo (logoUrlDark) NO puede elegirse una sola vez para todos.
 const onDarkChrome = () => !(brand.tokens.headerBg && isLight(brand.tokens.headerBg));
-const onDarkBrand = () => !isLight(brand.color);
+// Sobre papel (heroStyle=paper) el cartel del acceso ya no es un bloque del color de marca,
+// así que va el logotipo de tinta aunque el color de marca sea oscuro.
+const onDarkBrand = () => document.documentElement.dataset.heroStyle !== 'paper' && !isLight(brand.color);
 
 /** Contenido HTML del elemento .brand: logo si lo hay; si no, nombre + ™.
     `onDark` = ¿la superficie que lo recibe es oscura? Por defecto, la del chrome (lo

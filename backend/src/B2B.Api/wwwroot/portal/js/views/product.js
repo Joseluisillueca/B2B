@@ -141,9 +141,7 @@ export default async function product(host, route) {
   const { chips: attributes, styleCode } = attrsOf(item);
   const price = mainPrice(item);
   const available = rowState(item, data.window) !== 'out';
-  // Etiqueta de la ventana de servicio activa para el botón "Añadir a REPOSICIÓN/PROGRAMACIÓN"
   const windowType = state.prefs.window === 'scheduled' ? 'scheduled' : 'replenishment';
-  const windowLabel = t(`window.${windowType}`).toUpperCase();
   // Nombre propio de la ventana con la que se está comprando ("Programación SS27"):
   // lo trae el catálogo; si no lo hay, el genérico del diccionario.
   const windowName = windows.find(w => w.id === data.window)?.name || t(`window.${windowType}`);
@@ -207,20 +205,26 @@ export default async function product(host, route) {
             <!-- DISPONIBLE es el estado de COMPRA, no un atributo del modelo: va en la
                  cabecera de la matriz, donde se elige la cantidad, y no mezclado con
                  corte, forro y suela. El rótulo conserva su clase (rasgos y filete) y el
-                 h2 hereda la fuente; el chip lleva su estilo en línea porque .tag-avail
-                 solo existe dentro de .product-attrs. -->
+                 h2 hereda la fuente. El chip va SOLO con sus clases: .tag-avail vive en
+                 app.css con el grosor de filete de la marca (--rule-w); el estilo en
+                 línea que llevaba fijaba 2px y se saltaba ese token. -->
             <div class="product-sizes-h product-sizes-head" style="display:flex;align-items:center;justify-content:space-between;gap:.8rem">
               <h2 style="font:inherit;letter-spacing:inherit;margin:0">${esc(t('product.sizesTitle'))}</h2>
-              ${available ? `<span class="tag tag-avail" style="display:inline-flex;align-items:center;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;border:2px solid var(--blue);color:var(--accent-deep);border-radius:var(--r,0);padding:.3rem .7rem">${esc(t('product.available'))}</span>` : ''}
+              ${available ? `<span class="tag tag-avail">${esc(t('product.available'))}</span>` : ''}
             </div>
             <div id="buy">${sizeMatrix(item, { windowKey: data.window, lines })}</div>
             <!-- Sin ninguna talla pedible en esta ventana el botón rojo no lleva a ninguna
                  parte (su handler busca una celda habilitada que no existe): se apaga y
                  dice CONSULTAR; la acción real es el enlace "Consultar" de la matriz,
-                 convertido abajo en botón fantasma a lo ancho. -->
+                 convertido abajo en botón fantasma a lo ancho.
+                 Con stock, el botón NO añade nada (el pedido se hace al teclear en la
+                 matriz): decía «AÑADIR A REPOSICIÓN» y el comprador creía añadir dos veces
+                 o ninguna. Ahora dice lo que hace su clic y paintTotal() lo mantiene por
+                 estado: sin unidades, fantasma y «Pon cantidades por talla»; con unidades,
+                 primario y «Ver en el pedido» con pares e importe. Arranca en fantasma. -->
             <div class="product-order">
-              <button type="button" class="btn-primary" id="add" ${available ? '' : 'disabled'}>
-                <span>${esc(available ? t('product.addTo', { window: windowLabel }) : t('catalog.availability.consult'))}</span>
+              <button type="button" class="${available ? 'btn-ghost block' : 'btn-primary'}" id="add" ${available ? '' : 'disabled'}>
+                <span id="add-label">${esc(available ? t('product.startSizes') : t('catalog.availability.consult'))}</span>
                 <span class="product-total" id="total"></span>
               </button>
             </div>
@@ -392,9 +396,17 @@ export default async function product(host, route) {
 
   // ── Matriz de tallas: el mismo componente del catálogo mete en el carrito ──
   const buy = host.querySelector('#buy');
+  const add = host.querySelector('#add');
+  const addLabel = host.querySelector('#add-label');
   const total = host.querySelector('#total');
   const itemsById = { [item.modelId]: item };
 
+  // Etiqueta y rango del botón por ESTADO (ver el handler de #add más abajo): sin
+  // unidades, fantasma con «Pon cantidades por talla» y el total vacío (el hint «Elige
+  // tallas…» dentro de un botón rojo que decía AÑADIR era el origen de la confusión);
+  // con unidades, primario con «Ver en el pedido» y «{n} pares · {importe}». La clase
+  // .block acompaña al fantasma porque app.css solo da ancho completo a
+  // .product-order .btn-primary.
   const paintTotal = () => {
     if (!available) {
       // No hay total que calcular: el botón apagado explica por qué lo está
@@ -407,9 +419,14 @@ export default async function product(host, route) {
       units += qty;
       amount += qty * (Number(input.dataset.price) || 0);
     }
-    total.innerHTML = units
-      ? `${esc(t('catalog.pairs', { n: units }))} · <b>${esc(eur(amount))}</b>`
-      : `<span class="product-hint">${esc(t('product.pickSizes'))}</span>`;
+    const hasUnits = units > 0;
+    add.classList.toggle('btn-primary', hasUnits);
+    add.classList.toggle('btn-ghost', !hasUnits);
+    add.classList.toggle('block', !hasUnits);
+    addLabel.textContent = t(hasUnits ? 'product.reviewOrder' : 'product.startSizes');
+    total.innerHTML = hasUnits
+      ? `${esc(t('product.pairs', { n: units }))} · <b>${esc(eur(amount))}</b>`
+      : '';
   };
 
   bindMatrix(buy, itemsById, { onChange: paintTotal });
@@ -423,9 +440,10 @@ export default async function product(host, route) {
     consult.style.textDecoration = 'none';
   }
 
-  // "AÑADIR": el pedido ya se hace al teclear en la matriz. Si aún no hay unidades,
-  // el botón lleva el foco a la primera talla disponible para empezar; si ya hay
-  // unidades, abre el carrito para revisarlas (reutiliza el botón del header).
+  // El pedido ya se hace al teclear en la matriz; el botón hace lo que dice su etiqueta
+  // (paintTotal): sin unidades, «Pon cantidades por talla» lleva el foco a la primera
+  // talla disponible; con unidades, «Ver en el pedido» abre el carrito para revisarlas
+  // (reutiliza el botón del header).
   host.querySelector('#add').onclick = () => {
     const units = [...buy.querySelectorAll('.sz-qty')].reduce((sum, i) => sum + (Number(i.value) || 0), 0);
     if (units > 0) {

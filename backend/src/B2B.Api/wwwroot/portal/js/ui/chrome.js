@@ -113,16 +113,20 @@ function paintHeader() {
   // El rol viene de BC en español; si la ficha trae roleKey se traduce (M-4)
   const role = roleLabel({ roleKey: credential.roleKey ?? me.roleKey, role: credential.role, rol: me.rol });
 
-  // Quién opera: el cliente ve email + rol; el agente ve su nombre y, cuando
-  // suplanta, "{agente} — {cliente}" para que no haya duda de a nombre de quién compra.
+  // Quién opera. El cliente ve el NOMBRE DEL CLIENTE (el mismo dato que el "Cliente:" del
+  // checkout) y debajo el rol: el email es un dato de acceso, no de identidad, y en la
+  // línea 1 ("jose@… - Cliente") tapaba al cliente; ahora cuelga del menú desplegable
+  // (userMenu). El agente ve su nombre y, cuando suplanta, "{agente} — {cliente}" para
+  // que no haya duda de a nombre de quién compra.
+  const clientName = me.client?.name || credential.name || '';
   let line1, line2;
   if (isAgent) {
     const agentName = credential.name || me.email || '';
     line1 = acting ? `${agentName} — ${acting.client?.name || ''}` : agentName;
     line2 = role;
   } else {
-    line1 = `${me.email || ''}${role ? ` - ${role}` : ''}`;
-    line2 = credential.name || me.client?.name || '';
+    line1 = clientName || me.email || '';   // sin nombre en la ficha, el email sigue identificando
+    line2 = role;
   }
 
   // El buscador de catálogo y el carrito solo tienen sentido en contexto de compra:
@@ -147,7 +151,7 @@ function paintHeader() {
 
     <div class="h-user${acting ? ' acting' : ''}">
       <button type="button" id="userBtn" aria-haspopup="menu" aria-expanded="false">
-        <span class="avatar">${esc(initial(isAgent ? (credential.name || me.email) : me.email))}</span>
+        <span class="avatar">${esc(initial(isAgent ? (credential.name || me.email) : (clientName || me.email)))}</span>
         <span class="who"><span class="l1">${esc(line1)}</span><br><span class="l2">${esc(line2)}</span></span>
       </button>
     </div>
@@ -190,8 +194,13 @@ function releaseClient() {
 
 // En móvil el header solo deja sitio a marca, usuario y carrito: idioma y vista
 // sin distracciones se recogen aquí (.m-only, que el CSS solo muestra ≤48rem).
+// Arriba, el email de la cuenta: salió de la cabecera (la línea 1 es ahora el nombre
+// del cliente) y este es el sitio donde el usuario comprueba con qué acceso está.
 const userMenu = () => `
   <div class="h-menu" role="menu">
+    ${state.me?.email ? `
+    <span class="h-menu-mail" style="display:block;padding:.5rem .75rem .35rem;font-size:.8rem;color:var(--ink-2);overflow-wrap:anywhere">${esc(state.me.email)}</span>
+    <hr>` : ''}
     ${MENU.map(view => `<a role="menuitem" href="${href(view)}">${esc(t(`nav.${view}`))}</a>`).join('')}
     <hr class="m-only">
     <div class="m-only" role="group" aria-label="${esc(t('chrome.language'))}">

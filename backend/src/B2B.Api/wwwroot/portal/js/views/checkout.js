@@ -195,6 +195,11 @@ export default function checkout(host) {
               </div>` : ''}
             ${sent ? sentNotice() : blocked ? blockedNotice(blocked, blockedLink) : ''}
 
+            <!-- Sin líneas el resumen es SOLO el aviso: Subtotal 0,00 €, transporte «—»,
+                 la casilla de condiciones y TERMINAR PEDIDO apagado eran un resumen de
+                 nada que repetía el estado vacío de la columna izquierda. #terms y
+                 #submit no existen entonces, y bind() los busca con «?.». -->
+            ${lines.length ? `
             <dl class="ck-totals">
               <div><dt>${esc(t('checkout.subtotal'))}</dt><dd>${esc(eur(subtotal))}</dd></div>
               <div><dt>${esc(t('checkout.totalNet'))}</dt><dd>${esc(eur(subtotal))}</dd></div>
@@ -213,7 +218,7 @@ export default function checkout(host) {
                  las condiciones, y solo entonces confirma (flujo natural). -->
             <button type="button" class="btn-primary block" id="submit"
               ${blocked ? 'aria-describedby="ckBlocked"' : ''}
-              ${canSubmit ? '' : 'disabled'}>${esc(t('checkout.submit'))}</button>
+              ${canSubmit ? '' : 'disabled'}>${esc(t('checkout.submit'))}</button>` : ''}
           </aside>
 
           <!-- "Añade también" es la ÚLTIMA hija de .ck-grid: en escritorio la rejilla
@@ -372,12 +377,13 @@ export default function checkout(host) {
       render();
       host.querySelector('#edit')?.focus({ preventScroll: true });
     };
-    // El repintado destruye la casilla que se acaba de marcar: se devuelve el foco
-    $('terms').onchange = event => {
+    // El repintado destruye la casilla que se acaba de marcar: se devuelve el foco.
+    // Con el carrito vacío la casilla no se pinta (el resumen es solo el aviso): «?.».
+    $('terms')?.addEventListener('change', event => {
       setAccepted(event.target.checked);
       render();
       host.querySelector('#terms')?.focus({ preventScroll: true });
-    };
+    });
 
     if (editing) {
       $('reference')?.addEventListener('input', e => { form.reference = e.target.value; });
@@ -475,7 +481,8 @@ export default function checkout(host) {
       }
     });
 
-    $('submit').onclick = async event => {
+    // TERMINAR PEDIDO solo existe con líneas (resumen vacío = solo el aviso): «?.»
+    $('submit')?.addEventListener('click', async event => {
       const button = event.currentTarget;
       button.disabled = true;
 
@@ -514,7 +521,7 @@ export default function checkout(host) {
         error = err?.body?.error || t('checkout.submitError');
         render();
       }
-    };
+    });
   }
 
   const defaultName = () => `${t(`window.${state.prefs.window}`)} ${date(new Date())}`;

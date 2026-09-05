@@ -1238,7 +1238,7 @@ a.alsoin-thumb:hover .alsoin-color { color:var(--ink); }
 .product-total { font-size:.95rem; color:var(--ink-2); }
 .product-total b { font-family:var(--display); font-size:1.25rem; letter-spacing:-.01em; }
 .product-hint { color:var(--muted); }
-.product-order .btn-primary { padding:.85rem 1.9rem; }
+.product-order :is(.btn-primary, .btn-ghost) { padding:.85rem 1.9rem; }
 
 .product-docs { display:flex; flex-wrap:wrap; gap:.8rem; margin:2rem 0 0; padding:1.6rem 0 0;
   border-top:1px solid var(--line); }
@@ -1755,11 +1755,11 @@ table.grid .num { white-space:nowrap; }
 
   /* Ficha en móvil: la foto ocupa el ancho y el pedido se apila con el CTA a lo ancho */
   .product-media { max-width:none; }
-  .product-order .btn-primary { flex:1 1 auto; }
+  .product-order :is(.btn-primary, .btn-ghost) { flex:1 1 auto; }
   /* Bocabarra: el rótulo derecho ("Elige tallas…" / total) medía 240px fijos y sacaba
      la página 67px del viewport (crítica A1). En móvil el botón envuelve en dos filas
      y el rótulo puede partir línea; el clip del contenedor es el cinturón de seguridad. */
-  .product-order .btn-primary { display:flex; flex-wrap:wrap; align-items:center;
+  .product-order :is(.btn-primary, .btn-ghost) { display:flex; flex-wrap:wrap; align-items:center;
     gap:.35rem .8rem; white-space:normal; text-align:left; }
   .product-total, .product-hint { max-width:100%; white-space:normal; }
   .page.product { overflow-x:clip; }
@@ -2329,10 +2329,10 @@ table.grid th { background:none !important; border-bottom:var(--rule-w) solid va
 /* ── Ficha de producto (cap. 05): chips de atributo, PVD+PVP, botón ancho ── */
 .product-attrs { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center;
   margin:1.6rem 0 0; padding:1.5rem 0 0; border-top:var(--rule-w) solid var(--brand-rule,var(--line)); }
-.product-attrs .tag { display:inline-flex; align-items:center; font-size:.72rem; font-weight:700;
+.product-attrs .tag, .product-sizes-head .tag { display:inline-flex; align-items:center; font-size:.72rem; font-weight:700;
   letter-spacing:.06em; text-transform:uppercase; color:var(--ink); background:none;
   border:1px solid var(--line-control); border-radius:var(--r,0); padding:.3rem .7rem; }
-.product-attrs .tag-avail { border:2px solid var(--blue); color:var(--accent-deep); }
+.tag-avail { border:var(--rule-w,2px) solid var(--blue); color:var(--accent-deep); }
 /* PVD y PVP recomendado, uno al lado del otro, cifra sobre etiqueta */
 .product-price { display:flex; align-items:flex-end; gap:2.6rem; margin:1.6rem 0 0; padding:1.5rem 0 0;
   border-top:var(--rule-w) solid var(--brand-rule,var(--line)); }
@@ -2346,14 +2346,14 @@ table.grid th { background:none !important; border-bottom:var(--rule-w) solid va
   border-bottom:var(--rule-w) solid var(--rule); }
 /* Botón "Añadir a REPOSICIÓN" a ancho completo: etiqueta izquierda + total derecha */
 .product-order { display:block; margin-top:1.6rem; }
-.product-order .btn-primary { display:flex; width:100%; align-items:center; justify-content:space-between;
+.product-order :is(.btn-primary, .btn-ghost) { display:flex; width:100%; align-items:center; justify-content:space-between;
   gap:1rem; text-align:left; padding:.95rem 1.4rem; }
-.product-order .btn-primary .product-total { color:#fff; font-size:.95rem; }
-.product-order .btn-primary .product-total b { color:#fff; font-family:var(--display); }
+.product-order :is(.btn-primary, .btn-ghost) .product-total { color:#fff; font-size:.95rem; }
+.product-order :is(.btn-primary, .btn-ghost) .product-total b { color:#fff; font-family:var(--display); }
 /* El hint («Elige tallas y cantidades») heredaba el .95rem del total y el uppercase/700 del
    botón: salía MÁS grande que el rótulo real y, en blanco al 75 %, a 3,0:1 sobre el rojo.
    Blanco puro (4,7:1) y tamaño/peso de nota, en caja normal. */
-.product-order .btn-primary .product-hint { color:#fff; font-size:.82rem; font-weight:500; text-transform:none; letter-spacing:.02em; }
+.product-order :is(.btn-primary, .btn-ghost) .product-hint { color:#fff; font-size:.82rem; font-weight:500; text-transform:none; letter-spacing:.02em; }
 
 /* ── Calendario (cap. 10): tarjeta a la izquierda + tipo segmentado + agenda plana ── */
 .cal-form-wrap { text-align:left; color:var(--ink); }
@@ -2492,7 +2492,7 @@ table.grid th { background:none !important; border-bottom:var(--rule-w) solid va
    mueven. Va al final del fichero a propósito: gana por cascada a las reglas de igual
    especificidad de arriba (.kpi-value, .hero-title, .bd-kpi-value…). */
 h1.title, .product-name, .item h2, .pcard-name, .t-label, .sel-panel h2 { font-weight:var(--brand-display-weight,500); }
-.hero-title, .login-display, .login-h, .cred-h, .kpi-value, .bd-kpi-value, .lb-story-text h2 { font-weight:var(--brand-display-weight,800); }
+.hero-title, .login-display, .login-h, .cred-h, .kpi-value, .bd-kpi-value, .lb-story-text h2, .related-title { font-weight:var(--brand-display-weight,800); }
 .c-caption strong { font-weight:var(--brand-display-weight,700); }
 
 /* ═══════════ Marca configurable: ANCHURA de los titulares (token displayStretch) ═══════════
@@ -2530,7 +2530,7 @@ html[data-hero-style="paper"] .hero-full { height:auto; display:grid; overflow:v
 html[data-hero-style="paper"] .hero-media { position:relative; inset:auto; width:100%; aspect-ratio:2.4/1; max-height:none; }
 @media (max-width:48rem) { html[data-hero-style="paper"] .hero-media { aspect-ratio:16/9; } }
 html[data-hero-style="paper"] .hero-full::after { display:none; }
-html[data-hero-style="paper"] .hero-overlay { position:static; color:var(--ink); padding:1.6rem var(--gutter) 0; }
+html[data-hero-style="paper"] .hero-overlay { position:static; color:var(--ink); padding:1.6rem var(--gutter) 0; width:100%; }
 html[data-hero-style="paper"] .hero-kicker { font-style:normal; opacity:1; color:var(--ink-2); }
 html[data-hero-style="paper"] .hero-title { color:var(--ink); text-shadow:none; }
 html[data-hero-style="paper"] .hero-cta { background:var(--blue); border-color:var(--blue); color:#fff; }
@@ -2554,11 +2554,16 @@ html[data-hero-style="paper"] .t-cart { color:var(--ink); }
 /* Hero del lookbook (carrusel con pie por diapositiva): el pie va en tinta sobre una
    ETIQUETA de papel línea a línea (box-decoration-break), no en blanco sobre velo: así
    lee igual sobre plata que sobre negro sin reconstruir el carrusel. El CTA sigue rojo. */
-html[data-hero-style="paper"] .lb-hero .c-caption { background:none; color:var(--ink); }
-html[data-hero-style="paper"] .lb-hero .c-caption strong,
-html[data-hero-style="paper"] .lb-hero .c-caption span:not(.c-cta) { background:var(--paper); padding:.12em .4em;
-  -webkit-box-decoration-break:clone; box-decoration-break:clone; }
+html[data-hero-style="paper"] .lb-hero .carousel { aspect-ratio:auto; background:var(--paper); }
+html[data-hero-style="paper"] .lb-hero .c-track, html[data-hero-style="paper"] .lb-hero .c-slide { height:auto; }
+html[data-hero-style="paper"] .lb-hero .c-slide img, html[data-hero-style="paper"] .lb-hero .c-video { height:auto; aspect-ratio:2.4/1; object-fit:cover; }
+html[data-hero-style="paper"] .lb-hero .c-caption { position:static; background:none; color:var(--ink); max-width:var(--maxw); margin:0 auto; padding:1.4rem var(--gutter) 0; }
+html[data-hero-style="paper"] .lb-hero .c-caption strong, html[data-hero-style="paper"] .lb-hero .c-caption span:not(.c-cta) { background:none; padding:0; }
 html[data-hero-style="paper"] .lb-hero .c-caption span:not(.c-cta) { color:var(--ink-2); }
+html[data-hero-style="paper"] .lb-hero .c-dots { position:static; max-width:var(--maxw); margin:.6rem auto 0; padding:0 var(--gutter); justify-content:flex-start; }
+/* Centro de la FOTO (2,4:1 a ancho de ventana), no del bloque foto + pie */
+html[data-hero-style="paper"] .lb-hero .c-arrow { top:calc(100vw / 4.8); }
+@media (max-width:48rem) { html[data-hero-style="paper"] .lb-hero .c-slide img, html[data-hero-style="paper"] .lb-hero .c-video { aspect-ratio:16/9; object-fit:contain; } }
 /* Visor de la ficha: las fotos de producto traen la placa gris horneada; con el token
    `card` en blanco quedarían enmarcadas, así que el escenario toma --surface (el mismo
    gris que ya leen .item-photo, .pcard-media y .viewer-empty). */
@@ -2591,11 +2596,12 @@ html[data-hero-style="paper"] .item-units, html[data-hero-style="paper"] .chip.t
    activo, rojo, caía sobre el producto) y en tinta: el blanco al 55 % y la pausa blanca al
    80 % eran invisibles sobre papel blanco, y la pausa es la única forma de parar una rotación
    automática (WCAG 2.2.2). .carousel lleva overflow:hidden para tapar las diapositivas
-   vecinas: se cambia por un clip-path que solo cierra los lados y deja asomar 2,6rem por
-   abajo, donde vive la fila de puntos (.6rem de margen + 24px de botón < 2,6rem). El kenburns
-   se apaga: sobre una retícula de producto el zoom recorta los pares exteriores durante 20 s. */
+   vecinas: se cambia por overflow-x:clip (no crea contenedor de scroll ni ensancha el
+   documento, cosa que un clip-path sí dejaba pasar) con overflow-y:visible, para que la fila
+   de puntos, a top:100 %, asome por abajo. El kenburns se apaga: sobre una retícula de
+   producto el zoom recorta los pares exteriores durante 20 s. */
 html[data-hero-style="paper"] .hero-media { margin-bottom:2.6rem; }
-html[data-hero-style="paper"] .hero-media .carousel { overflow:visible; clip-path:inset(0 0 -2.6rem 0); }
+html[data-hero-style="paper"] .hero-media .carousel { overflow-x:clip; overflow-y:visible; clip-path:none; }
 /* A plomo con el titular: el overlay es una columna de --maxw centrada con --gutter de
    sangría, así que el primer punto cae bajo la primera letra del H1 a cualquier ancho. */
 html[data-hero-style="paper"] .hero-media .c-dots { top:100%; bottom:auto; margin-top:.6rem; justify-content:flex-start;
@@ -2610,7 +2616,6 @@ html[data-hero-style="paper"] .hero-media .c-slide img { animation:none; }
 
 /* Hero del lookbook: la misma proporción 2,4:1 que la portada. A 3,4:1 el recorte «cover»
    decapitaba la placa y el pie caía sobre el producto; ALMA y MITO siguen en 3,4:1. */
-html[data-hero-style="paper"] .lb-hero .carousel { aspect-ratio:2.4/1; }
 
 /* Etiquetas de los filtros («Ordenar por», «Temporada», «Fechas»): encima del control, en
    mayúscula con tracking, como los dt del checkout (FECHA, MÉTODO DE PAGO). La etiqueta
@@ -2624,4 +2629,37 @@ html[data-hero-style="paper"] .tb-legend { position:static; background:none; pad
    50 %: sustituirlo le cuadraría también los puntos y las flechas de su carrusel. */
 html[data-hero-style="paper"] :is(.item-fav, .product-fav, .h-search button, .h-menu a, .h-menu button, .item-units,
   .lb-selbar-toggle, .doc-modal-close, .cart-size, .cart-drop, .req-badge, .as-msg, .as-form textarea, .as-send,
-  .c-arrow, .c-dots button) { border-radius:0; }
+  .c-arrow, .c-dots button, .sz-qty:focus-visible, .ck-size, .ck-drop, .lb-selremove) { border-radius:0; }
+
+/* ══════════════ Marca sobre papel · ronda 3 de crítica ══════════════ */
+/* Acceso y credenciales: el rojo de la marca es tinta y filete, nunca una superficie. El
+   cartel pasa a papel con el claim en rojo (como «VAGUE» en la apertura de colección) y un
+   filete separando las dos mitades. */
+html[data-hero-style="paper"] :is(.login-hero, .cred-hero) { background:var(--paper); color:var(--ink); border-right:var(--rule-w) solid var(--rule); }
+html[data-hero-style="paper"] :is(.login-hero, .cred-hero) .brand { color:var(--ink); }
+html[data-hero-style="paper"] .login-display, html[data-hero-style="paper"] .cred-h { color:var(--blue); }
+html[data-hero-style="paper"] .cred-hero-mid .hero-kicker { color:var(--ink-2); }
+@media (max-width:52rem) { html[data-hero-style="paper"] :is(.login-hero, .cred-hero) { border-right:0; border-bottom:var(--rule-w) solid var(--rule); } }
+/* El aviso del resumen es el primer hijo del panel: dos filetes a 24px uno de otro */
+html[data-hero-style="paper"] .ck-side > .notice-error:first-child { border-top:0; padding-top:0; }
+/* Matriz de tallas: bordes de control a 3:1, las agotadas se distinguen de las abiertas y la
+   cifra de stock (el dato que decide cuántos pares pedir) deja de ir a 11px */
+html[data-hero-style="paper"] .sz { border-color:var(--line-control); }
+html[data-hero-style="paper"] .sz.out .sz-head { background:var(--ink-3); }
+html[data-hero-style="paper"] .sz.out .sz-body { background:var(--surface); }
+html[data-hero-style="paper"] .sz.out .sz-qty::placeholder { color:transparent; }
+html[data-hero-style="paper"] .sz-cell .sz-stock { font-size:.8rem; font-weight:500; }
+/* El estado de un conmutador no es una acción: en tinta, y el carrito queda como único
+   bloque rojo de la cabecera */
+html[data-hero-style="paper"] .tb-seg-opt.on { background:var(--ink); color:#fff; }
+/* Quince botones rojos en el lookbook, donde la referencia no tiene ni uno: en tinta */
+html[data-hero-style="paper"] .lb-add { border-color:var(--line-control); color:var(--ink); }
+html[data-hero-style="paper"] .lb-add:hover, html[data-hero-style="paper"] .lb-add.on { background:var(--ink); border-color:var(--ink); color:#fff; }
+/* Una sola etiqueta en toda la página: mayúscula con tracking y filete, como el kicker */
+html[data-hero-style="paper"] .lb-shop-title { font-size:.74rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--accent-deep); border-bottom:var(--rule-w) solid var(--lb-accent, var(--blue)); padding-bottom:.15rem; }
+html[data-hero-style="paper"] .lb-shop-title::before { display:none; }
+/* La marca no tiene líneas discontinuas */
+html[data-hero-style="paper"] .alsoin-more { border-style:solid; }
+/* Chips del listado con su etiqueta delante (la ficha ya la lleva): sale del title que ya
+   se pinta, así el comprador sabe si «PU/TEXTIL» es corte o forro sin pasar el ratón */
+html[data-hero-style="paper"] .item-attrs .tag[title]::before { content:attr(title); font-weight:500; letter-spacing:.04em; color:var(--ink-2); margin-right:.45em; }

@@ -167,8 +167,10 @@ tokens de estilo. Para Blocco 5: papel blanco, superficie `#f0efed`, tinta `#111
 cabecera blanca, radios `0px`, tipografía Archivo con rango de pesos
 (`https://fonts.googleapis.com/css2?family=Archivo:wght@400..900&display=swap`), filetes de
 sección rojos de `1px`, fondo de paneles blanco, acento secundario igual al de marca,
-titulares a peso `900`, portada "sobre papel" (la foto sin velo y el rótulo en tinta y
-rojo, como en el lookbook) y un texto legal propio en el acceso. Mayúsculas automáticas y
+titulares a peso `900` y anchura `125%` (la misma expandida del logotipo), portada "sobre
+papel" (la foto sin velo y el rótulo en tinta y rojo, como en el lookbook), botones
+secundarios en mayúscula, tinte del acento en blanco (la marca no admite rosas) y un texto
+legal propio en el acceso. Mayúsculas automáticas y
 espaciado entre letras se dejan vacíos: los nombres de producto van en caja de título.
 Todo se aplica en vivo; vaciar un token vuelve al valor por defecto.
 
