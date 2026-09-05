@@ -13,13 +13,26 @@ import { esc, flash } from '../util.js';
 import { icons } from '../icons.js';
 
 const LOCALES = [['*', 'Común'], ['es', 'ES'], ['en', 'EN'], ['fr', 'FR'], ['it', 'IT']];
+
+// Sobre papel (token heroStyle=paper, que branding.js deja en <html data-hero-style>) el hero
+// es una placa 2,4:1; en las demás marcas sigue siendo la franja 3,4:1 de siempre. La ayuda se
+// calcula al pintar porque la marca se carga al arrancar, no al importar esta vista.
+const onPaper = () => document.documentElement.dataset.heroStyle === 'paper';
+const heroSize = () => (onPaper() ? '2400×1000' : '1600×470');
+const heroHelp = () =>
+  `Imágenes o vídeo a ancho completo sobre el H1. Se pasan solas cada 6,5 s. Imagen: ${heroSize()} px `
+  + `(${onPaper() ? '2,4:1' : '3,4:1'}) + móvil 16:9 (opcional). Vídeo (opcional): mp4 H.264 sin audio, ≤ 5 MB`
+  + `${onPaper() ? ', 1920×800 (+ 960×540 móvil)' : ''}; la imagen del elemento es su póster.`;
+
 const BLOCKS = [
-  { key: 'dashboard.hero', title: 'Carrusel de portada', kind: 'hero',
-    help: 'Imágenes a ancho completo sobre el H1. Se pasan solas cada 6,5 s. Medida recomendada: 1600×470 px (3,4:1).' },
+  { key: 'dashboard.hero', title: 'Carrusel de portada', kind: 'hero', help: heroHelp },
   { key: 'dashboard.tiles', title: 'Tarjetas de acceso', kind: 'tiles',
     help: 'Reposición y Programación: fijan la ventana de servicio del carrito y llevan al catálogo. Medida recomendada: 1200×675 px (16:9).' },
 ];
 const WINDOWS = [['replenishment', 'Reposición'], ['scheduled', 'Programación']];
+const IMAGE_TYPES = 'image/png,image/jpeg,image/webp,image/avif,image/gif,image/svg+xml';
+const VIDEO_TYPES = 'video/mp4,video/webm';
+const isVideoName = name => /\.(mp4|webm)$/i.test(name || '');
 
 // El backend guarda las fechas en ISO; el input datetime-local las quiere en hora local
 const toInput = iso => {
@@ -32,7 +45,7 @@ const toInput = iso => {
 const fromInput = value => (value ? new Date(value).toISOString() : '');
 
 // La miniatura vacía recuerda la medida que espera el portal
-const emptyThumb = kind => `<span>sin imagen<br>${kind === 'hero' ? '1600×470' : '1200×675'}</span>`;
+const emptyThumb = kind => `<span>sin imagen<br>${kind === 'hero' ? heroSize() : '1200×675'}</span>`;
 const nextWindow = items => (items.some(i => i.window === 'replenishment') ? 'scheduled' : 'replenishment');
 
 export default async function content(main) {
@@ -91,20 +104,22 @@ export default async function content(main) {
       ${BLOCKS.map(paintBlock).join('')}
       <div class="pf-block">
         <header class="pf-block-head">
-          <div><h2>Imágenes subidas</h2>
-            <p class="pf-help">Se guardan en /media/portal y las sirve el propio portal.</p></div>
+          <div><h2>Imágenes y vídeos subidos</h2>
+            <p class="pf-help">Se guardan en /media/portal y los sirve el propio portal.</p></div>
         </header>
         ${media.length
           ? `<div class="pf-media">${media.map(f => `
               <figure class="pf-media-item">
-                <img src="${esc(f.url)}" alt="" loading="lazy">
+                ${isVideoName(f.name)
+                  ? `<video src="${esc(f.url)}" muted playsinline preload="metadata"></video>`
+                  : `<img src="${esc(f.url)}" alt="" loading="lazy">`}
                 <figcaption>
                   <code title="${esc(f.url)}">${esc(f.name)}</code>
                   <button type="button" class="pf-media-del" data-media-del="${esc(f.name)}"
                     title="Eliminar" aria-label="Eliminar ${esc(f.name)}">${icons.trash(14)}</button>
                 </figcaption>
               </figure>`).join('')}</div>`
-          : '<div class="pf-empty">Todavía no has subido ninguna imagen.</div>'}
+          : '<div class="pf-empty">Todavía no has subido ningún fichero.</div>'}
       </div>`;
 
     root.querySelectorAll('[data-locale]').forEach(b =>
@@ -123,7 +138,7 @@ export default async function content(main) {
     return `
       <div class="pf-block" data-block="${block.key}" data-kind="${block.kind}">
         <header class="pf-block-head">
-          <div><h2>${esc(block.title)}</h2><p class="pf-help">${esc(block.help)}</p></div>
+          <div><h2>${esc(block.title)}</h2><p class="pf-help">${esc(typeof block.help === 'function' ? block.help() : block.help)}</p></div>
           <span class="spacer"></span>
           <span class="pf-badge">${stamp}</span>
           <span class="pf-block-actions">
@@ -172,6 +187,13 @@ export default async function content(main) {
             ${field('ctaHref', 'Enlace', 'text', 'placeholder="/es/es/catalog/catalog"')}
             ${field('imageUrlMobile', 'Imagen móvil (opcional)')}
           </div>
+          ${block.kind === 'hero' ? `
+          <div class="pf-row">
+            ${field('videoUrl', 'Vídeo (mp4/webm, opcional; la imagen es el póster)')}
+            <button type="button" class="btn-ghost pf-upload" data-action="uploadVideo">${icons.upload(14)} Subir vídeo…</button>
+            ${field('videoUrlMobile', 'Vídeo móvil 16:9 (opcional)')}
+            <button type="button" class="btn-ghost pf-upload" data-action="uploadVideoMobile">${icons.upload(14)} Subir…</button>
+          </div>` : ''}
           <div class="pf-row">
             ${field('publishFrom', 'Publicar desde', 'datetime-local')}
             ${field('publishTo', 'Publicar hasta', 'datetime-local')}
@@ -224,22 +246,26 @@ export default async function content(main) {
       if (action === 'del') items.splice(index, 1);
       if (action === 'up' && index > 0) items.splice(index - 1, 0, items.splice(index, 1)[0]);
       if (action === 'down' && index < items.length - 1) items.splice(index + 1, 0, items.splice(index, 1)[0]);
-      if (action === 'upload') return pickImage(items[index]);
+      if (action === 'upload') return pickMedia(items[index], 'imageUrl', IMAGE_TYPES, 'Imagen');
+      if (action === 'uploadVideo') return pickMedia(items[index], 'videoUrl', VIDEO_TYPES, 'Vídeo');
+      if (action === 'uploadVideoMobile') return pickMedia(items[index], 'videoUrlMobile', VIDEO_TYPES, 'Vídeo móvil');
       paint();
     };
   }
 
-  function pickImage(item) {
+  // El mismo subidor para la imagen y el vídeo del elemento: sube a /api/admin/media y deja la
+  // URL en el campo indicado (el PUT del bloque la publica; el backend valida .mp4/.webm).
+  function pickMedia(item, fieldName, accept, label) {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/png,image/jpeg,image/webp,image/avif,image/gif,image/svg+xml';
+    input.accept = accept;
     input.onchange = async () => {
       const file = input.files[0];
       if (!file) return;
       try {
         const data = await api.uploadMedia(file);
-        item.imageUrl = data.url;
-        flash(`Imagen subida: ${data.name}`);
+        item[fieldName] = data.url;
+        flash(`${label}: ${data.name}`);
         await loadMedia();
         paint();
       } catch (e) { flash(e.body?.error || e.message, 'err'); }
@@ -272,7 +298,7 @@ export default async function content(main) {
       await api.del(`/api/admin/media/${encodeURIComponent(name)}`);
       await loadMedia();
       paint();
-      flash('Imagen eliminada.');
+      flash('Fichero eliminado.');
     } catch (e) { flash(e.body?.error || e.message, 'err'); }
   }
 
@@ -340,6 +366,7 @@ function injectCss() {
     .pf-media { display:flex; gap:.8rem; flex-wrap:wrap; padding:1rem 1.2rem; }
     .pf-media-item { margin:0; width:9rem; }
     .pf-media-item img { width:100%; aspect-ratio:16/9; object-fit:cover; border:1px solid var(--line); background:var(--card); display:block; }
+    .pf-media-item video { width:100%; aspect-ratio:16/9; object-fit:cover; border:1px solid var(--line); background:var(--paper); display:block; }
     .pf-media-item figcaption { display:flex; gap:.35rem; align-items:center; margin-top:.3rem; }
     .pf-media-item code { flex:1; font:.68rem ui-monospace,Consolas,monospace; color:var(--muted);
       overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

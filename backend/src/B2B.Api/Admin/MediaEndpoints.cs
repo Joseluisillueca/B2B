@@ -1,6 +1,9 @@
 using B2B.Api.Auth;
 using B2B.Api.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace B2B.Api.Admin;
@@ -91,18 +94,37 @@ public static class MediaEndpoints
         // comodín ANTES que cualquier proveedor de estáticos, así que estos nunca llegarían
         // a responder por /media/portal/…. Público (las imágenes de la portada no llevan
         // token). Las subidas llevan sufijo único en el nombre y se cachean a largo plazo;
-        // la demostración cambia con el producto y se revalida cada hora.
-        app.MapGet(UrlPrefix + "{*name}", async (string name, HttpResponse response,
-            AppDbContext db, IConfiguration config, IWebHostEnvironment env) =>
+        // la demostración cambia con el producto y se revalida cada hora. HEAD responde con
+        // las mismas cabeceras y sin cuerpo (auditorías, proxies).
+        app.MapMethods(UrlPrefix + "{*name}", new[] { "GET", "HEAD" }, async (string name, HttpResponse response,
+            AppDbContext db, IConfiguration config, IWebHostEnvironment env, IMemoryCache cache) =>
         {
-            if (await ReadAsync(name, db, config, env) is not { } medio) return Results.NotFound();
+            // Un vídeo se sirve en 3-6 trozos (Range) por reproducción y cada trozo leía la fila
+            // ENTERA de la base de datos: una subida se lee una vez y se queda 10 min en memoria
+            // (tope global de 64 MB en Program.cs). Lo de disco y demostración ya lo cachea el
+            // sistema operativo, y así un cambio en MediaSeed/ se ve al momento. Un 404 no se cachea.
+            var key = CacheKey(name);
+            if (!cache.TryGetValue(key, out CachedMedia? medio) || medio is null)
+            {
+                if (await ReadAsync(name, db, config, env) is not { } read) return Results.NotFound();
+                medio = new CachedMedia(read.Bytes, read.ContentType, read.Origin, ETagFor(read.Bytes));
+                if (read.Origin == "subida")
+                    cache.Set(key, medio, new MemoryCacheEntryOptions
+                    {
+                        Size = read.Bytes.Length,
+                        SlidingExpiration = TimeSpan.FromMinutes(10)
+                    });
+            }
             response.Headers.CacheControl = medio.Origin == "subida"
                 ? "public, max-age=31536000, immutable"
                 : "public, max-age=3600";
-            return Results.File(medio.Bytes, medio.ContentType, enableRangeProcessing: true);
+            // ETag fuerte: If-None-Match → 304 (la demostración se revalida cada hora sin volver a
+            // bajarse) e If-Range en las peticiones parciales. enableRangeProcessing sigue
+            // emitiendo Accept-Ranges: bytes y 206 como hasta ahora.
+            return Results.File(medio.Bytes, medio.ContentType, enableRangeProcessing: true, entityTag: medio.ETag);
         });
 
-        app.MapPost("/api/admin/media", async (HttpRequest request, AppDbContext db) =>
+        app.MapPost("/api/admin/media", async (HttpRequest request, AppDbContext db, IMemoryCache cache) =>
         {
             if (!request.HasFormContentType)
                 return Results.BadRequest(new { error = "Envía el fichero como multipart/form-data." });
@@ -112,7 +134,7 @@ public static class MediaEndpoints
             if (file is null || file.Length == 0)
                 return Results.BadRequest(new { error = "No has adjuntado ningún fichero." });
             if (file.Length > MaxBytes)
-                return Results.BadRequest(new { error = $"La imagen supera el máximo de {MaxBytes / (1024 * 1024)} MB." });
+                return Results.BadRequest(new { error = $"El fichero supera el máximo de {MaxBytes / (1024 * 1024)} MB." });
 
             var extension = Path.GetExtension(file.FileName ?? "");
             if (extension.Length == 0 || !Allowed.TryGetValue(extension, out var types))
@@ -164,6 +186,8 @@ public static class MediaEndpoints
                 CreatedAt = DateTime.UtcNow
             });
             await db.SaveChangesAsync();
+            // El nombre lleva sufijo único, así que nunca pisa una entrada viva; por si acaso.
+            cache.Remove(CacheKey(name));
 
             var url = UrlPrefix + name;
             return Results.Created(url, new { url, name, size = content.Length, contentType = types[0] });
@@ -195,7 +219,8 @@ public static class MediaEndpoints
             return Results.Ok(new { items });
         }).RequireAdmin();
 
-        app.MapDelete("/api/admin/media/{name}", async (string name, AppDbContext db, IConfiguration config, IWebHostEnvironment env) =>
+        app.MapDelete("/api/admin/media/{name}", async (string name, AppDbContext db, IConfiguration config,
+            IWebHostEnvironment env, IMemoryCache cache) =>
         {
             // Nada de salir de la carpeta de medios: solo nombres de fichero pelados
             if (name != Path.GetFileName(name) || name is "." or ".." || name.Contains("..", StringComparison.Ordinal))
@@ -206,6 +231,8 @@ public static class MediaEndpoints
             {
                 db.PortalMediaFiles.Remove(row);
                 await db.SaveChangesAsync();
+                // Un medio borrado sale de la caché en el mismo DELETE: el siguiente GET es 404
+                cache.Remove(CacheKey(name));
                 return Results.NoContent();
             }
 
@@ -213,6 +240,7 @@ public static class MediaEndpoints
             if (File.Exists(path))
             {
                 File.Delete(path);
+                cache.Remove(CacheKey(name));
                 return Results.NoContent();
             }
 
@@ -224,6 +252,17 @@ public static class MediaEndpoints
     }
 
     private sealed record MediaItem(string Name, string Url, long Size, DateTime ModifiedAt, string Origin);
+
+    // Entrada de la caché de servicio: los bytes tal cual se sirven, su tipo, de dónde salen
+    // (decide la Cache-Control) y el ETag fuerte ya calculado.
+    private sealed record CachedMedia(byte[] Bytes, string ContentType, string Origin, EntityTagHeaderValue ETag);
+
+    private static string CacheKey(string name) => "media:" + name;
+
+    // ETag fuerte: los 128 primeros bits del SHA-256 del contenido, entre comillas como manda
+    // RFC 9110. Cambia el contenido → cambia el ETag; el mismo fichero en dos instancias → el mismo.
+    private static EntityTagHeaderValue ETagFor(byte[] bytes) =>
+        new($"\"{Convert.ToHexString(SHA256.HashData(bytes))[..32]}\"");
 
     // Cabeceras de los binarios que se aceptan con MIME genérico. Se comparan tal cual:
     //   .woff2 → "wOF2" (firma del WOFF 2.0)

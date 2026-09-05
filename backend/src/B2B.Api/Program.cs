@@ -20,6 +20,10 @@ builder.Services.AddOpenApi();
 // como 500 desnudo (y en Development con stack trace). ProblemDetails da una respuesta
 // JSON limpia y uniforme fuera de desarrollo.
 builder.Services.AddProblemDetails();
+// Caché en memoria de los medios del portal que viven en la base de datos (MediaEndpoints):
+// un vídeo del hero se sirve en varios trozos (Range) y cada uno leía la fila entera. Con
+// tope de tamaño: toda entrada de ESTA caché debe declarar su Size (si no, MemoryCache lanza).
+builder.Services.AddMemoryCache(options => options.SizeLimit = 64L * 1024 * 1024);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 

@@ -264,6 +264,46 @@ public class PortalContentTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    // ───────────────────────── Vídeo en el hero ─────────────────────────
+
+    [Fact]
+    public async Task Admin_Put_GuardaElVideoDelHeroYRechazaLoQueNoEsVideo()
+    {
+        // La diapositiva de vídeo: imageUrl sigue siendo obligatorio (es el póster y el LCP);
+        // videoUrl/videoUrlMobile son opcionales y tienen que ser .mp4/.webm
+        var put = await SendAsync(HttpMethod.Put, "/api/admin/content/dashboard.hero?locale=es", Block(
+            Banner("/media/portal/poster.jpg", "Film", """ "videoUrl":"/media/portal/film.mp4", "videoUrlMobile":"/media/portal/film-16x9.mp4" """)));
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+        var response = await SendAsync(HttpMethod.Get, "/api/admin/content/dashboard.hero?locale=es");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var item = Assert.Single(body.GetProperty("items").EnumerateArray());
+        Assert.Equal("/media/portal/film.mp4", item.GetProperty("videoUrl").GetString());
+        Assert.Equal("/media/portal/film-16x9.mp4", item.GetProperty("videoUrlMobile").GetString());
+        Assert.Equal("/media/portal/poster.jpg", item.GetProperty("imageUrl").GetString());
+
+        // El portal (lo publicado) también lo devuelve
+        var portal = await SendAsync(HttpMethod.Get, "/api/portal/content/dashboard.hero?locale=es");
+        var published = await portal.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("/media/portal/film.mp4", published.GetProperty("items")[0].GetProperty("videoUrl").GetString());
+        Assert.Equal("/media/portal/film-16x9.mp4", published.GetProperty("items")[0].GetProperty("videoUrlMobile").GetString());
+
+        // Una imagen en videoUrl no es un vídeo; tampoco un esquema peligroso aunque acabe en .mp4
+        var bad = await SendAsync(HttpMethod.Put, "/api/admin/content/dashboard.hero?locale=es", Block(
+            Banner("/media/portal/poster.jpg", "Film", """ "videoUrl":"/media/portal/foto.jpg" """)));
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+        var badMobile = await SendAsync(HttpMethod.Put, "/api/admin/content/dashboard.hero?locale=es", Block(
+            Banner("/media/portal/poster.jpg", "Film", """ "videoUrlMobile":"javascript:alert(1).mp4" """)));
+        Assert.Equal(HttpStatusCode.BadRequest, badMobile.StatusCode);
+
+        // Un bloque sin el campo sigue siendo válido (las instancias sin vídeo) y se guarda vacío
+        var plain = await SendAsync(HttpMethod.Put, "/api/admin/content/dashboard.hero?locale=es", Block(Banner("/media/portal/uno.png")));
+        Assert.Equal(HttpStatusCode.OK, plain.StatusCode);
+        var plainBody = await (await SendAsync(HttpMethod.Get, "/api/admin/content/dashboard.hero?locale=es"))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("", Assert.Single(plainBody.GetProperty("items").EnumerateArray()).GetProperty("videoUrl").GetString());
+    }
+
     // ───────────────────────── Lectura desde el portal ─────────────────────────
 
     [Fact]

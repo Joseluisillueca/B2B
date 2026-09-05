@@ -4,9 +4,9 @@ using System.Text.Json.Nodes;
 namespace B2B.Api.Portal;
 
 // Esquema del contenido editable del portal (plan §3). Un bloque es una lista de
-// elementos con la forma { id, order, active, imageUrl, imageUrlMobile, alt, title,
-// subtitle, ctaText, ctaHref, publishFrom, publishTo } — más "window" en las
-// tarjetas de la portada, que fijan la ventana de servicio activa.
+// elementos con la forma { id, order, active, imageUrl, imageUrlMobile, videoUrl,
+// videoUrlMobile, alt, title, subtitle, ctaText, ctaHref, publishFrom, publishTo } — más
+// "window" en las tarjetas de la portada, que fijan la ventana de servicio activa.
 //
 // Todo lo que entra por el CMS pasa por Normalize: si el payload no cuadra, el
 // bloque no se guarda (400) en lugar de dejar la portada a medio pintar.
@@ -135,6 +135,21 @@ public static class PortalContentModel
             return false;
         }
 
+        // Vídeo del hero (mp4/webm del portal o http(s)); opcional. imageUrl sigue siendo obligatorio
+        // en los bloques con imagen: es el póster del <video> y el LCP de la portada. videoUrlMobile es
+        // el recorte 16:9 para móvil. Se guardan vacíos cuando no vienen: las instancias que no usan
+        // vídeo no cambian (el portal filtra por imageUrl || videoUrl).
+        foreach (var field in new[] { "videoUrl", "videoUrlMobile" })
+        {
+            if (!TryText(source[field], out var video)) { error = $"\"{field}\" debe ser texto."; return false; }
+            if (video.Length > 0 && (!IsSafeUrl(video) || !IsVideoUrl(video)))
+            {
+                error = $"\"{field}\" debe ser un .mp4 o .webm del portal (/media/…) o una URL http(s).";
+                return false;
+            }
+            item[field] = video;
+        }
+
         if (!TryText(source["ctaHref"], out var ctaHref)) { error = "\"ctaHref\" debe ser texto."; return false; }
         if (ctaHref.Length > 0 && !IsSafeUrl(ctaHref))
         {
@@ -251,6 +266,15 @@ public static class PortalContentModel
         (url.StartsWith('/') && !url.StartsWith("//")) ||
         url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
         url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+    // Un vídeo del hero es un .mp4 o .webm (lo único que el portal reproduce y MediaEndpoints
+    // admite); la query (?v=2) no cuenta para la extensión.
+    private static bool IsVideoUrl(string url)
+    {
+        var path = url.Split('?', 2)[0];
+        return path.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".webm", StringComparison.OrdinalIgnoreCase);
+    }
 
     // Color hex del acento de una historia: #RGB, #RGBA, #RRGGBB o #RRGGBBAA.
     private static bool IsHexColor(string value) =>

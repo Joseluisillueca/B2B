@@ -110,4 +110,42 @@ public class PortalMediaTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync("/media/portal/../appsettings.json")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync("/media/portal/..%2Fappsettings.json")).StatusCode);
     }
+
+    // ── 5. HEAD, Range y ETag: lo que un <video> del hero pide antes de reproducirse ──
+
+    [Fact]
+    public async Task LoSubido_AdmiteHeadRangeYEtag()
+    {
+        var subido = await UploadAsync("film.png", Png1x1, "image/png");
+        var url = subido.GetProperty("url").GetString()!;
+
+        // HEAD: cabeceras sin cuerpo (auditorías y proxies)
+        var head = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Head, url));
+        Assert.Equal(HttpStatusCode.OK, head.StatusCode);
+        Assert.Equal((long)Png1x1.Length, head.Content.Headers.ContentLength);
+        Assert.Contains("bytes", head.Headers.AcceptRanges);
+        Assert.NotNull(head.Headers.ETag);
+        Assert.Empty(await head.Content.ReadAsByteArrayAsync());
+
+        // Range: lo que hace Safari iOS antes de reproducir un <video>
+        var range = new HttpRequestMessage(HttpMethod.Get, url);
+        range.Headers.Range = new RangeHeaderValue(0, 1);
+        var partial = await _client.SendAsync(range);
+        Assert.Equal(HttpStatusCode.PartialContent, partial.StatusCode);
+        Assert.Equal(Png1x1.Take(2), await partial.Content.ReadAsByteArrayAsync());
+
+        // ETag fuerte: la segunda visita revalida con un 304 en vez de bajarlo entero
+        var full = await _client.GetAsync(url);
+        var etag = full.Headers.ETag!;
+        Assert.False(etag.IsWeak);
+        var again = new HttpRequestMessage(HttpMethod.Get, url);
+        again.Headers.IfNoneMatch.Add(etag);
+        Assert.Equal(HttpStatusCode.NotModified, (await _client.SendAsync(again)).StatusCode);
+
+        // La caché en memoria no sobrevive al borrado: el siguiente GET es 404
+        var name = subido.GetProperty("name").GetString()!;
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await _client.SendAsync(await AdminAsync(HttpMethod.Delete, "/api/admin/media/" + name))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync(url)).StatusCode);
+    }
 }
