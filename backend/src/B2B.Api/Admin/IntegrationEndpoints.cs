@@ -294,6 +294,14 @@ public static class IntegrationEndpoints
     // `rule` a propósito: el color sin el grosor da un filete rojo de 2px, que ya no es un
     // filete sino una barra (el gesto de marca es la hairline).
     private static readonly string[] BrandLengthTokens = ["tracking", "radius", "radiusButton", "ruleWidth"];
+    // Ronda 1 de crítica de BLOCCO 5 (tres cadenas con regla propia, ver abajo):
+    //   heroStyle     → lista CERRADA de recetas de app.css: acaba en un atributo del <html>
+    //                   que selecciona CSS, así que solo se admite lo que app.css conoce.
+    //   displayWeight → peso de los titulares, una centena de 100 a 900 (font-weight).
+    //   legal         → texto legal del login; como tagline pero con sitio para dos frases.
+    private static readonly string[] BrandHeroStyles = ["paper"];
+    private static readonly Regex BrandWeight = new("^[1-9]00$", RegexOptions.Compiled);
+    private const int BrandLegalMax = 400;
 
     private static readonly Regex BrandHexColor = new("^#[0-9a-fA-F]{6}$", RegexOptions.Compiled);
     // Medida CSS de verdad: un solo punto decimal y al menos un dígito. "..px" y "1.2.3px"
@@ -335,7 +343,8 @@ public static class IntegrationEndpoints
 
             var known = BrandColorTokens.Contains(key) || BrandUrlTokens.Contains(key)
                 || BrandLengthTokens.Contains(key)
-                || key is "heroFilter" or "fontFamily" or "tagline" or "supportEmail";
+                || key is "heroFilter" or "fontFamily" or "tagline" or "supportEmail"
+                || key is "heroStyle" or "displayWeight" or "legal";
             if (!known) continue;                                  // token desconocido: se ignora
 
             if (value.ValueKind != JsonValueKind.String)
@@ -394,6 +403,24 @@ public static class IntegrationEndpoints
                     : !BrandEmail.IsMatch(text)
                         ? "«supportEmail» debe ser una dirección de correo válida (o vacío)."
                         : null;
+            }
+            else if (key == "heroStyle")
+            {
+                // Se guarda en minúsculas: es el valor literal del selector CSS.
+                var style = text.ToLowerInvariant();
+                if (BrandHeroStyles.Contains(style)) text = style;
+                else error = $"«heroStyle» solo admite {string.Join(", ", BrandHeroStyles.Select(s => $"«{s}»"))} (o vacío).";
+            }
+            else if (key == "displayWeight")
+            {
+                if (!BrandWeight.IsMatch(text))
+                    error = "«displayWeight» debe ser un peso tipográfico en centenas, de 100 a 900 (p. ej. 900).";
+            }
+            else if (key == "legal")
+            {
+                // Mismo criterio que tagline (texto plano publicado): nada de HTML crudo.
+                error = text.Length > BrandLegalMax ? $"«legal» es demasiado largo (máx. {BrandLegalMax})."
+                    : text.Contains('<') || text.Contains('>') ? "«legal» no admite «<» ni «>»." : null;
             }
             if (error is not null) return (null, error);
             tokens[key] = text;

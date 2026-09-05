@@ -16,6 +16,7 @@ import { go, href } from '../router.js';
 import { carousel } from '../ui/carousel.js';
 import { icons } from '../ui/icons.js';
 import { openViewerModal } from '../ui/viewer.js';
+import { bindRail } from '../ui/related.js';
 
 const preferred = () => (state.me?.prefs?.showPrices === 'pvp' ? 'pvp' : 'pvd');
 const priceOf = (item, kind) =>
@@ -43,6 +44,8 @@ export default async function lookbook(host) {
   const body = host.querySelector('#lbBody');
   const selBar = host.querySelector('#lbSelBar');
 
+  // Ventanas de servicio que trae el catálogo: "Ver todo el catálogo" las necesita
+  let windows = [];
   const [hero, stories] = await Promise.all([content('lookbook.hero'), content('lookbook.stories')]);
   // Los productos del raíl los elige el CMS uno a uno, así que se piden POR ID. Antes se
   // traía una PÁGINA del catálogo y se buscaban dentro: con más de 100 artículos, los que
@@ -74,7 +77,18 @@ export default async function lookbook(host) {
     </div></div>`;
 
   bindProducts();
+  bindRails();
   renderSelBar();
+
+  // "Ver todo el catálogo" abre el catálogo en la ventana de PROGRAMACIÓN si la
+  // instancia la tiene: el lookbook es la campaña, y abrirlo en reposición —donde la
+  // colección nueva aún dice "Consultar"— era un callejón sin salida. La preferencia
+  // se escribe ANTES de navegar (el router intercepta el clic después). Sin ventana
+  // programada no se toca nada.
+  body.querySelector('.lb-close a')?.addEventListener('click', () => {
+    if (windows.some(w => w.orderType === 'SCHEDULED') && state.prefs.window !== 'scheduled')
+      state.prefs = { ...state.prefs, window: 'scheduled' };
+  });
 
   // ── Bloques de historia ───────────────────────────────────────────────────
   function storyBlock(story, map) {
@@ -96,7 +110,17 @@ export default async function lookbook(host) {
         </div>
         ${refs.length ? `
           <div class="lb-shop">
-            <h3 class="lb-shop-title">${esc(t('lookbook.shopTheLook'))}</h3>
+            <!-- Cabecera con las flechas del raíl (mismo patrón y mismas .related-arrow
+                 que "Completa la gama"): sin ellas la cuarta tarjeta quedaba cortada a
+                 media palabra y solo la barra del sistema, invisible en Mac y táctil,
+                 decía que había más. Se enseñan solo si el raíl desborda (JS). -->
+            <div class="lb-shop-head" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:0 0 1rem">
+              <h3 class="lb-shop-title" style="margin:0">${esc(t('lookbook.shopTheLook'))}</h3>
+              <div class="lb-shop-nav" style="display:flex;gap:.5rem;flex:none" hidden>
+                <button type="button" class="related-arrow lb-prev" aria-label="${esc(t('lookbook.prev'))}">${icons.left(18)}</button>
+                <button type="button" class="related-arrow lb-next" aria-label="${esc(t('lookbook.next'))}">${icons.right(18)}</button>
+              </div>
+            </div>
             <div class="lb-rail">${refs.map(pcard).join('')}</div>
           </div>` : ''}
       </section>`;
@@ -172,6 +196,24 @@ export default async function lookbook(host) {
         renderSelBar();
       };
     });
+  }
+
+  // Flechas de "Compra el look": el paso es un número ENTERO de tarjetas (las que
+  // caben a la vista), así ninguna queda cortada tras el clic.
+  function bindRails() {
+    body.querySelectorAll('.lb-shop').forEach(shop => bindRail({
+      host: shop,
+      rail: shop.querySelector('.lb-rail'),
+      prev: shop.querySelector('.lb-prev'),
+      next: shop.querySelector('.lb-next'),
+      nav: shop.querySelector('.lb-shop-nav'),
+      step: rail => {
+        const card = rail.querySelector('.pcard');
+        if (!card) return 0;
+        const pitch = card.getBoundingClientRect().width + (parseFloat(getComputedStyle(rail).columnGap) || 0);
+        return Math.max(1, Math.floor(rail.clientWidth / pitch)) * pitch;
+      }
+    }));
   }
 
   function paintFav(button, on) {
@@ -263,6 +305,7 @@ export default async function lookbook(host) {
     try {
       const data = await api.get(`/api/shop/catalog?locale=${encodeURIComponent(lang())}`
         + `&ids=${encodeURIComponent(ids.join(','))}`);
+      windows = data?.windows || [];
       return data?.items || data?.models || [];
     } catch { return []; }
   }

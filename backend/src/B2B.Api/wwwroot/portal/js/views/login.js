@@ -5,7 +5,7 @@ import { esc } from '../format.js';
 import { api } from '../api.js';
 import { state } from '../state.js';
 import { go, href } from '../router.js';
-import { brandMarkOnBrand, brandText, brandTagline, brandSupport } from '../branding.js';
+import { brandMarkOnBrand, brandText, brandTagline, brandSupport, brandLegal } from '../branding.js';
 
 export default function login(host) {
   host.innerHTML = `
@@ -30,8 +30,14 @@ export default function login(host) {
 
           <h2>${esc(t('login.noAccountTitle'))}</h2>
           <p data-brand-support data-fallback="${esc(t('login.help'))}" data-fallback-noemail="${esc(t('login.helpNoEmail'))}">${brandSupport(t('login.help'), t('login.helpNoEmail'))}</p>
-          <a class="create" href="#">${esc(t('login.create'))}</a>
-          <p class="legal">${esc(brandText(t('login.legal')))}</p>
+          <!-- «Crear una cuenta» lleva a la página de contacto (el alta la tramita la marca a
+               mano): antes era href="#" sin handler, un enlace que no hacía nada. -->
+          <a class="create" href="${href('contact')}">${esc(t('login.create'))}</a>
+          <!-- El legal traducido es el de un distribuidor multimarca; una marca que fabrica su
+               producto pone el suyo con el token «legal». brandLegal ya escapa; el texto por
+               defecto viaja en data-fallback para el refresco en segundo plano (ver apply). -->
+          <p class="legal" data-brand-legal data-fallback="${esc(brandText(t('login.legal')))}"
+            >${brandLegal(brandText(t('login.legal')))}</p>
         </form>
       </div>
     </div>`;

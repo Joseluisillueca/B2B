@@ -36,6 +36,11 @@
   /* Rojo para TEXTO PEQUENO (pestanas activas, recuentos, lookups): #b8230c da >=4,5:1
      sobre --paper; --blue-deep se queda para fondos y texto grande (D-M7). */
   --blue-text:#b8230c;
+  /* Rojo para texto pequeño SOBRE SU PROPIO TINTE (--blue-soft: píldora de unidades, tag de
+     panel). --blue-deep (#dd2b0f) es un oscurecido fijo del 10 % que sobre #ffe0d9 se queda
+     en 3,8:1; #ae1800 da 5,8:1. branding.js lo deriva midiendo contra el tinte cuando la
+     marca tiene otro color (una marca negra sigue dando negro). */
+  --blue-soft-text:#ae1800;
   --accent:#e15b47; --accent-deep:#ae1800; --accent-soft:#fff2ef;
   --ok:#1f7a45; --low:#b07d18; --out:#ec3013;
   --r:0px; --r-sm:0px;
@@ -59,7 +64,9 @@
 }
 
 * { box-sizing:border-box; }
-html { scrollbar-color:#c9bfab var(--surface); }
+/* Barra de scroll (Windows/Firefox) en los grises del sistema: el #c9bfab era el beige de
+   la paleta crema anterior y cualquier instancia lo heredaba aunque su papel fuera blanco. */
+html { scrollbar-color:var(--line-control) var(--surface); }
 body { margin:0; min-height:100vh; background:var(--paper); color:var(--ink);
   font:15px/1.55 var(--brand-font,"Archivo"),system-ui,sans-serif; font-variant-numeric:tabular-nums;
   -webkit-font-smoothing:antialiased; display:flex; flex-direction:column; }
@@ -192,7 +199,9 @@ body[data-focus="on"] .crumb, body[data-focus="on"] h1.title { display:none; }
 .panel { background:var(--card); border-radius:var(--r); box-shadow:var(--shadow); padding:2.6rem 2rem;
   text-align:center; color:var(--muted); }
 .panel b { display:block; color:var(--ink); font-size:1.05rem; margin-bottom:.35rem; }
-.panel .tag { display:inline-block; margin-top:.9rem; background:var(--blue-soft); color:var(--blue-deep);
+/* Texto de marca dentro de su propio tinte: --blue-soft-text está medido contra --blue-soft
+   (ver :root); --blue-deep sobre el tinte no llegaba a AA. */
+.panel .tag { display:inline-block; margin-top:.9rem; background:var(--blue-soft); color:var(--blue-soft-text);
   border-radius:999px; padding:.28rem .8rem; font-size:.75rem; font-weight:700; letter-spacing:.04em; }
 .panel .cta { display:inline-block; margin-top:1.1rem; background:var(--blue); color:#fff; font-weight:700;
   border-radius:var(--r-btn,var(--r-sm)); padding:.7rem 1.3rem; text-decoration:none; }
@@ -350,9 +359,11 @@ body:has(#hero) { background:var(--paper); }
   transition:scale .5s var(--ease); }
 /* 1.04 sobre una tarjeta de 900px era un tirón de 36px; a este tamaño 1.02 se lee mejor */
 .tile:hover img, .tile:hover .t-art { scale:1.02; }
-/* Sin imagen en el CMS, la tarjeta se sostiene con el color de marca */
-.tile[data-window="replenishment"] .t-art { background:linear-gradient(135deg,#ff563c,#ec3013 60%,#ae1800); }
-.tile[data-window="scheduled"] .t-art { background:linear-gradient(135deg,#605d5d,#2d2b2b 70%,#201e1d); }
+/* Sin imagen en el CMS, la tarjeta se sostiene con el color de marca. Planos, no
+   degradados: los tres rojos y los tres grises literales eran los de MITO y una instancia
+   de otro color los heredaba tal cual en su portada. */
+.tile[data-window="replenishment"] .t-art { background:var(--blue); }
+.tile[data-window="scheduled"] .t-art { background:var(--ink); }
 /* Se retira el velo diagonal a inset:0: oscurecía la foto ENTERA para proteger un
    texto que vive abajo y, aun así, no llegaba a contraste AA sobre una foto clara.
    Además el hover lo ACLARABA, bajando la legibilidad justo al interactuar. Ahora el
@@ -424,7 +435,10 @@ body[data-chrome="credentials"] { background:var(--ink); }
 .login-card .field { width:100%; border:1px solid #ccc; border-radius:4px; padding:.85rem 1rem;
   margin-bottom:.9rem; transition:border-color .15s var(--ease); }
 .login-card .field:focus { border-color:var(--blue); }
-.login-card .field:focus-visible { outline:2px solid var(--blue); outline-offset:1px; }
+/* Un solo marco de 2px al enfocar (borde + sombra interior pegada), no borde + hueco
+   blanco + anillo: el doble marco se leía como un error de dibujo. Sigue siendo foco
+   visible (WCAG 2.4.7): la sombra va en el color de marca y ocupa el ancho del borde. */
+.login-card .field:focus-visible { outline:none; box-shadow:inset 0 0 0 1px var(--blue); }
 .login-card .field::placeholder { color:var(--muted); }
 .login-card .forgot { display:block; text-align:right; font-size:.85rem; color:var(--blue); margin:.1rem 0 1.4rem; }
 .login-card .submit { width:100%; background:var(--blue); color:#fff; font-weight:700;
@@ -435,7 +449,7 @@ body[data-chrome="credentials"] { background:var(--ink); }
 .login-card h2 { font-size:.95rem; font-weight:700; margin:1.6rem 0 .7rem; }
 .login-card p { margin:0 0 .9rem; color:var(--ink-2); }
 .login-card .create { color:var(--blue); font-weight:600; }
-.login-card .legal { font-size:.8rem; color:#52525b; line-height:1.5; margin:1rem 0 0; }
+.login-card .legal { font-size:.8rem; color:var(--hint); line-height:1.5; margin:1rem 0 0; }
 .login-card .err { color:var(--out); font-size:.85rem; min-height:1.3em; margin:.7rem 0 0; }
 
 /* Activación / recuperación de contraseña (Fase 2). Reutiliza la tarjeta del login */
@@ -561,7 +575,9 @@ body[data-chrome="credentials"] { background:var(--ink); }
 /* La columna de texto del aviso puede llevar un botón (p. ej. "Quitar artículos no
    disponibles"): sin min-width:0 el hijo ancho empujaba el aviso fuera del panel. */
 .notice > div { min-width:0; }
-.notice-error { background:#fdeceb; color:#8f2019; }
+/* El aviso de error va en el segundo acento, como los chips y avisos de deuda: --accent-deep
+   se mide contra su propio tinte en branding.js, así que el par siempre cumple AA. */
+.notice-error { background:var(--accent-soft); color:var(--accent-deep); }
 .notice-ok { background:#e8f6ed; color:#0f6b34; }
 
 /* Diálogo del portal (js/ui/dialog.js): sustituye a confirm()/prompt() del
@@ -586,8 +602,10 @@ body[data-chrome="credentials"] { background:var(--ink); }
    flotan sobre el papel con radio y sombra tenue. */
 table.grid { width:100%; border-collapse:separate; border-spacing:0; background:var(--card);
   border:1px solid var(--line); border-radius:var(--r); overflow:hidden; box-shadow:var(--shadow); }
+/* nowrap: en móvil la tabla desborda su .grid-scroll y sin esto las cabeceras se partían
+   en dos líneas («N. DE / PEDIDO»); mejor una columna algo más ancha con scroll lateral. */
 table.grid th { background:var(--surface); color:var(--muted); text-align:left; font-size:.7rem; letter-spacing:.08em;
-  text-transform:uppercase; padding:.95rem 1.1rem; font-weight:600; border-bottom:1px solid var(--line); }
+  text-transform:uppercase; padding:.95rem 1.1rem; font-weight:600; border-bottom:1px solid var(--line); white-space:nowrap; }
 table.grid td { padding:1rem 1.1rem; border-bottom:1px solid var(--line); font-size:.9rem; }
 table.grid tbody tr:last-child td { border-bottom:none; }
 table.grid tbody tr:hover td { background:var(--paper); }
@@ -895,16 +913,19 @@ body[data-focus="on"] .cat-ribbon { display:none; }
 .item-pvp { margin:.2rem 0 0; color:var(--muted); font-size:.85rem; }
 .item-matrix .matrix-price { margin-top:1rem; }
 .item-matrix .matrix-price b { font-size:1.35rem; }
-.item-units { background:var(--blue-soft); color:var(--blue-deep); border-radius:999px;
+.item-units { background:var(--blue-soft); color:var(--blue-soft-text); border-radius:999px;
   padding:.2rem .7rem; font-size:.75rem; font-weight:700; }
 
 /* Matriz de tallas: 8 celdas por fila con cabecera negra */
 /* El ancho mínimo lo marca la celda más ancha posible: "0" + "(+99)" */
 /* Matriz en UNA fila (36→46): las celdas reparten el ancho de la fila hasta un tope
    (no se estiran con 1 sola talla), a la izquierda; sólo hay scroll si no cupieran. */
-.matrix { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,4.4rem); gap:.4rem;
+/* Suelo de 3.4rem por columna: con minmax(0,…) las columnas implícitas se ENCOGÍAN a 0
+   antes de que actuara el overflow-x (tallas de 8px sin poder teclear, WCAG 2.5.8). Con
+   suelo, muchas tallas desbordan con scroll en vez de aplastarse. */
+.matrix { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(3.4rem,4.4rem); gap:.4rem;
   justify-content:start; max-width:none; overflow-x:auto; padding-bottom:.15rem; }
-.matrix.wide { grid-auto-columns:minmax(0,5rem); }
+.matrix.wide { grid-auto-columns:minmax(3.6rem,5rem); }
 .sz-cell { display:flex; flex-direction:column; gap:.28rem; min-width:0; }
 /* Disponibilidad SIEMPRE debajo del cuadro, centrada y legible (no dentro) */
 .sz-cell .sz-stock { display:flex; justify-content:center; align-items:center; gap:.25rem;
@@ -921,7 +942,7 @@ body[data-focus="on"] .cat-ribbon { display:none; }
 .sz-qty { width:100%; text-align:center; }
 .sz { border:1px solid var(--line); background:#fff; overflow:hidden;
   transition:border-color .12s var(--ease), box-shadow .12s var(--ease); }
-.sz:focus-within { border-color:var(--blue); box-shadow:0 0 0 3px rgba(43,43,255,.14); }
+.sz:focus-within { border-color:var(--blue); box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 14%,transparent); }
 /* m9: la cifra de talla va pegada a la izquierda de la cabecera negra, como en la
    referencia; el precio por talla (kids) se va al extremo contrario. */
 /* Cabecera de talla "silenciosa": tinte arena con tinta oscura; sólida (verde) solo
@@ -1025,7 +1046,7 @@ body[data-focus="on"] .cat-ribbon { display:none; }
   cursor:pointer; opacity:.55; transition:opacity .2s; }
 .viewer-stage:hover .viewer-zoom, .viewer-zoom:focus-visible { opacity:1; }
 .viewer-hint { position:absolute; bottom:.8rem; left:50%; translate:-50% 0; z-index:2; font-size:.74rem; color:var(--ink-2);
-  background:rgba(250,246,239,.9); padding:.25rem .75rem; border-radius:999px; pointer-events:none; transition:opacity .3s; }
+  background:color-mix(in srgb,var(--paper) 90%,transparent); padding:.25rem .75rem; border-radius:999px; pointer-events:none; transition:opacity .3s; }
 .viewer-hint.gone { opacity:0; }
 
 .viewer-controls { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:.5rem; align-items:center; }
@@ -1695,6 +1716,11 @@ table.grid .num { white-space:nowrap; }
   /* El FAB del asistente (fijo abajo-derecha) tapaba el pager en móvil (P3):
      se reserva hueco inferior para que el último control quede por encima. */
   .page { padding:1.2rem 1rem 6rem; }
+  /* El FAB (56×56 fijo abajo-derecha) tapaba controles en TODAS las pantallas de móvil:
+     desplegables de facetas, chips de la ficha, «Añadir» del lookbook, campos del checkout.
+     En móvil el asistente se abre desde el menú de usuario (entrada «Asistente», que
+     dispara el mismo toggle); el panel ya ocupa la pantalla entera a ese ancho. */
+  #assistant-fab { display:none; }
   h1.title { font-size:1.9rem; }
   .sheet .card { padding:1.8rem 1.3rem; }
 
@@ -1706,7 +1732,9 @@ table.grid .num { white-space:nowrap; }
   .item-info { grid-area:info; }
   .item-matrix { grid-area:matrix; }
   .item h2 { font-size:1.05rem; }
-  .matrix, .matrix.wide { max-width:none; grid-template-columns:repeat(auto-fill,minmax(4.6rem,1fr)); }
+  /* En filas: con grid-auto-flow:column heredado, las tallas que no cabían en las columnas
+     explícitas caían en columnas implícitas de 0px (tres tiras de 8px). Ahora envuelven. */
+  .matrix, .matrix.wide { grid-auto-flow:row; max-width:none; grid-template-columns:repeat(auto-fill,minmax(4.6rem,1fr)); }
 
   /* Cuadrícula del catálogo: dos columnas caben en 390 px con la foto aún grande */
   .cat-grid { grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr)); gap:1.5rem 1rem; }
@@ -2030,7 +2058,7 @@ table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6
 .lb-story-media img { width:100%; height:100%; object-fit:cover; }
 .lb-story-text { max-width:34rem; }
 .lb-kicker { display:inline-block; font-size:.74rem; font-weight:700; letter-spacing:.08em;
-  text-transform:uppercase; color:var(--accent-deep); border-bottom:2px solid var(--lb-accent);
+  text-transform:uppercase; color:var(--accent-deep); border-bottom:var(--rule-w) solid var(--lb-accent);
   padding-bottom:.15rem; margin:0 0 .8rem; }
 .lb-story-text h2 { font-family:var(--display); font-size:2rem; line-height:1.1; margin:0 0 .7rem; color:var(--ink); }
 .lb-story-text p { color:var(--ink-2); font-size:1.02rem; line-height:1.6; margin:0; }
@@ -2039,7 +2067,8 @@ table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6
 .lb-shop { grid-column:1 / -1; margin-top:1.6rem; min-width:0; }
 .lb-shop-title { font-family:var(--display); font-size:1.15rem; margin:0 0 1rem;
   display:inline-flex; align-items:center; gap:.5rem; }
-.lb-shop-title::before { content:""; width:1.6rem; height:2px; background:var(--lb-accent); display:inline-block; }
+/* Grosor por token (ruleWidth): sin él, los 2px de siempre. */
+.lb-shop-title::before { content:""; width:1.6rem; height:var(--rule-w); background:var(--lb-accent); display:inline-block; }
 .lb-rail { display:grid; grid-auto-flow:column; grid-auto-columns:21rem; justify-content:start; gap:1.2rem; min-width:0;
   overflow-x:auto; scroll-snap-type:x mandatory; padding:.2rem .2rem 1rem; }
 .lb-rail .pcard { scroll-snap-align:start; }
@@ -2051,7 +2080,7 @@ table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6
 .lb-rail .pcard { transition:transform .2s var(--ease), box-shadow .2s var(--ease); }
 .lb-rail .pcard:hover { transform:translateY(-4px); box-shadow:var(--shadow-card); }
 .lb-add { margin-top:.4rem; display:inline-flex; align-items:center; justify-content:center; gap:.35rem;
-  border:1px solid var(--blue); background:transparent; color:var(--blue-deep); border-radius:var(--r-sm);
+  border:1px solid var(--blue); background:transparent; color:var(--blue-text); border-radius:var(--r-sm);
   padding:.5rem .7rem; font:inherit; font-size:.85rem; font-weight:600; cursor:pointer; width:100%;
   transition:background .15s var(--ease), color .15s var(--ease); }
 .lb-add:hover { background:var(--blue); color:#fff; }
@@ -2118,7 +2147,7 @@ table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6
 .sel-card:hover:not([disabled]) { border-color:var(--blue); background:var(--blue-soft); transform:translateY(-2px); }
 .sel-card[disabled] { opacity:.55; cursor:progress; }
 .sel-card-title { font-weight:700; font-size:.82rem; letter-spacing:.02em; text-transform:uppercase;
-  color:var(--blue-deep); }
+  color:var(--blue-text); }
 .sel-card-desc { font-size:.8rem; color:var(--muted); line-height:1.35; }
 .sel-error { margin:1rem 0 0; color:var(--out); font-size:.86rem; }
 
@@ -2150,10 +2179,15 @@ h1,h2,h3,h4,h5,h6,.title,.card-title { font-weight:800; letter-spacing:var(--bra
 .item-fav,.product-fav,#chrome-footer .social a,.c-arrow,
 .viewer-zoom { border-radius:var(--r-btn,var(--r,0)) !important; }
 
-/* Nav de cabecera: MAYÚSCULAS, activo/hover en rojo, regla inferior de 2px */
-#chrome-nav { border-bottom-width:2px; border-bottom-color:var(--ink); }
+/* Nav de cabecera: MAYÚSCULAS, activo/hover en rojo, regla inferior = filete de CAPÍTULO
+   (sin tokens, 2px de tinta como siempre; con rule/ruleWidth, el filete de la marca: antes
+   el 2px negro pisaba el filete rojo de 1px de la cabecera y había tres acentos en 55px). */
+#chrome-nav { border-bottom:var(--rule-w) solid var(--rule); }
 #chrome-nav a { text-transform:uppercase; font-weight:700; font-size:.82rem; letter-spacing:var(--brand-tracking,.05em); }
-#chrome-nav a[aria-current="page"], #chrome-nav a.active { color:var(--blue); border-bottom-color:var(--blue); }
+/* El texto del activo va en --blue-text (el rojo medido para texto pequeño, 5,9:1 en MITO);
+   el subrayado se queda en 2px y en --blue: con el filete del nav a 1px, un subrayado de 1px
+   caería sobre la misma línea y el estado activo desaparecería. */
+#chrome-nav a[aria-current="page"], #chrome-nav a.active { color:var(--blue-text); border-bottom-color:var(--blue); }
 
 /* Controles nativos en rojo */
 input[type=checkbox], input[type=radio] { accent-color:var(--blue); }
@@ -2299,7 +2333,10 @@ table.grid th { background:none !important; border-bottom:var(--rule-w) solid va
   gap:1rem; text-align:left; padding:.95rem 1.4rem; }
 .product-order .btn-primary .product-total { color:#fff; font-size:.95rem; }
 .product-order .btn-primary .product-total b { color:#fff; font-family:var(--display); }
-.product-order .btn-primary .product-hint { color:rgba(255,255,255,.75); }
+/* El hint («Elige tallas y cantidades») heredaba el .95rem del total y el uppercase/700 del
+   botón: salía MÁS grande que el rótulo real y, en blanco al 75 %, a 3,0:1 sobre el rojo.
+   Blanco puro (4,7:1) y tamaño/peso de nota, en caja normal. */
+.product-order .btn-primary .product-hint { color:#fff; font-size:.82rem; font-weight:500; text-transform:none; letter-spacing:.02em; }
 
 /* ── Calendario (cap. 10): tarjeta a la izquierda + tipo segmentado + agenda plana ── */
 .cal-form-wrap { text-align:left; color:var(--ink); }
@@ -2411,10 +2448,10 @@ table.grid th { background:none !important; border-bottom:var(--rule-w) solid va
 .ck-managed { display:flex; align-items:center; gap:.4rem; margin:-.6rem 0 1.1rem; font-size:.84rem; color:var(--muted); }
 .ck-managed svg { flex:none; color:var(--hint); }
 /* Grupo que el servidor rechazó: se ve cuál es sin leer el aviso lateral */
-.ck-group.is-blocked { border-color:#e6b6b0; background:#fdf6f5; }
+.ck-group.is-blocked { border-color:var(--accent-deep); background:var(--accent-soft); }
 .ck-blocked { display:inline-flex; align-items:center; gap:.3rem; margin-left:.6rem; vertical-align:middle;
   font-size:.68rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
-  color:var(--accent-deep); background:var(--accent-soft); border:1px solid #e6b6b0; padding:.14rem .5rem; }
+  color:var(--accent-deep); background:var(--accent-soft); border:1px solid var(--accent-deep); padding:.14rem .5rem; }
 .ck-drop-blocked { margin-top:.55rem; max-width:100%; white-space:normal; text-align:left; }
 .ck-pay-note { display:block; margin-top:.35rem; font-size:.76rem; line-height:1.45; color:var(--hint);
   font-weight:400; text-transform:none; letter-spacing:0; }
@@ -2428,3 +2465,65 @@ table.grid th { background:none !important; border-bottom:var(--rule-w) solid va
   letter-spacing:.06em; text-transform:uppercase; color:var(--hint);
   border:1px solid var(--line-control); padding:.14rem .5rem;
   margin-inline-end:auto; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+
+/* ═══════════ Marca configurable: peso de los TITULARES (token displayWeight) ═══════════
+   Los titulares de página van a 500 y los de acceso/hero a 800 por reglas con clase
+   (h1.title, .product-name, .item h2… especificidad 0,1,1) que ganan a la regla Modernist
+   «h1,h2,h3{font-weight:800}» (0,0,1): una marca cuyo peso ES la identidad (Archivo Black
+   en BLOCCO 5) no podía subirlos sin tocar CSS. El token llega como --brand-display-weight
+   y cada grupo conserva su valor de hoy como respaldo, así que sin token MITO y ALMA no se
+   mueven. Va al final del fichero a propósito: gana por cascada a las reglas de igual
+   especificidad de arriba (.kpi-value, .hero-title, .bd-kpi-value…). */
+h1.title, .product-name, .item h2, .pcard-name, .t-label, .sel-panel h2 { font-weight:var(--brand-display-weight,500); }
+.hero-title, .login-display, .login-h, .cred-h, .kpi-value, .bd-kpi-value, .lb-story-text h2 { font-weight:var(--brand-display-weight,800); }
+.c-caption strong { font-weight:var(--brand-display-weight,700); }
+
+/* ═══════════ Marca configurable: hero sobre PAPEL (token heroStyle = "paper") ═══════════
+   branding.js pone <html data-hero-style="paper"> cuando la instancia lo configura; sin
+   token el atributo no existe y NADA de este bloque se aplica (ALMA y MITO intactos).
+   La receta Modernist —foto a sangre, velo negro y titular blanco encima— es la de MITO;
+   una marca de papel blanco pone la foto SOBRE el papel y el titular en tinta DEBAJO, de
+   modo que el contraste del texto deja de depender de la foto (el saludo blanco itálico
+   medía 2,5:1 sobre una foto clara). Portada, banda de ventanas y hero del lookbook. */
+html[data-hero-style="paper"] .hero-full { height:auto; display:grid; overflow:visible; background:var(--paper); }
+html[data-hero-style="paper"] .hero-media { position:relative; inset:auto; aspect-ratio:21/9; max-height:62vh; }
+html[data-hero-style="paper"] .hero-full::after { display:none; }
+html[data-hero-style="paper"] .hero-overlay { position:static; color:var(--ink); padding:1.6rem var(--gutter) 0; }
+html[data-hero-style="paper"] .hero-kicker { font-style:normal; opacity:1; color:var(--ink-2); }
+html[data-hero-style="paper"] .hero-title { color:var(--ink); text-shadow:none; }
+html[data-hero-style="paper"] .hero-cta { background:var(--blue); border-color:var(--blue); color:#fff; }
+html[data-hero-style="paper"] .hero-cta:hover { background:var(--blue-deep); border-color:var(--blue-deep); color:#fff; }
+html[data-hero-style="paper"] .hero-cta:focus-visible { outline-color:var(--blue); }
+/* Banda de ventanas: foto arriba (fila flexible) y rótulo en tinta bajo un filete de
+   capítulo, sin velo. .t-art es un <span>: en flujo normal necesita display:block para que
+   width/height le apliquen (en absoluto se blockificaba solo). El zoom del hover se apaga:
+   la foto ya no vive en una caja recortada propia y el 2 % pisaría el filete del rótulo. */
+html[data-hero-style="paper"] .tile { display:grid; grid-template-rows:minmax(0,1fr) auto; background:var(--paper); color:var(--ink); box-shadow:none; }
+html[data-hero-style="paper"] .tile img, html[data-hero-style="paper"] .tile .t-art { position:relative; inset:auto; display:block; min-height:0; }
+html[data-hero-style="paper"] .tile:hover img, html[data-hero-style="paper"] .tile:hover .t-art { scale:1; }
+html[data-hero-style="paper"] .tile::after { display:none; }
+html[data-hero-style="paper"] .tile:focus-visible { outline:2px solid var(--blue); outline-offset:2px; box-shadow:none; }
+html[data-hero-style="paper"] .t-body { position:static; background:none; padding:.9rem 0 0; border-top:var(--rule-w) solid var(--rule); }
+html[data-hero-style="paper"] .t-label { color:var(--blue); }
+html[data-hero-style="paper"] .tile:hover .t-label { text-decoration:underline; text-underline-offset:.12em; }
+html[data-hero-style="paper"] .t-sub { color:var(--ink-2); }
+html[data-hero-style="paper"] .t-cart { color:var(--ink); }
+/* Hero del lookbook (carrusel con pie por diapositiva): el pie va en tinta sobre una
+   ETIQUETA de papel línea a línea (box-decoration-break), no en blanco sobre velo: así
+   lee igual sobre plata que sobre negro sin reconstruir el carrusel. El CTA sigue rojo. */
+html[data-hero-style="paper"] .lb-hero .c-caption { background:none; color:var(--ink); }
+html[data-hero-style="paper"] .lb-hero .c-caption strong,
+html[data-hero-style="paper"] .lb-hero .c-caption span:not(.c-cta) { background:var(--paper); padding:.12em .4em;
+  -webkit-box-decoration-break:clone; box-decoration-break:clone; }
+html[data-hero-style="paper"] .lb-hero .c-caption span:not(.c-cta) { color:var(--ink-2); }
+/* Visor de la ficha: las fotos de producto traen la placa gris horneada; con el token
+   `card` en blanco quedarían enmarcadas, así que el escenario toma --surface (el mismo
+   gris que ya leen .item-photo, .pcard-media y .viewer-empty). */
+html[data-hero-style="paper"] .viewer-stage { background:var(--surface); }
+/* Cabecera: el rojo es TINTA, no superficie de utilidades. El único bloque de color debe
+   ser la acción (carrito): monograma a contorno y FAB en la superficie de la cabecera con
+   su tinta (blanco con icono negro en BLOCCO). Gateado aquí y no global porque en ALMA
+   —cabecera blanca, marca negra— se vería (monograma a contorno y FAB negro). */
+html[data-hero-style="paper"] .avatar { background:none !important; border:1px solid currentColor; color:var(--header-ink); }
+html[data-hero-style="paper"] #assistant-fab { background:var(--header-bg) !important; color:var(--header-ink); border:1px solid var(--header-ink); }
+html[data-hero-style="paper"] #assistant-fab:hover { background:var(--surface) !important; }

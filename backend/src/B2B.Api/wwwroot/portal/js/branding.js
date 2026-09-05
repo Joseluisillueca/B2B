@@ -38,12 +38,19 @@
 //   faviconUrl        → href del <link rel=icon>
 //   logoUrlDark       → logo alternativo para fondos oscuros (ver brandMark)
 //   tagline/supportEmail → textos del login (ver brandTagline/brandSupport)
+//   legal             → texto legal del login (ver brandLegal; hasta 400 caracteres)
 //   card              → --brand-card   (fondo de paneles y de la banda de pestañas)
 //   rule/ruleWidth    → --brand-rule/--brand-rule-w  (color y grosor de los filetes de
 //                       CAPÍTULO: los 2px de tinta que abren cada bloque, no los hilos)
 //   accent            → --accent/--accent-deep/--accent-soft  (segundo acento: favoritos,
 //                       barras de los cuadros de mando, avisos; se deriva como el color
 //                       de marca, ver applyTokenVars)
+//   displayWeight     → --brand-display-weight  (peso de los TITULARES: "100".."900"; sin
+//                       token app.css conserva sus 500/800 de siempre)
+//   heroStyle         → <html data-hero-style="paper">: no es una variable sino un atributo
+//                       del que cuelga el bloque «hero sobre papel» de app.css (portada,
+//                       banda de ventanas y hero del lookbook con el titular en tinta bajo
+//                       la foto en vez de blanco sobre velo). Único valor admitido: "paper".
 
 const KEY = 'b2b_branding';
 const DEFAULTS = { name: 'MITO PROJECTS', color: '#ec3013', logoUrl: null };
@@ -105,16 +112,19 @@ const contrast = (a, b) => {
 // Papel del portal cuando la instancia no pone token `paper` (--paper de app.css).
 const PAPER = '#f3f2f2';
 
-/** Variante del color de marca para TEXTO PEQUEÑO sobre el papel (--blue-text).
-    Arranca en el mismo 22 % de oscurecido con el que app.css derivó su #b8230c del
-    rojo de MITO y sigue moviéndose en la dirección contraria al papel —oscurecer si es
-    claro, aclarar si es oscuro— hasta AA (4,5:1). Un solo paso no basta: un amarillo
-    #ffd400 oscurecido un 22 % se queda en 2,1:1 sobre --paper. */
-const readableOnPaper = color => {
-  const paper = brand.tokens.paper || PAPER;
-  const down = isLight(paper);
-  let out = down ? darken(color, 0.22) : tint(color, 0.78);
-  for (let step = 0; step < 16 && contrast(out, paper) < 4.5; step++) {
+/** Variante de un color para TEXTO PEQUEÑO sobre un fondo (por defecto el papel): se mueve
+    en la dirección contraria al fondo —oscurecer si es claro, aclarar si es oscuro— SOLO
+    hasta AA (4,5:1), y si el color ya cumple se devuelve tal cual. Antes arrancaba con un
+    oscurecido fijo del 22 % «como el #b8230c de MITO», y eso partía el rojo de una marca en
+    dos: el #e70917 de BLOCCO da 4,7:1 sobre papel blanco y no necesitaba tocarse, pero
+    salía #b40712 bajo su propio subrayado #e70917. Un paso del 12 % es lo bastante fino
+    para no pasarse; el bucle hace falta porque un amarillo #ffd400 necesita varios.
+    `bg` permite medir contra el TINTE del propio color (--accent-soft / --blue-soft) para
+    los textos que van dentro de cajas teñidas, donde el papel no es el fondo real. */
+const readableOnPaper = (color, bg = brand.tokens.paper || PAPER) => {
+  const down = isLight(bg);
+  let out = color;
+  for (let step = 0; step < 16 && contrast(out, bg) < 4.5; step++) {
     out = down ? darken(out, 0.12) : tint(out, 0.88);
   }
   return out;
@@ -140,6 +150,19 @@ const asTagline = value => {
 const asEmail = value => {
   const text = String(value).trim();
   return text.length <= 120 && /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(text) ? text : null;
+};
+/** Texto legal del login: como el tagline (sin HTML) pero con sitio para dos frases. */
+const asLegal = value => {
+  const text = String(value).trim();
+  return text && text.length <= 400 && !/[<>]/.test(text) ? text : null;
+};
+/** Estilo del hero: lista CERRADA de recetas de app.css (hoy solo "paper"); cualquier otra
+    cosa se descarta, porque acaba en un atributo del <html> que selecciona CSS. */
+const asHeroStyle = value => (String(value).trim().toLowerCase() === 'paper' ? 'paper' : null);
+/** Peso de los titulares: una centena de 100 a 900 (lo que entiende font-weight). */
+const asWeight = value => {
+  const text = String(value).trim();
+  return /^[1-9]00$/.test(text) ? text : null;
 };
 /** URL de recurso (logo, favicon, fuente): ni esquemas ejecutables ni nada que pueda
     cerrar el atributo, el url() del @font-face o la propia declaración (espacios,
@@ -175,7 +198,10 @@ const TOKEN_SPEC = {
   tracking: asLength, radius: asLength, radiusButton: asLength, ruleWidth: asLength,
   paper: asColor, surface: asColor, ink: asColor, headerBg: asColor, headerInk: asColor,
   card: asColor, rule: asColor, accent: asColor,
-  heroFilter: asFilter, tagline: asTagline, supportEmail: asEmail
+  heroFilter: asFilter, tagline: asTagline, supportEmail: asEmail,
+  // Ronda 1 de crítica de BLOCCO 5: van al final para no alterar el orden (y por tanto el
+  // JSON normalizado) de las instancias que no los usan.
+  heroStyle: asHeroStyle, displayWeight: asWeight, legal: asLegal
 };
 
 /** Deja solo los tokens conocidos y válidos, SIEMPRE en el mismo orden (así la
@@ -260,6 +286,11 @@ export function brandSupport(text, textWithoutEmail) {
     el href de un mailto: y su texto. El llamante lo escapa según dónde lo ponga. */
 export const brandSupportEmail = fallback => brand.tokens.supportEmail || String(fallback ?? '');
 
+/** Texto legal del login: el token `legal` manda sobre el texto traducido (que es el de un
+    distribuidor multimarca y no vale para un fabricante). HTML ESCAPADO, como brandTagline:
+    el llamante lo inserta tal cual. */
+export const brandLegal = fallback => esc(brand.tokens.legal || String(fallback ?? ''));
+
 // ── Aplicación al documento ───────────────────────────────────────────────────
 // Todas las variables que ESTE módulo gobierna. Se retiran en bloque antes de volver
 // a fijar las presentes: así, cuando Gestión quita un token, el portal vuelve al
@@ -271,7 +302,8 @@ const MANAGED_VARS = [
   '--brand-caps', '--brand-tracking', '--brand-font',
   '--brand-card', '--brand-rule', '--brand-rule-w',
   // Los TRES del segundo acento: si faltara uno, al vaciar el token se quedaría pegado.
-  '--accent', '--accent-deep', '--accent-soft'
+  '--accent', '--accent-deep', '--accent-soft',
+  '--brand-display-weight'
 ];
 
 function applyTokenVars(style) {
@@ -311,16 +343,26 @@ function applyTokenVars(style) {
   if (tokens.rule) style.setProperty('--brand-rule', tokens.rule);
   if (tokens.ruleWidth) style.setProperty('--brand-rule-w', tokens.ruleWidth);
   // Segundo acento de la instancia. Se deriva igual que el color de marca y por la misma
-  // razón: --accent-deep se usa como TEXTO sobre el papel (cifra del KPI de deuda, kicker
-  // del lookbook, chips), así que pasa por readableOnPaper() y no por un oscurecido fijo.
+  // razón: --accent-deep se usa como TEXTO (cifra del KPI de deuda, kicker del lookbook,
+  // chips, avisos), así que pasa por readableOnPaper() y no por un oscurecido fijo. Se mide
+  // contra SU PROPIO TINTE y no contra el papel porque casi siempre va dentro de una caja
+  // --accent-soft (aviso de error, chip, KPI de deuda): el #e70917 de BLOCCO cumple sobre
+  // papel blanco (4,7:1) pero sobre su tinte #fcdddf se queda en 3,7:1. Lo que cumple sobre
+  // el tinte cumple sobre el papel, que es más claro todavía.
   // --accent se deja crudo porque es FONDO con tinta blanca encima, y --accent-soft usa el
   // mismo 0.14 que --blue-soft: con accent = color de marca los dos coinciden EXACTAMENTE,
   // que es lo que significa «un solo acento».
   if (tokens.accent) {
+    const soft = tint(tokens.accent, 0.14);
     style.setProperty('--accent', tokens.accent);
-    style.setProperty('--accent-deep', readableOnPaper(tokens.accent));
-    style.setProperty('--accent-soft', tint(tokens.accent, 0.14));
+    style.setProperty('--accent-deep', readableOnPaper(tokens.accent, soft));
+    style.setProperty('--accent-soft', soft);
   }
+  if (tokens.displayWeight) style.setProperty('--brand-display-weight', tokens.displayWeight);
+  // heroStyle no es una variable: es un atributo del <html> del que cuelga un bloque entero
+  // de app.css. Se borra si el token deja de venir, por la misma razón que MANAGED_VARS.
+  if (tokens.heroStyle) document.documentElement.dataset.heroStyle = tokens.heroStyle;
+  else delete document.documentElement.dataset.heroStyle;
 }
 
 /** Webfont de la instancia. UN solo elemento (id "brand-font"), reutilizado entre
@@ -377,11 +419,15 @@ function apply() {
     // Sin esta, el texto pequeño de acento (pestaña activa de la cinta y su recuento,
     // lookups) se quedaba clavado en el #b8230c de MITO sobre un portal de otro color.
     rootStyle.setProperty('--blue-text', readableOnPaper(brand.color));
+    // Y el texto de marca DENTRO de su propio tinte (píldora de unidades, tag de panel):
+    // medido contra --blue-soft, que es su fondo real. Con marca negra sigue dando negro.
+    rootStyle.setProperty('--blue-soft-text', readableOnPaper(brand.color, tint(brand.color, 0.14)));
   } else {
     rootStyle.removeProperty('--blue');
     rootStyle.removeProperty('--blue-deep');
     rootStyle.removeProperty('--blue-soft');
     rootStyle.removeProperty('--blue-text');
+    rootStyle.removeProperty('--blue-soft-text');
   }
 
   applyTokenVars(rootStyle);
@@ -404,6 +450,9 @@ function apply() {
   }
   for (const el of document.querySelectorAll('[data-brand-support]')) {
     el.innerHTML = brandSupport(el.dataset.fallback, el.dataset.fallbackNoemail);
+  }
+  for (const el of document.querySelectorAll('[data-brand-legal]')) {
+    el.innerHTML = brandLegal(el.dataset.fallback);
   }
 }
 

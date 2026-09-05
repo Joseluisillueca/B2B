@@ -204,6 +204,11 @@ const badCss = v => /[;{}<\\]/.test(v) || v.includes('/*') || v.includes('*/')
 const badCssString = v => /["'\\<>{};]/.test(v);
 // Correo: el patrón exacto de asEmail() del portal y de BrandEmail del servidor.
 const isEmail = v => /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(v);
+// Peso de los titulares: una centena de 100 a 900 (asWeight del portal / BrandWeight del servidor).
+const isWeight = v => /^[1-9]00$/.test(v);
+// Pesos que ofrece el desplegable: todos los que entiende font-weight, con el nombre usual.
+const WEIGHTS = [['400', '400 · Normal'], ['500', '500 · Medio'], ['600', '600 · Semibold'],
+  ['700', '700 · Bold'], ['800', '800 · Extrabold'], ['900', '900 · Black']];
 
 /** Nº de tokens con valor (para el chip del acordeón). */
 const countTokens = tk => Object.values(tk || {}).filter(v => v !== null && v !== '' && v !== false).length;
@@ -262,6 +267,14 @@ function tokensPanel(tk, open) {
             <label class="mng-check"><input type="checkbox" id="tk_caps" ${tk.caps === true ? 'checked' : ''}>
               <span>Titulares y botones en MAYÚSCULAS</span></label>
             <span class="acc-hint">Estética de moda/lujo. Desactivado, los textos van tal y como se escriben.</span></p>
+          <p class="acc-field"><label for="tk_displayWeight"><span>Peso de los titulares</span></label>
+            <select id="tk_displayWeight">
+              <option value="">Por defecto (500 en página, 800 en acceso y portada)</option>
+              ${WEIGHTS.map(([w, label]) => `<option value="${w}" ${v('displayWeight') === w ? 'selected' : ''}>${label}</option>`).join('')}
+            </select>
+            <span class="acc-hint">Un solo peso para TODOS los titulares (catálogo, ficha, pedidos, portada,
+              acceso). La webfont tiene que traer ese peso: con Google Fonts, pide el rango
+              (<code>wght@400..900</code>).</span></p>
         </div>
 
         <h3 class="brt-group">Formas y espaciado</h3>
@@ -303,6 +316,15 @@ function tokensPanel(tk, open) {
               placeholder="sepia(.3) contrast(1.1)" spellcheck="false" ${hero === 'custom' ? '' : 'hidden'}>
             <span class="acc-hint">Las campañas en color se ven <b>grises</b> con el filtro por defecto. «Sin
               filtro» las deja tal cual se subieron. Personalizado admite cualquier <code>filter</code> de CSS.</span></p>
+          <p class="acc-field"><label for="tk_heroStyle"><span>Composición de la portada</span></label>
+            <select id="tk_heroStyle">
+              <option value="" ${v('heroStyle') !== 'paper' ? 'selected' : ''}>Sobre la foto (velo oscuro, titular blanco encima)</option>
+              <option value="paper" ${v('heroStyle') === 'paper' ? 'selected' : ''}>Sobre papel (foto arriba, titular en tinta debajo)</option>
+            </select>
+            <span class="acc-hint">«Sobre papel» pone el titular, el saludo y los rótulos de las ventanas
+              sobre el fondo de página, bajo la foto: el texto lee igual sea cual sea la campaña.
+              También cambia el pie del hero del lookbook y deja el monograma y el botón del
+              asistente sin relleno de color.</span></p>
         </div>
 
         <h3 class="brt-group">Textos del acceso</h3>
@@ -313,6 +335,11 @@ function tokensPanel(tk, open) {
           <p class="acc-field"><label><span>Email de soporte</span>
             <input id="tk_supportEmail" type="email" value="${esc(v('supportEmail'))}" placeholder="soporte@tudominio.com" spellcheck="false"></label>
             <span class="acc-hint">El email al que se escribe desde el login. Vacío = el de siempre.</span></p>
+          <p class="acc-field wide"><label><span>Texto legal del acceso</span>
+            <textarea id="tk_legal" rows="3" maxlength="400" placeholder="Vendemos exclusivamente a distribuidores y profesionales del sector…">${esc(v('legal'))}</textarea></label>
+            <span class="acc-hint">La nota pequeña bajo «¿No tienes cuenta?». El texto de siempre habla de un
+              distribuidor multimarca; una marca que fabrica su producto pone aquí el suyo (máx. 400
+              caracteres, sin HTML). Vacío = el de siempre.</span></p>
         </div>
       </div>
     </div>`;
@@ -380,6 +407,20 @@ function readTokens(main, media) {
   if (email) {
     if (email.length > 120 || !isEmail(email)) return bad('supportEmail', 'El email de soporte no parece un email válido.');
     t.supportEmail = email;
+  }
+  // Los tres de la ronda 1 de crítica de BLOCCO 5. Los desplegables solo ofrecen valores
+  // válidos, pero se vuelve a comprobar por si el DOM trae otra cosa (misma regla que el PUT).
+  if (main.querySelector('#tk_heroStyle')?.value === 'paper') t.heroStyle = 'paper';
+  const weight = val('tk_displayWeight');
+  if (weight) {
+    if (!isWeight(weight)) return bad('displayWeight', '«Peso de los titulares» debe ser una centena de 100 a 900 (p. ej. 900).');
+    t.displayWeight = weight;
+  }
+  const legal = val('tk_legal');
+  if (legal) {
+    if (legal.length > 400) return bad('legal', '«Texto legal del acceso» es demasiado largo (máx. 400 caracteres).');
+    if (/[<>]/.test(legal)) return bad('legal', '«Texto legal del acceso» no admite «<» ni «>».');
+    t.legal = legal;
   }
   return { tokens: t };
 }

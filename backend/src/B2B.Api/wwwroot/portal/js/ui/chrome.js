@@ -178,6 +178,8 @@ const userMenu = () => `
     </div>
     <button type="button" role="menuitem" class="m-only" data-focus-toggle
       aria-pressed="${state.prefs.focus}">${esc(t('chrome.focus'))}</button>
+    ${document.getElementById('assistant-fab') ? `
+    <button type="button" role="menuitem" class="m-only" data-assistant-toggle>${esc(t('assistant.title'))}</button>` : ''}
     <hr>
     <button type="button" role="menuitem" class="out" data-logout>${esc(t('chrome.logout'))}</button>
   </div>`;
@@ -236,6 +238,12 @@ function togglePopup(button, template) {
   host.querySelector('[data-focus-toggle]')?.addEventListener('click', () => {
     closePopups();
     toggleFocus();
+  });
+  // En móvil el FAB del asistente va oculto (tapaba controles en todas las pantallas): la
+  // entrada del menú dispara el MISMO toggle del botón, que sigue en el DOM aunque no se vea.
+  host.querySelector('[data-assistant-toggle]')?.addEventListener('click', () => {
+    closePopups();
+    document.getElementById('assistant-fab')?.click();
   });
   host.querySelector('[data-deselect]')?.addEventListener('click', () => {
     closePopups();

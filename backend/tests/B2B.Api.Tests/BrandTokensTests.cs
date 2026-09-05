@@ -52,6 +52,14 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
         {"card": "#F0EFED", "rule": "#E70917", "ruleWidth": "1px", "accent": "#e70917"}
         """;
 
+    // Los tres de la RONDA 1 de crítica de BLOCCO 5: composición del hero (lista cerrada),
+    // peso de los titulares (centena) y texto legal del login. También aparte: ni ALMA ni
+    // el juego anterior de BLOCCO los traen, y ambos tienen que normalizarse igual que antes.
+    private const string Blocco5Round1Tokens = """
+        {"heroStyle": "PAPER", "displayWeight": "900",
+         "legal": "BLOCCO 5 vende exclusivamente a distribuidores y profesionales del sector. Cuéntanos quién eres y en 24 h laborables tendrás tu acceso."}
+        """;
+
     // ── Utilidades ─────────────────────────────────────────────────────────────
 
     private async Task<HttpResponseMessage> PutBranding(string json)
@@ -165,6 +173,17 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal("#e70917", blocco.GetProperty("rule").GetString());
         Assert.Equal("1px", blocco.GetProperty("ruleWidth").GetString());
         Assert.Equal("#e70917", blocco.GetProperty("accent").GetString());
+
+        // Los tres de la ronda 1: heroStyle se publica en minúsculas (es el valor literal del
+        // selector html[data-hero-style="paper"]); el peso y el legal, tal cual.
+        (await PutTokens(Blocco5Round1Tokens)).EnsureSuccessStatusCode();
+        var round1 = await PublicTokensAsync();
+        Assert.Equal("paper", round1.GetProperty("heroStyle").GetString());
+        Assert.Equal("900", round1.GetProperty("displayWeight").GetString());
+        Assert.StartsWith("BLOCCO 5 vende exclusivamente", round1.GetProperty("legal").GetString());
+        Assert.Equal(new[] { "heroStyle", "displayWeight", "legal" },
+            round1.EnumerateObject().Select(p => p.Name).ToArray());
+        Assert.Equal("900", (await AdminSettingsAsync()).GetProperty("brandTokens").GetProperty("displayWeight").GetString());
     }
 
     // ── 3. Tokens desconocidos: se ignoran EN SILENCIO ─────────────────────────
@@ -241,6 +260,9 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("""{"radius":12}""")]
     [InlineData("""{"paper":{"hex":"#fff"}}""")]
     [InlineData("""{"fontFamily":["a","b"]}""")]
+    [InlineData("""{"displayWeight":900}""")]  // cadena "900", no número
+    [InlineData("""{"heroStyle":true}""")]
+    [InlineData("""{"legal":["x"]}""")]
     public async Task Tokens_TipoInvalido_400(string tokensJson)
     {
         await ResetAsync();
@@ -383,6 +405,7 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("fontFamily", 61)]
     [InlineData("tagline", 121)]
     [InlineData("supportEmail", 121)]
+    [InlineData("legal", 401)]
     public async Task Tokens_DemasiadoLargos_400(string token, int length)
     {
         await ResetAsync();
@@ -408,6 +431,59 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("tagline", await ErrorAsync(response));
         Assert.Equal(JsonValueKind.Null, (await PublicTokensAsync()).ValueKind);
+    }
+
+    // El legal se publica y el login lo pinta: mismo criterio que el tagline.
+    [Theory]
+    [InlineData("<img src=x onerror=alert(1)>")]
+    [InlineData("Solo vendemos a <b>profesionales</b>")]
+    public async Task Tokens_LegalConHtml_400(string legal)
+    {
+        await ResetAsync();
+
+        var response = await PutTokens($$"""{"legal":{{JsonSerializer.Serialize(legal)}} }""");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("legal", await ErrorAsync(response));
+        Assert.Equal(JsonValueKind.Null, (await PublicTokensAsync()).ValueKind);
+    }
+
+    // heroStyle es una lista CERRADA (acaba en un atributo del <html> que selecciona CSS) y
+    // displayWeight una centena de 100 a 900: cualquier otra cosa es 400 con el nombre del
+    // token, para que el editor de /manage señale el campo.
+    [Theory]
+    [InlineData("heroStyle", "dark")]
+    [InlineData("heroStyle", "paper; background:red")]
+    [InlineData("heroStyle", "paper\"")]
+    [InlineData("displayWeight", "950")]
+    [InlineData("displayWeight", "9")]
+    [InlineData("displayWeight", "1000")]
+    [InlineData("displayWeight", "bold")]
+    [InlineData("displayWeight", "900px")]
+    [InlineData("displayWeight", "000")]
+    public async Task Tokens_HeroStyleODisplayWeightInvalidos_400(string token, string value)
+    {
+        await ResetAsync();
+
+        var response = await PutTokens($$"""{"{{token}}":{{JsonSerializer.Serialize(value)}} }""");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(token, await ErrorAsync(response));
+        Assert.Equal(JsonValueKind.Null, (await PublicTokensAsync()).ValueKind);
+    }
+
+    [Theory]
+    [InlineData("heroStyle", "paper", "paper")]
+    [InlineData("heroStyle", "  Paper ", "paper")]
+    [InlineData("displayWeight", "100", "100")]
+    [InlineData("displayWeight", " 900 ", "900")]
+    public async Task Tokens_HeroStyleODisplayWeightValidos_SeGuardanNormalizados(string token, string value, string expected)
+    {
+        await ResetAsync();
+
+        (await PutTokens($$"""{"{{token}}":{{JsonSerializer.Serialize(value)}} }""")).EnsureSuccessStatusCode();
+
+        Assert.Equal(expected, (await PublicTokensAsync()).GetProperty(token).GetString());
     }
 
     // Un «@» no basta: el portal (asEmail) exige dominio con punto y, si no lo tiene,
@@ -541,5 +617,29 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
         const string antes = """{"logoUrlDark":"/media/alma-logo-dark.svg","faviconUrl":"/media/alma-favicon.png","fontUrl":"/media/GillSansMTLight.woff2","fontFamily":"GillSansMTLight","caps":true,"tracking":".06em","radius":"12px","radiusButton":"50px","paper":"#ffffff","surface":"#f5f5f5","ink":"#111111","headerBg":"#000000","headerInk":"#ffffff","heroFilter":"none","tagline":"Bienvenido a ALMA EN PENA","supportEmail":"soporte@almaenpena.com"}""";
         Assert.Equal(antes, (await PublicTokensAsync()).GetRawText());
         Assert.Equal(antes, (await AdminSettingsAsync()).GetProperty("brandTokens").GetRawText());
+    }
+
+    // ── 14. Ronda 1 (heroStyle/displayWeight/legal): sin ellos TAMPOCO se mueve nada ──
+
+    // Misma garantía que la prueba 13, ahora para la lista tal como quedó tras la extensión:
+    // el juego de BLOCCO 5 ANTERIOR a la ronda 1 (los cuatro del panel) se publica con las
+    // mismas claves y el mismo orden, sin que el servidor invente heroStyle, displayWeight o
+    // legal con un valor por defecto. Un `heroStyle` inventado pondría el atributo en <html>
+    // y cambiaría la portada de una instancia que nunca lo pidió.
+    [Fact]
+    public async Task Tokens_SinLosTresDeLaRonda1_ElJsonNormalizadoEsElDeAntes()
+    {
+        await ResetAsync();
+
+        (await PutTokens(Blocco5Tokens)).EnsureSuccessStatusCode();
+
+        const string antes = """{"card":"#f0efed","rule":"#e70917","ruleWidth":"1px","accent":"#e70917"}""";
+        Assert.Equal(antes, (await PublicTokensAsync()).GetRawText());
+        Assert.Equal(antes, (await AdminSettingsAsync()).GetProperty("brandTokens").GetRawText());
+
+        // Y a la inversa: los tres solos no arrastran ningún otro token.
+        (await PutTokens(Blocco5Round1Tokens)).EnsureSuccessStatusCode();
+        foreach (var name in new[] { "card", "rule", "ruleWidth", "accent", "paper", "tagline" })
+            Assert.False((await PublicTokensAsync()).TryGetProperty(name, out _), name);
     }
 }

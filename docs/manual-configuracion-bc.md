@@ -166,9 +166,11 @@ Nombre, color de acento, logotipo (y su versión clara para fondos oscuros), fav
 tokens de estilo. Para Blocco 5: papel blanco, superficie `#f0efed`, tinta `#111111`,
 cabecera blanca, radios `0px`, tipografía Archivo con rango de pesos
 (`https://fonts.googleapis.com/css2?family=Archivo:wght@400..900&display=swap`), filetes de
-sección rojos de `1px`, fondo de paneles `#f0efed` y acento secundario igual al de marca.
-Mayúsculas automáticas y espaciado entre letras se dejan vacíos: los nombres de producto
-van en caja de título. Todo se aplica en vivo; vaciar un token vuelve al valor por defecto.
+sección rojos de `1px`, fondo de paneles blanco, acento secundario igual al de marca,
+titulares a peso `900`, portada "sobre papel" (la foto sin velo y el rótulo en tinta y
+rojo, como en el lookbook) y un texto legal propio en el acceso. Mayúsculas automáticas y
+espaciado entre letras se dejan vacíos: los nombres de producto van en caja de título.
+Todo se aplica en vivo; vaciar un token vuelve al valor por defecto.
 
 ### 4.6 Escaparate
 - **Solo artículos con foto** (Conexiones → Catálogo): actívalo cuando el ERP ya haya subido

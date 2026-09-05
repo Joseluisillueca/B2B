@@ -37,8 +37,10 @@
    filete, ítems con icono en cajita, y activo como BLOQUE sólido rojo de marca. */
 .mng-group { margin:0; padding:1rem 0; }
 .mng-group + .mng-group { border-top:1px solid var(--line); }
+/* --muted y no --muted-2: a 10px sobre la barra (#f0efed en BLOCCO) el gris claro medía
+   2,5:1; --muted llega a 4,9:1 y sigue leyéndose como rótulo de grupo. */
 .mng-group h3 { font-size:.64rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--muted-2); margin:0 0 .5rem; padding:0 1.4rem; }
+  color:var(--muted); margin:0 0 .5rem; padding:0 1.4rem; }
 .mng-link { display:flex; align-items:center; gap:.7rem; padding:.5rem 1.4rem; font-size:.9rem;
   color:var(--ink-2); text-decoration:none; position:relative;
   transition:color .12s var(--ease), background .12s var(--ease); }

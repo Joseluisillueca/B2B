@@ -44,10 +44,13 @@ const productHref = item =>
   `${href('product')}/${encodeURIComponent(item.reference || item.modelId)}`;
 
 // La ficha del listado solo lleva SILUETA y COLECCIÓN (m6). GRUPO DE EDAD sigue
-// existiendo como faceta del rail, pero no como columna del artículo. Las claves
-// las nombra Business Central, así que se comparan normalizadas (sin acentos ni
-// signos) y en las cuatro lenguas del portal; lo que no reconoce, lo deja pasar.
-const HIDDEN_ATTRS = new Set(['grupo-de-edad']);
+// existiendo como faceta del rail, pero no como columna del artículo. Los CÓDIGOS
+// (style code, color code) son identificadores internos del ERP, no descriptores:
+// al comprador no le dicen nada en la fila (en la ficha el style code va en la línea
+// de referencia). Las claves las nombra Business Central, así que se comparan
+// normalizadas (sin acentos ni signos) y en las cuatro lenguas del portal; lo que
+// no reconoce, lo deja pasar.
+const HIDDEN_ATTRS = new Set(['grupo-de-edad', 'style-code', 'color-code']);
 
 // \u2500\u2500 Vocabulario del cat\u00e1logo (M-1) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 //
@@ -77,24 +80,39 @@ const vocab = (prefix, slug, label, raw) => {
 };
 
 /**
+ * ¿El valor del atributo ya está escrito en el nombre del artículo? Un ERP que nombra
+ * "BUND RETRO Field Yellow" manda además LINE=BUND RETRO y COLOR NAME=Field Yellow:
+ * pintarlos como chips es repetir el título. Se compara por palabras normalizadas
+ * (sin acentos ni caja, guion como separador) y con límite de palabra, así "ELAN"
+ * casa con "ELAN Aegean" pero una letra suelta no casa con cualquier nombre.
+ */
+const inName = (name, value) => {
+  const needle = slugKey(value);
+  return needle.length > 1 && `-${slugKey(name)}-`.includes(`-${needle}-`);
+};
+
+/**
  * Atributos de la ficha, ya traducidos. Con `attributeList` (servidor nuevo) se usan
  * los slug; con el objeto `attributes` de siempre el slug sale del propio nombre, que
- * para "Grupo de edad" da exactamente la misma clave.
+ * para "Grupo de edad" da exactamente la misma clave. Fuera: los ocultos de siempre y
+ * los valores que el nombre del artículo ya dice (solo actúa cuando se repiten).
  */
 const cardAttrs = item => {
   const list = Array.isArray(item.attributeList) && item.attributeList.length
     ? item.attributeList.map(entry => ({
         slug: entry.keySlug || entry.key,
+        raw: entry.value,
         label: vocab('attr', entry.keySlug, entry.label, entry.key),
         value: vocab('attrValue', entry.valueSlug, entry.valueLabel, entry.value)
       }))
     : Object.entries(item.attributes || {}).map(([key, value]) => ({
         slug: key,
+        raw: value,
         label: vocab('attr', key, '', key),
         value: vocab('attrValue', value, '', value)
       }));
 
-  return list.filter(entry => !HIDDEN_ATTRS.has(slugKey(entry.slug)));
+  return list.filter(entry => !HIDDEN_ATTRS.has(slugKey(entry.slug)) && !inName(item.name, entry.raw));
 };
 
 /** F-03: la etiqueta del corazón describe lo que hace el clic, no lo que ya es */
@@ -162,6 +180,20 @@ let windows = [];
 const windowId = () => {
   const type = state.prefs.window === 'scheduled' ? 'SCHEDULED' : 'REPLENISHMENT';
   return (windows.find(w => w.orderType === type) || windows[0])?.id || '';
+};
+
+/**
+ * La preferencia es un TIPO de ventana. Si la instancia no publica ese tipo (solo hay
+ * programada, p. ej.), `windowId()` cae en la que existe pero el carrito, el botón del
+ * header y el CTA de la ficha seguían hablando del tipo preferido: "Añadir a
+ * REPOSICIÓN" sobre stock de la programada. Se realinea la preferencia al tipo que
+ * existe, SOLO en ese caso: con los dos tipos publicados (MITO, ALMA) no toca nada.
+ */
+const realignWindow = () => {
+  const wanted = state.prefs.window === 'scheduled' ? 'SCHEDULED' : 'REPLENISHMENT';
+  if (!windows.length || windows.some(w => w.orderType === wanted)) return;
+  const actual = windows[0].orderType === 'SCHEDULED' ? 'scheduled' : 'replenishment';
+  if (actual !== state.prefs.window) state.prefs = { ...state.prefs, window: actual };
 };
 
 export default async function catalog(host) {
@@ -441,6 +473,7 @@ export default async function catalog(host) {
     // catálogo es quien las trae); si no coincide se repite una sola vez.
     const knew = windows.length > 0;
     windows = data.windows || [];
+    realignWindow();
     if (!knew && windowId() && data.window !== windowId()) return load({ keepScroll: true });
 
     // Tras el await el usuario puede haber navegado: si la vista ya no está
@@ -472,11 +505,56 @@ export default async function catalog(host) {
   // y solo se sincronizan estados (no se reconstruye al filtrar → no se cierran los
   // desplegables ni se pierde el foco del buscador).
   let filtersBuilt = false;
+  let filtersSig = null;   // firma de lo construido: se reconstruye solo si cambia
   const allLinesLabel = () => { const l = t('catalog.allLines'); return l === 'catalog.allLines' ? 'Todas' : l; };
   const cssSafe = s => String(s).replace(/"/g, '\\"');
 
+  // El servidor RECORTA cada faceta con los demás filtros (con q=1040 todas quedan en
+  // un valor), así que lo que una faceta "tiene" se aprende del conjunto más ancho
+  // visto, acumulando entre respuestas como el vocabulario de la cinta. Por valor se
+  // guarda su ficha (slug, etiqueta) y el MAYOR recuento visto.
+  const familySeen = new Map();   // id → { id, label }
+  const facetSeen = new Map();    // keySlug normalizado → { attr, values: Map(valor → ficha) }
+  const learnFacets = () => {
+    for (const line of data.facets?.families || []) familySeen.set(line.id, line);
+    for (const attr of data.facets?.attributes || []) {
+      const key = slugKey(attr.keySlug || attr.key);
+      const rec = facetSeen.get(key) || { attr, values: new Map() };
+      rec.attr = attr;
+      for (const v of attr.values || []) {
+        const prev = rec.values.get(v.value);
+        // Sin recuento (servidor antiguo) no se puede llamar identificador a nada
+        const count = v.count == null ? Infinity : Number(v.count) || 0;
+        rec.values.set(v.value, { ...v, count: Math.max(prev?.count ?? 0, count) });
+      }
+      facetSeen.set(key, rec);
+    }
+  };
+
+  // Una faceta merece desplegable solo si DISCRIMINA: con un único valor no filtra
+  // nada (Género = Mujer en las 49); con un artículo por valor es un identificador
+  // (style code, nombre de color), no un filtro; los códigos son del ERP; y lo que la
+  // cinta ya navega (LINE) no se repite debajo. Regla de datos, no de marca: ALMA solo
+  // pierde facetas que no filtran nada.
+  const ribbonKeys = () => new Set((ribbonEntries || [])
+    .filter(entry => entry.kind === 'attr').map(entry => slugKey(entry.attributeId)));
+  const discriminates = key => {
+    const values = facetSeen.get(key)?.values;
+    if (!values || values.size < 2) return false;
+    if ([...values.values()].every(v => v.count <= 1)) return false;
+    return !/-code$/.test(key) && !ribbonKeys().has(key);
+  };
+  const visibleFacets = () => [...facetSeen.keys()].filter(discriminates).map(key => facetSeen.get(key));
+  const visibleLines = () => (familySeen.size > 1 ? [...familySeen.values()] : []);
+
+  // Se construye UNA vez y se reconstruye solo cuando llega conocimiento nuevo (una
+  // faceta que empieza a discriminar, valores que no se habían visto): un deep-link
+  // estrecho (?q=1040) no puede dejar la barra sin facetas para siempre.
   function renderFilters() {
-    if (!filtersBuilt) { buildFilters(); filtersBuilt = true; }
+    learnFacets();
+    const sig = [visibleLines().length ? `family:${familySeen.size}` : '',
+      ...visibleFacets().map(rec => `${rec.attr.key}:${rec.values.size}`)].join('|');
+    if (!filtersBuilt || sig !== filtersSig) { buildFilters(); filtersBuilt = true; filtersSig = sig; }
     syncFilters();
   }
 
@@ -487,35 +565,43 @@ export default async function catalog(host) {
     </label>`;
 
   function buildFilters() {
-    const lines = data.facets?.families || [];
-    const attributes = data.facets?.attributes || [];
+    // Familias y facetas del conocimiento ACUMULADO, no de la respuesta de turno (que
+    // puede venir recortada por otro filtro). "Líneas" solo con 2+ familias: con una
+    // sola el desplegable no elige nada.
+    const lines = visibleLines();
+    const facets = visibleFacets();
+    const collator = new Intl.Collator(lang(), { sensitivity: 'base' });
 
     filters.innerHTML = `
       <div class="cat-search">${icons.search(16)}
         <input type="search" id="modelSearch" value="${esc(query.q)}"
           placeholder="${esc(t('catalog.searchPlaceholder'))}" aria-label="${esc(t('catalog.facet.model'))}">
       </div>
+      ${lines.length ? `
       <details class="cat-lookup" data-lk="family">
         <summary><span class="lk-name">${esc(t('catalog.facet.lines'))}</span><span class="lk-count" data-count="family"></span>${icons.chevron(14)}</summary>
         <div class="cat-lookup-panel">
           <button type="button" class="lk-line" data-family="">${esc(allLinesLabel())}</button>
           ${lines.map(line => `<button type="button" class="lk-line" data-family="${esc(line.id)}">${esc(vocab('family', line.id, line.label, line.id))}</button>`).join('')}
         </div>
-      </details>
+      </details>` : ''}
       <details class="cat-lookup" data-lk="availability">
         <summary><span class="lk-name">${esc(t('catalog.facet.availability'))}</span><span class="lk-count" data-count="availability"></span>${icons.chevron(14)}</summary>
         <div class="cat-lookup-panel">
           ${AVAILABILITY.map(id => catCheck('availability', id, t(`catalog.availability.${id}`), query.availability.includes(id))).join('')}
         </div>
       </details>
-      ${attributes.map(attr => {
+      ${facets.map(({ attr, values }) => {
         const title = vocab('attr', attr.keySlug, attr.label, attr.key);
         const sel = query.attributes[attr.key] || [];
+        const options = [...values.values()]
+          .map(v => ({ ...v, text: vocab('attrValue', v.slug, v.label, v.value) }))
+          .sort((a, b) => collator.compare(a.text, b.text));
         return `
         <details class="cat-lookup" data-lk="a.${esc(attr.key)}">
           <summary><span class="lk-name">${esc(title)}</span><span class="lk-count" data-count="a.${esc(attr.key)}"></span>${icons.chevron(14)}</summary>
           <div class="cat-lookup-panel scroll">
-            ${attr.values.map(v => catCheck(`a.${attr.key}`, v.value, vocab('attrValue', v.slug, v.label, v.value), sel.includes(v.value))).join('')}
+            ${options.map(v => catCheck(`a.${attr.key}`, v.value, v.text, sel.includes(v.value))).join('')}
           </div>
         </details>`;
       }).join('')}
@@ -650,6 +736,7 @@ export default async function catalog(host) {
   // ── Toolbar ────────────────────────────────────────────────────────────────
   function paintTools() {
     tools.innerHTML = toolbar({ sort: query.sort, view: query.view });
+    paintWindowSwitch();
 
     tools.querySelector('#sortMode').onchange = event => {
       query = { ...query, sort: event.target.value, skip: 0 };
@@ -685,6 +772,35 @@ export default async function catalog(host) {
       try { await api.download(`/api/portal/catalog.pdf?${apiQuery(query)}`, 'catalogo.pdf'); }
       finally { button.disabled = false; }
     };
+  }
+
+  // ── Ventana de pedido ──────────────────────────────────────────────────────
+  // Reposición | Programación SS27: la ventana con la que se compra se elige AQUÍ,
+  // donde se compra, y no solo en el tile de la portada (hasta ahora el único
+  // conmutador). Escribe la misma preferencia que la portada y recarga: `windowId()`
+  // resuelve el id y el carrito sigue siendo el de la ventana activa. Solo se pinta
+  // con dos TIPOS de ventana (la preferencia es por tipo: con dos programadas no
+  // habría nada que elegir); con una no hay nada que conmutar. El nombre lo trae
+  // cada ventana ("Programación SS27"), no el diccionario.
+  function paintWindowSwitch() {
+    const typeOf = w => (w.orderType === 'SCHEDULED' ? 'scheduled' : 'replenishment');
+    const byType = new Map();
+    for (const w of windows) if (!byType.has(typeOf(w))) byType.set(typeOf(w), w);
+    if (byType.size < 2) return;
+    const active = state.prefs.window === 'scheduled' ? 'scheduled' : 'replenishment';
+    tools.querySelector('.toolbar')?.insertAdjacentHTML('afterbegin', `
+      <div class="tb-seg tb-window" role="group" aria-label="${esc(t('catalog.window'))}">
+        ${[...byType].map(([type, w]) => `<button type="button" class="tb-seg-opt${type === active ? ' on' : ''}"
+          data-window="${type}" aria-pressed="${type === active ? 'true' : 'false'}">${esc(w.name || t(`window.${type}`))}</button>`).join('')}
+      </div>`);
+    tools.querySelectorAll('.tb-window [data-window]').forEach(button => {
+      button.onclick = () => {
+        if (button.dataset.window === active) return;
+        state.prefs = { ...state.prefs, window: button.dataset.window };
+        query = { ...query, skip: 0 };
+        load({ keepScroll: true });
+      };
+    });
   }
 
   // ── Listado ────────────────────────────────────────────────────────────────

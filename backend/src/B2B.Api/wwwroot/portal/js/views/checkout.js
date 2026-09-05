@@ -136,11 +136,18 @@ export default function checkout(host) {
     const subtotal = state.cartTotal();
     const tax = Math.round(subtotal * IVA * 100) / 100;
 
-    // TERMINAR PEDIDO se deshabilita por dos motivos distintos y el aviso tiene que
-    // decir cuál: sin líneas, o con líneas y las condiciones sin aceptar. Antes el
-    // segundo caso dejaba el botón apagado y sin explicación.
+    // TERMINAR PEDIDO se deshabilita por tres motivos distintos y el aviso tiene que
+    // decir cuál: sin líneas; con líneas pero sin dirección de envío (el pedido salía
+    // con shippingAddressId nulo y el servidor solo rechaza una dirección AJENA, no la
+    // ausencia); o con todo y las condiciones sin aceptar. El aviso de dirección lleva
+    // el camino: añadirla en Empresa.
+    const noAddress = !form.shippingAddressId;
     const blocked = sent ? '' : !units ? t('checkout.blockedEmpty')
+      : noAddress ? t('checkout.blockedAddress')
       : !accepted ? t('checkout.blockedTerms') : '';
+    const blockedLink = !sent && units && noAddress
+      ? { href: href('business'), label: t('newClient.addShipping') } : null;
+    const canSubmit = units > 0 && !noAddress && accepted && !sent;
 
     host.innerHTML = `
       <div class="page checkout">
@@ -151,16 +158,18 @@ export default function checkout(host) {
             <div class="ck-head">
               <h2 class="ck-client">${esc(t('checkout.client'))}
                 <b>${esc(clientName)}${clientNumber ? ` (${esc(clientNumber)})` : ''}</b></h2>
-              <!-- M6: en la referencia (16-checkout.png) el carrito vacío deja los
-                   cinco botones activos —ELIMINAR CARRITO en rojo con su papelera—
-                   y solo apaga TERMINAR PEDIDO. -->
+              <!-- Con el carrito vacío solo quedan las acciones con sentido: EDITAR
+                   (referencia, forma de pago, notas) sigue; ELIMINAR CARRITO se apaga y
+                   DESCARGAR EXCEL / GUARDAR EN FAVORITOS no se pintan — sobre 0 unidades
+                   solo servían para leer un aviso (la referencia M6 los dejaba activos). -->
               <div class="ck-actions">
-                <button type="button" class="btn-danger" id="dropCart">
+                <button type="button" class="btn-danger" id="dropCart" ${lines.length ? '' : 'disabled'}>
                   ${icons.trash(16)} ${esc(t('checkout.dropCart'))}</button>
                 <button type="button" class="btn-ghost" id="edit" aria-pressed="${editing}">
                   ${icons.pencil(16)} ${esc(t('checkout.edit'))}</button>
+                ${lines.length ? `
                 <button type="button" class="btn-ghost" id="excel">
-                  ${icons.fileDown(16)} ${esc(t('checkout.excel'))}</button>
+                  ${icons.fileDown(16)} ${esc(t('checkout.excel'))}</button>` : ''}
               </div>
             </div>
             ${agentName && acting ? `<p class="ck-managed">${icons.user(14)}<span>${esc(t('checkout.managedBy',
@@ -168,13 +177,13 @@ export default function checkout(host) {
 
             ${card()}
 
+            ${lines.length ? `
             <div class="ck-lines-head">
               <h2 tabindex="-1">${esc(t('checkout.products', { n: units }))}</h2>
               <button type="button" class="btn-ghost" id="favorite">
                 ${icons.heart(16)} ${esc(t('checkout.saveFavorite'))}</button>
             </div>
-
-            ${lines.length ? groups(lines) : `<p class="ck-empty">${esc(t('checkout.noProducts'))}</p>`}
+            ${groups(lines)}` : emptyState()}
           </div>
 
           <aside class="ck-side">
@@ -184,13 +193,13 @@ export default function checkout(host) {
                   <span>${esc(t('checkout.blockedHint'))}</span>
                   <button type="button" class="btn-ghost ck-drop-blocked" id="dropBlocked">${icons.trash(14)} ${esc(t('checkout.dropBlocked'))}</button>` : ''}</div>
               </div>` : ''}
-            ${sent ? sentNotice() : blocked ? blockedNotice(blocked) : ''}
+            ${sent ? sentNotice() : blocked ? blockedNotice(blocked, blockedLink) : ''}
 
             <dl class="ck-totals">
               <div><dt>${esc(t('checkout.subtotal'))}</dt><dd>${esc(eur(subtotal))}</dd></div>
               <div><dt>${esc(t('checkout.totalNet'))}</dt><dd>${esc(eur(subtotal))}</dd></div>
               <div class="ck-ship"><dt>${esc(t('checkout.shipping'))} ${icons.truck(16)}</dt>
-                <dd>${transport > 0 ? esc(eur(transport)) : esc(t('checkout.freeShipping'))}</dd></div>
+                <dd>${!units ? '—' : transport > 0 ? esc(eur(transport)) : esc(t('checkout.freeShipping'))}</dd></div>
               <div class="ck-grand"><dt>${esc(t('checkout.totalGross'))}</dt>
                 <dd>${esc(eur(subtotal + tax + transport))}</dd></div>
             </dl>
@@ -204,7 +213,7 @@ export default function checkout(host) {
                  las condiciones, y solo entonces confirma (flujo natural). -->
             <button type="button" class="btn-primary block" id="submit"
               ${blocked ? 'aria-describedby="ckBlocked"' : ''}
-              ${units && accepted && !sent ? '' : 'disabled'}>${esc(t('checkout.submit'))}</button>
+              ${canSubmit ? '' : 'disabled'}>${esc(t('checkout.submit'))}</button>
           </aside>
 
           <!-- "Añade también" es la ÚLTIMA hija de .ck-grid: en escritorio la rejilla
@@ -247,10 +256,20 @@ export default function checkout(host) {
 
   // La ficha se repinta entera al marcar las condiciones: sin role="status" el aviso
   // aparecía y desaparecía sin que un lector de pantalla dijera nada.
-  const blockedNotice = reason => `
+  const blockedNotice = (reason, link = null) => `
     <div class="notice notice-error" id="ckBlocked" role="status">
       ${icons.alert(18)}
-      <div><b>${esc(t('checkout.blockedTitle'))}</b><span>${esc(reason)}</span></div>
+      <div><b>${esc(t('checkout.blockedTitle'))}</b><span>${esc(reason)}</span>${link
+        ? `<a class="link" href="${esc(link.href)}" style="display:block;margin-top:.35rem;font-size:.85rem">${esc(link.label)}</a>` : ''}</div>
+    </div>`;
+
+  // Carrito vacío: en vez de "Productos en tu pedido (0)" con botones que no llevan a
+  // nada, un solo mensaje y el camino de vuelta al catálogo, donde se pide.
+  const emptyState = () => `
+    <div class="ck-empty" style="display:grid;gap:.7rem;justify-items:start;margin-top:2rem">
+      <span>${esc(t('checkout.noProducts'))}</span>
+      <span style="font-weight:400;font-size:.95rem;color:var(--ink-2)">${esc(t('checkout.emptyLead'))}</span>
+      <a class="btn-primary" href="${href('catalog/catalog')}" style="text-decoration:none">${esc(t('checkout.goCatalog'))} ${icons.right(15)}</a>
     </div>`;
 
   const sentNotice = () => `
@@ -420,7 +439,7 @@ export default function checkout(host) {
       return false;
     };
 
-    $('excel').onclick = async event => {
+    $('excel')?.addEventListener('click', async event => {
       if (!needsLines()) return;
       const button = event.currentTarget;
       button.disabled = true;
@@ -436,9 +455,9 @@ export default function checkout(host) {
         error = t('checkout.excelError');
         render();
       }
-    };
+    });
 
-    $('favorite').onclick = async event => {
+    $('favorite')?.addEventListener('click', async event => {
       if (!needsLines()) return;
       const button = event.currentTarget;
       const name = await promptDialog({
@@ -454,7 +473,7 @@ export default function checkout(host) {
         error = t('checkout.favoriteError');
         render();
       }
-    };
+    });
 
     $('submit').onclick = async event => {
       const button = event.currentTarget;

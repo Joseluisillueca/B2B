@@ -37,17 +37,38 @@ const vocab = (prefix, slug, label, raw) => {
   return label || raw || '';
 };
 
-// La ficha muestra TODOS los atributos (silueta, colección, temporada…); a diferencia
-// del listado, aquí no se esconde ninguno.
-const attrsOf = item => Array.isArray(item.attributeList) && item.attributeList.length
-  ? item.attributeList.map(entry => ({
-      label: vocab('attr', entry.keySlug, entry.label, entry.key),
-      value: vocab('attrValue', entry.valueSlug, entry.valueLabel, entry.value)
-    }))
-  : Object.entries(item.attributes || {}).map(([key, value]) => ({
-      label: vocab('attr', key, '', key),
-      value: vocab('attrValue', value, '', value)
-    }));
+// ¿El valor ya está escrito en el nombre del artículo? "ELAN Aegean" lleva LINE=ELAN y
+// COLOR NAME=Aegean: repetirlos en chips no es información. Palabras normalizadas y
+// límite de palabra (misma regla que el listado).
+const inName = (name, value) => {
+  const needle = slugKey(value);
+  return needle.length > 1 && `-${slugKey(name)}-`.includes(`-${needle}-`);
+};
+
+// La ficha muestra los atributos DESCRIPTIVOS (silueta, colección, corte, forro,
+// suela…) con su etiqueta a la vista: el comprador tiene que distinguir corte de forro
+// sin pasar el ratón por el chip. Fuera quedan los CÓDIGOS del ERP —el style code
+// identifica, así que va en la línea de referencia; el color code no dice nada— y los
+// valores que el nombre ya dice. Devuelve { chips, styleCode }.
+const attrsOf = item => {
+  const list = Array.isArray(item.attributeList) && item.attributeList.length
+    ? item.attributeList.map(entry => ({
+        slug: slugKey(entry.keySlug || entry.key),
+        raw: entry.value,
+        label: vocab('attr', entry.keySlug, entry.label, entry.key),
+        value: vocab('attrValue', entry.valueSlug, entry.valueLabel, entry.value)
+      }))
+    : Object.entries(item.attributes || {}).map(([key, value]) => ({
+        slug: slugKey(key),
+        raw: value,
+        label: vocab('attr', key, '', key),
+        value: vocab('attrValue', value, '', value)
+      }));
+  return {
+    styleCode: String(list.find(entry => entry.slug === 'style-code')?.raw ?? '').trim(),
+    chips: list.filter(entry => !/-code$/.test(entry.slug) && !inName(item.name, entry.raw))
+  };
+};
 
 const favLabel = on => t(on ? 'catalog.favoriteOff' : 'catalog.favorite');
 
@@ -70,6 +91,15 @@ export default async function product(host, route) {
     const type = state.prefs.window === 'scheduled' ? 'SCHEDULED' : 'REPLENISHMENT';
     return (windows.find(w => w.orderType === type) || windows[0])?.id || '';
   };
+  // Si la instancia no publica el tipo preferido, la preferencia se realinea al que
+  // existe (mismo criterio que el catálogo): así carrito, header y CTA coinciden con
+  // la ventana cuyo stock y precio se están mostrando.
+  const realignWindow = () => {
+    const wanted = state.prefs.window === 'scheduled' ? 'SCHEDULED' : 'REPLENISHMENT';
+    if (!windows.length || windows.some(w => w.orderType === wanted)) return;
+    const actual = windows[0].orderType === 'SCHEDULED' ? 'scheduled' : 'replenishment';
+    if (actual !== state.prefs.window) state.prefs = { ...state.prefs, window: actual };
+  };
 
   async function loadData() {
     const params = new URLSearchParams();
@@ -80,6 +110,7 @@ export default async function product(host, route) {
     const data = await api.get(`/api/shop/catalog?${params}`);
     const knew = windows.length > 0;
     windows = data.windows || [];
+    realignWindow();
     if (!knew && windowId() && data.window !== windowId()) return loadData();
     return data;
   }
@@ -114,12 +145,15 @@ export default async function product(host, route) {
     return;
   }
 
-  const attributes = attrsOf(item);
+  const { chips: attributes, styleCode } = attrsOf(item);
   const price = mainPrice(item);
   const available = rowState(item, data.window) !== 'out';
   // Etiqueta de la ventana de servicio activa para el botón "Añadir a REPOSICIÓN/PROGRAMACIÓN"
-  const windowLabel = (state.prefs.window === 'scheduled'
-    ? t('window.scheduled') : t('window.replenishment')).toUpperCase();
+  const windowType = state.prefs.window === 'scheduled' ? 'scheduled' : 'replenishment';
+  const windowLabel = t(`window.${windowType}`).toUpperCase();
+  // Nombre propio de la ventana con la que se está comprando ("Programación SS27"):
+  // lo trae el catálogo; si no lo hay, el genérico del diccionario.
+  const windowName = windows.find(w => w.id === data.window)?.name || t(`window.${windowType}`);
   const lines = Object.fromEntries(
     state.cartLines().map(line => [`${line.modelId}|${line.size}`, line]));
 
@@ -144,7 +178,13 @@ export default async function product(host, route) {
             </button>
           </div>
 
-          <p class="product-ref">${esc(t('catalog.reference'))} <b>${esc(item.reference || '')}</b></p>
+          <!-- "Referencia: 1040 · R1ABY150A3C08": el style code del ERP identifica, así que
+               acompaña a la referencia en vez de flotar como chip sin etiqueta. -->
+          <p class="product-ref">${esc(t('catalog.reference'))} <b>${esc(item.reference || '')}</b>${
+            styleCode && styleCode !== item.reference ? ` · <span>${esc(styleCode)}</span>` : ''}</p>
+          <!-- La ventana con la que se compra, visible donde se compra: hasta ahora solo
+               la contaban el tile de la portada y el botón del carrito. -->
+          <p class="product-ref product-window" style="margin-top:.25rem">${esc(t('product.orderWindow'))} <b>${esc(windowName)}</b></p>
 
           <!-- Slot RESERVADO del "También en:" — existe desde el primer render con la
                altura de la fila (esqueleto), así los relacionados llegan y se rellenan
@@ -161,7 +201,7 @@ export default async function product(host, route) {
           </div>
 
           ${attributes.length || available ? `<div class="product-attrs">${attributes.map(attribute => `
-            <span class="tag" title="${esc(attribute.label)}">${esc(attribute.value)}</span>`).join('')}
+            <span class="tag"><small style="font-weight:500;letter-spacing:.04em;color:var(--ink-2);margin-right:.45em">${esc(attribute.label)}</small>${esc(attribute.value)}</span>`).join('')}
             ${available ? `<span class="tag tag-avail">${esc(t('product.available'))}</span>` : ''}</div>` : ''}
 
           <div class="product-price">
@@ -174,9 +214,13 @@ export default async function product(host, route) {
           <div class="product-buy">
             <h2 class="product-sizes-h">${esc(t('product.sizesTitle'))}</h2>
             <div id="buy">${sizeMatrix(item, { windowKey: data.window, lines })}</div>
+            <!-- Sin ninguna talla pedible en esta ventana el botón rojo no lleva a ninguna
+                 parte (su handler busca una celda habilitada que no existe): se apaga y
+                 dice CONSULTAR; la acción real es el enlace "Consultar" de la matriz,
+                 convertido abajo en botón fantasma a lo ancho. -->
             <div class="product-order">
-              <button type="button" class="btn-primary" id="add">
-                <span>${esc(t('product.addTo', { window: windowLabel }))}</span>
+              <button type="button" class="btn-primary" id="add" ${available ? '' : 'disabled'}>
+                <span>${esc(available ? t('product.addTo', { window: windowLabel }) : t('catalog.availability.consult'))}</span>
                 <span class="product-total" id="total"></span>
               </button>
             </div>
@@ -344,6 +388,11 @@ export default async function product(host, route) {
   const itemsById = { [item.modelId]: item };
 
   const paintTotal = () => {
+    if (!available) {
+      // No hay total que calcular: el botón apagado explica por qué lo está
+      total.innerHTML = `<span class="product-hint">${esc(t('product.noStock'))}</span>`;
+      return;
+    }
     let units = 0, amount = 0;
     for (const input of buy.querySelectorAll('.sz-qty')) {
       const qty = Number(input.value) || 0;
@@ -357,6 +406,14 @@ export default async function product(host, route) {
 
   bindMatrix(buy, itemsById, { onChange: paintTotal });
   paintTotal();
+
+  // Sin stock en ninguna talla, el "Consultar" de la matriz es LA acción de la ficha:
+  // botón fantasma a lo ancho en el sitio del CTA (el rojo queda apagado encima).
+  const consult = buy.querySelector('.matrix-consult a');
+  if (consult && !available) {
+    consult.classList.add('btn-ghost', 'block');
+    consult.style.textDecoration = 'none';
+  }
 
   // "AÑADIR": el pedido ya se hace al teclear en la matriz. Si aún no hay unidades,
   // el botón lleva el foco a la primera talla disponible para empezar; si ya hay

@@ -89,38 +89,50 @@ export function relatedSectionHtml(items, { title, sub = '', compact = false, id
 }
 
 /**
- * Da vida al raíl: flechas solo si desborda, deshabilitadas en los extremos, paso
- * de ~un ancho de vista y scroll suave (salvo "reducir movimiento"). En táctil el
- * raíl ya se desplaza con el dedo (snap por CSS).
+ * Patrón de raíl con flechas, compartido: lo usa la sección de relacionados (abajo)
+ * y el lookbook para sus raíles "Compra el look". Flechas solo si el raíl desborda
+ * (clase `has-nav` en `host` y, si se pasa `nav`, su atributo hidden — para quien no
+ * tiene la regla CSS de .related), apagadas en los extremos, paso configurable
+ * (`step(rail)` → px; por defecto ~un ancho de vista) y scroll suave salvo "reducir
+ * movimiento". En táctil (≤48rem) las flechas sobran: el snap ya pagina con el dedo.
  */
-export function bindRelatedRail(section) {
-  const rail = section?.querySelector('.related-rail');
-  const prev = section?.querySelector('.rel-prev');
-  const next = section?.querySelector('.rel-next');
-  if (!rail || !prev || !next) return;
+export function bindRail({ host, rail, prev, next, nav = null, step = null }) {
+  if (!host || !rail || !prev || !next) return;
 
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const step = () => Math.max(rail.clientWidth * 0.9, 160);
+  const stepOf = () => Math.max((step ? step(rail) : 0) || rail.clientWidth * 0.9, 160);
 
   const update = () => {
     const max = rail.scrollWidth - rail.clientWidth;
-    section.classList.toggle('has-nav', max > 4);
+    const overflow = max > 4;
+    host.classList.toggle('has-nav', overflow);
+    if (nav) nav.hidden = !overflow || matchMedia('(max-width:48rem)').matches;
     prev.disabled = rail.scrollLeft <= 1;
     next.disabled = rail.scrollLeft >= max - 1;
   };
 
-  prev.onclick = () => rail.scrollBy({ left: -step(), behavior: reduced ? 'auto' : 'smooth' });
-  next.onclick = () => rail.scrollBy({ left: step(), behavior: reduced ? 'auto' : 'smooth' });
+  prev.onclick = () => rail.scrollBy({ left: -stepOf(), behavior: reduced ? 'auto' : 'smooth' });
+  next.onclick = () => rail.scrollBy({ left: stepOf(), behavior: reduced ? 'auto' : 'smooth' });
   rail.addEventListener('scroll', update, { passive: true });
 
   // El listener de resize se vigila a sí mismo con un temporizador barato además del
   // propio evento: si la sección se desconecta (repintados frecuentes del checkout), se
   // retira aunque el usuario nunca redimensione — sin acumulación de listeners.
-  const onResize = () => (section.isConnected ? update() : dispose());
-  const watchdog = setInterval(() => { if (!section.isConnected) dispose(); }, 15_000);
+  const onResize = () => (host.isConnected ? update() : dispose());
+  const watchdog = setInterval(() => { if (!host.isConnected) dispose(); }, 15_000);
   function dispose() { removeEventListener('resize', onResize); clearInterval(watchdog); }
   addEventListener('resize', onResize);
   // Las imágenes lazy cambian el scrollWidth al llegar: se re-mide al cargar cada una
   rail.querySelectorAll('img').forEach(img => img.addEventListener('load', update, { once: true }));
   update();
+}
+
+/** Da vida a la sección de relacionados: el patrón de arriba sobre .related-rail */
+export function bindRelatedRail(section) {
+  bindRail({
+    host: section,
+    rail: section?.querySelector('.related-rail'),
+    prev: section?.querySelector('.rel-prev'),
+    next: section?.querySelector('.rel-next')
+  });
 }
