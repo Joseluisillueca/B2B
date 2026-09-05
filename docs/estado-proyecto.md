@@ -269,3 +269,11 @@ sandbox: está en la conversación del 2026-08-03 y se reconstruye desde
 
 - CMS actual: https://admin-b2b.lejanbrand.com — admin@b2b.com / 123
 - Portal actual: https://b2b.lejanbrand.com — jilluecasaus@gmail.com / Kr987solutions. (cliente de prueba TEST 5)
+
+## Way2Growth = BLOCCO 5 (5 sep 2026)
+- Instancia `b2b-api` vestida con la marca BLOCCO 5 por tokens (papel, placa gris, rojo único, Archivo expandida, filetes de 1 px); ALMA EN PENA (`b2b-almaenpena`) no se ha tocado.
+- Portada con **film de marca** (fotografía real del lookbook, 11 s en bucle, 1,2 MB escritorio / 0,5 MB móvil) como primera diapositiva del carrusel; `videoUrl` y `videoUrlMobile` en los items del hero, póster = imagen. El carrusel reproduce solo la diapositiva activa y visible, respeta reduced-motion y ahorro de datos, y avanza al cerrar el bucle.
+- Medios: ETag + 304, HEAD, Range (iOS) y caché en memoria (`Admin/MediaEndpoints.cs`).
+- Lookbook: abre con el índice tipográfico (p02 del libro) sin fotografía; seis historias con raíles de compra.
+- Cinco rondas de crítica de diseño con capturas reales; manual en `docs/manual-configuracion-bc.md` (parte 4, incl. 4.6 film).
+- Scripts de carga de marca/contenido y generador del film en el scratchpad de la sesión (`blocco5_aplicar.py`, `panel/film.py`, `panel/film4.py`).
