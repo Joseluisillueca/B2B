@@ -29,7 +29,7 @@ export default function login(host) {
           <p class="err" role="alert"></p>
 
           <h2>${esc(t('login.noAccountTitle'))}</h2>
-          <p data-brand-support data-fallback="${esc(t('login.help'))}">${brandSupport(t('login.help'))}</p>
+          <p data-brand-support data-fallback="${esc(t('login.help'))}" data-fallback-noemail="${esc(t('login.helpNoEmail'))}">${brandSupport(t('login.help'), t('login.helpNoEmail'))}</p>
           <a class="create" href="#">${esc(t('login.create'))}</a>
           <p class="legal">${esc(brandText(t('login.legal')))}</p>
         </form>

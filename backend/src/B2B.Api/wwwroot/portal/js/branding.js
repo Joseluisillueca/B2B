@@ -245,11 +245,15 @@ export const brandTagline = fallback => esc(brand.tokens.tagline || String(fallb
 
 /** Cambia el email de soporte que va DENTRO de un texto traducido por el del token.
     Devuelve HTML ESCAPADO, igual que brandTagline. */
-export function brandSupport(text) {
+export function brandSupport(text, textWithoutEmail) {
   const s = String(text ?? '');
   const email = brand.tokens.supportEmail;
+  // Sin buzón configurado en la marca, el texto NEUTRO: los textos traducidos llevan el
+  // buzón de la marca por defecto del producto y una instancia con su propia marca no
+  // puede enseñar el email de otra empresa en su pantalla de acceso.
+  if (!email) return esc(textWithoutEmail != null ? String(textWithoutEmail) : s.replace(/\s*[^\s<>()]+@[^\s<>()]+\.[^\s<>().,;:]+/g, ''));
   // Reemplazo por función: un `$&` dentro del token no puede reinyectar la coincidencia.
-  return esc(email ? s.replace(/[^\s<>()]+@[^\s<>()]+\.[^\s<>().,;:]+/g, () => email) : s);
+  return esc(s.replace(/[^\s<>()]+@[^\s<>()]+\.[^\s<>().,;:]+/g, () => email));
 }
 
 /** Buzón de soporte de la instancia, como VALOR crudo (no HTML): lo necesitan a la vez
@@ -399,7 +403,7 @@ function apply() {
     el.innerHTML = brandTagline(el.dataset.fallback);
   }
   for (const el of document.querySelectorAll('[data-brand-support]')) {
-    el.innerHTML = brandSupport(el.dataset.fallback);
+    el.innerHTML = brandSupport(el.dataset.fallback, el.dataset.fallbackNoemail);
   }
 }
 

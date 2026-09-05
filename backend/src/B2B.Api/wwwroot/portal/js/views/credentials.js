@@ -104,5 +104,5 @@ const exitLine = () => `
 // su listener ya atado, queda fuera.
 const empty = () => `
   <p class="cred-empty"><span data-brand-support data-fallback="${esc(t('credentials.none'))}"
-    >${brandSupport(t('credentials.none'))}</span>
+    >${brandSupport(t('credentials.none'), t('credentials.noneNoEmail'))}</span>
     <br><a href="#" data-logout>${esc(t('chrome.logout'))}</a></p>`;

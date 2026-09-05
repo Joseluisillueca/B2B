@@ -17,8 +17,8 @@ import { brandSupportEmail } from '../branding.js';
 
 // Buzón por defecto; la instancia lo cambia con el token `supportEmail` de la marca
 // (si no, un despliegue con su propia marca publicaría aquí un mailto: a un tercero).
-const INBOX = 'tiendas@lejanbrand.com';
-const inbox = () => brandSupportEmail(INBOX);
+// Sin token, no hay buzón: la vista no enseña ningún mailto.
+const inbox = () => brandSupportEmail('');
 
 export default function contact(host) {
   let notice = null;   // { tone: 'ok' | 'error', text }
@@ -36,9 +36,9 @@ export default function contact(host) {
       <div class="page contact">
         ${pageHead(t('nav.contact'), [t('nav.contact')])}
 
-        <p class="ct-lead">${t('contact.lead', {
-          email: `<a class="link" href="mailto:${esc(inbox())}">${esc(inbox())}</a>`
-        })}</p>
+        <p class="ct-lead">${(inbox() ? t('contact.lead', {
+          email: inbox() ? `<a class="link" href="mailto:${esc(inbox())}">${esc(inbox())}</a>` : ''
+        }) : t('contact.leadNoEmail'))}</p>
 
         ${notice ? `
           <div class="notice notice-${notice.tone}"${notice.tone === 'error' ? ' role="alert"' : ''}>

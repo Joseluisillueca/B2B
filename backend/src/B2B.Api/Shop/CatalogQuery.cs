@@ -344,7 +344,9 @@ public static class CatalogService
             FamilyLabel: vocabulary.FamilyLabel(model.FamilyId, locale),
             Segments: Strings(model.ProductSegmentsJson),
             Attributes: attributes,
-            AttributeList: [.. attributes.Select(pair => new CatalogAttributeEntry(
+            // Los chips que ve el comprador: solo los atributos visibles en la web. El
+            // diccionario `attributes` conserva TODOS (búsqueda, relacionados, color).
+            AttributeList: [.. attributes.Where(pair => vocabulary.IsVisibleOnWeb(pair.Key)).Select(pair => new CatalogAttributeEntry(
                 Key: pair.Key,
                 KeySlug: CatalogVocabulary.Slug(pair.Key),
                 Label: vocabulary.AttributeLabel(pair.Key, locale),
@@ -440,7 +442,9 @@ public static class CatalogService
     private static List<CatalogAttributeFacet> AttributeFacets(
         List<CatalogRow> all, CatalogQuery query, CatalogVocabulary vocabulary)
     {
-        var keys = all.SelectMany(r => r.Attributes.Keys).Distinct(StringComparer.OrdinalIgnoreCase);
+        var keys = all.SelectMany(r => r.Attributes.Keys).Distinct(StringComparer.OrdinalIgnoreCase)
+            // Un atributo que BC marca como no visible en la web tampoco es una faceta
+            .Where(vocabulary.IsVisibleOnWeb);
 
         return [.. keys
             .Select(key =>

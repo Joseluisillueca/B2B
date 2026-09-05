@@ -20,17 +20,24 @@ public sealed class CatalogVocabulary
     private readonly Dictionary<string, JsonNode?> _attributes;
     // C1 (revisión AL): alias (slug) → código canónico (slug del B2B Code) del atributo.
     private readonly Dictionary<string, string> _attributeCodes;
+    // Códigos canónicos de los atributos que BC marca como NO visibles en la web
+    // ("B2B Visible Web" desmarcado, contrato 02 §6 `visibleWeb`). Se siguen sincronizando
+    // y filtrando (búsqueda, relacionados, visibilidad), pero no se enseñan al comprador:
+    // ni como faceta ni como chip. Un código de color interno o una referencia de estilo
+    // son datos del ERP, no argumentos de venta.
+    private readonly HashSet<string> _hiddenOnWeb;
 
     private CatalogVocabulary(
         Dictionary<string, JsonNode?> families, Dictionary<string, JsonNode?> attributes,
-        Dictionary<string, string> attributeCodes)
+        Dictionary<string, string> attributeCodes, HashSet<string> hiddenOnWeb)
     {
         _families = families;
         _attributes = attributes;
         _attributeCodes = attributeCodes;
+        _hiddenOnWeb = hiddenOnWeb;
     }
 
-    public static readonly CatalogVocabulary Empty = new([], [], []);
+    public static readonly CatalogVocabulary Empty = new([], [], [], []);
 
     public static async Task<CatalogVocabulary> LoadAsync(AppDbContext db)
     {
@@ -41,6 +48,7 @@ public sealed class CatalogVocabulary
         var families = new Dictionary<string, JsonNode?>(StringComparer.OrdinalIgnoreCase);
         var attributes = new Dictionary<string, JsonNode?>(StringComparer.OrdinalIgnoreCase);
         var attributeCodes = new Dictionary<string, string>(StringComparer.Ordinal);
+        var hiddenOnWeb = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var doc in docs)
         {
@@ -70,10 +78,17 @@ public sealed class CatalogVocabulary
                     foreach (var (_, value) in labels)
                         if (Slug(DocumentProjections.Text(value)) is { Length: > 0 } alias)
                             attributeCodes.TryAdd(alias, code);
+
+                // Solo un `false` explícito oculta: sin el campo (conectores antiguos) se
+                // enseña, que es lo que siempre se hizo.
+                var visible = payload?["visibleWeb"];
+                if (visible is JsonValue v && (v.TryGetValue<bool>(out var flag) ? !flag
+                        : string.Equals(v.ToString(), "false", StringComparison.OrdinalIgnoreCase)))
+                    hiddenOnWeb.Add(code);
             }
         }
 
-        return new CatalogVocabulary(families, attributes, attributeCodes);
+        return new CatalogVocabulary(families, attributes, attributeCodes, hiddenOnWeb);
     }
 
     /// Clave canónica de un atributo para comparar reglas de visibilidad con las claves
@@ -85,6 +100,10 @@ public sealed class CatalogVocabulary
         var slug = Slug(key);
         return _attributeCodes.TryGetValue(slug, out var code) ? code : slug;
     }
+
+    /// ¿Se enseña este atributo al comprador (facetas y chips)? Falso solo si BC lo marcó
+    /// como no visible en la web; una clave sin documento maestro se enseña.
+    public bool IsVisibleOnWeb(string key) => !_hiddenOnWeb.Contains(CanonicalAttributeKey(key));
 
     /// Etiqueta de la familia; sin documento publicado, el id capitalizado de siempre
     public string FamilyLabel(string familyId, string locale)
