@@ -28,6 +28,9 @@ export function stockState(stock) {
 export const stockText = stock =>
   stock >= INFINITE ? '∞' : stock > CAP ? `+${CAP}` : String(stock);
 
+/** Para la etiqueta accesible: "sin límite" en vez del símbolo, que no todo lector lee */
+export const stockLabel = stock => (stock >= INFINITE ? t('catalog.stockOpen') : stockText(stock));
+
 /** Estado del artículo entero, para el orden y el filtro de disponibilidad */
 export const rowState = (item, windowKey) => {
   const levels = (item.products || []).map(p => stockOf(p, windowKey));
@@ -50,8 +53,13 @@ export function sizeMatrix(item, { windowKey, lines = {} } = {}) {
   // no solo el de las tallas con oferta propia: si tres tallas de quince mostraban
   // importe, la columna parecía un error de datos.
   const perSize = !!item.pricePerSize;
+  // Con TODAS las tallas abiertas (ventana programada: sentinela ∞) la fila de
+  // disponibilidad no distingue nada —quince "∞" bajo quince celdas— y se omite; el
+  // estado sigue en la etiqueta accesible de cada celda. Con stock real se pinta.
+  const products = item.products || [];
+  const allOpen = products.length > 0 && products.every(p => stockOf(p, windowKey) >= INFINITE);
 
-  const cells = (item.products || []).map(product => {
+  const cells = products.map(product => {
     const stock = stockOf(product, windowKey);
     const status = stockState(stock);
     const line = lines[lineKey({ modelId: item.modelId, size: product.size })];
@@ -68,17 +76,19 @@ export function sizeMatrix(item, { windowKey, lines = {} } = {}) {
             <span class="sz-size">${esc(product.size ?? '—')}</span>
           </div>
           <div class="sz-body">
+            <!-- Celda VACÍA hasta que se teclea: 343 ceros por página se leían como
+                 "sin stock" y como una cantidad ya puesta. El 0 queda de placeholder. -->
             <input type="number" min="0" max="9999" step="1" inputmode="numeric"
-              class="sz-qty" value="${qty}" ${status === 'out' ? 'disabled' : ''}
+              class="sz-qty" value="${qty > 0 ? qty : ''}" placeholder="0" ${status === 'out' ? 'disabled' : ''}
               tabindex="${roving ? '0' : '-1'}"
               data-model="${esc(item.modelId)}" data-product="${esc(product.productId)}"
               data-size="${esc(product.size ?? '')}" data-price="${price ?? 0}"
               aria-label="${esc(t('catalog.sizeField', {
-                size: product.size ?? '', name: item.name || '', stock: stockText(stock)
+                size: product.size ?? '', name: item.name || '', stock: stockLabel(stock)
               }))}">
           </div>
         </div>
-        <span class="sz-stock">${status === 'low' || status === 'out' ? '<i></i>' : ''}${esc(stockText(stock))}</span>
+        ${allOpen ? '' : `<span class="sz-stock">${status === 'low' || status === 'out' ? '<i></i>' : ''}${esc(stockText(stock))}</span>`}
       </div>`;
   }).join('');
 
@@ -106,7 +116,8 @@ export function bindMatrix(root, itemsById, { onChange } = {}) {
     if (!item) return;
 
     const qty = Math.max(0, Math.min(9999, Math.trunc(Number(input.value) || 0)));
-    input.value = String(qty);
+    // A cero la celda vuelve a quedar vacía (placeholder "0"), como al pintarla
+    input.value = qty ? String(qty) : '';
     input.closest('.sz')?.classList.toggle('has', qty > 0);
 
     state.setCartLine({

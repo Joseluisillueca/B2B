@@ -287,8 +287,10 @@ public static class IntegrationEndpoints
     // la extensión de BLOCCO 5; van en esta misma lista para reutilizar el validador de color
     // y no añadir ninguna regla nueva. Viven en la columna JSON BrandTokensJson, así que
     // ampliar la lista NO exige migración y una instancia que no los manda no se entera.
+    // `accentSoft` (ronda 2) es el tinte del acento —fondo de avisos, chips y píldoras—; un
+    // color más en la misma lista, por la misma razón que los tres anteriores.
     private static readonly string[] BrandColorTokens =
-        ["paper", "surface", "ink", "headerBg", "headerInk", "card", "rule", "accent"];
+        ["paper", "surface", "ink", "headerBg", "headerInk", "card", "rule", "accent", "accentSoft"];
     private static readonly string[] BrandUrlTokens = ["logoUrlDark", "faviconUrl", "fontUrl"];
     // Medidas CSS con unidad. `ruleWidth` es el grosor de los filetes de capítulo y va junto a
     // `rule` a propósito: el color sin el grosor da un filete rojo de 2px, que ya no es un
@@ -302,6 +304,12 @@ public static class IntegrationEndpoints
     private static readonly string[] BrandHeroStyles = ["paper"];
     private static readonly Regex BrandWeight = new("^[1-9]00$", RegexOptions.Compiled);
     private const int BrandLegalMax = 400;
+    // Ronda 2: `displayStretch` es un porcentaje de font-stretch. CSS solo admite de 50 % a
+    // 200 %: fuera de rango la variable queda inválida y el titular vuelve a la anchura normal
+    // sin ningún aviso, así que se acota aquí (la forma por regex, el rango con el número).
+    // `ctaCaps` es un booleano y se trata exactamente como `caps`; `accentSoft`, como color.
+    private static readonly Regex BrandStretch = new(@"^\d{1,3}(\.\d{1,2})?%$", RegexOptions.Compiled);
+    private const double BrandStretchMin = 50, BrandStretchMax = 200;
 
     private static readonly Regex BrandHexColor = new("^#[0-9a-fA-F]{6}$", RegexOptions.Compiled);
     // Medida CSS de verdad: un solo punto decimal y al menos un dígito. "..px" y "1.2.3px"
@@ -333,18 +341,18 @@ public static class IntegrationEndpoints
             var value = property.Value;
             if (value.ValueKind is JsonValueKind.Null) continue;   // null = ese token no se fija
 
-            if (key == "caps")
+            if (key is "caps" or "ctaCaps")
             {
                 if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
-                    return (null, "«caps» debe ser un booleano (true | false).");
-                tokens["caps"] = value.GetBoolean();
+                    return (null, $"«{key}» debe ser un booleano (true | false).");
+                tokens[key] = value.GetBoolean();
                 continue;
             }
 
             var known = BrandColorTokens.Contains(key) || BrandUrlTokens.Contains(key)
                 || BrandLengthTokens.Contains(key)
                 || key is "heroFilter" or "fontFamily" or "tagline" or "supportEmail"
-                || key is "heroStyle" or "displayWeight" or "legal";
+                || key is "heroStyle" or "displayWeight" or "legal" or "displayStretch";
             if (!known) continue;                                  // token desconocido: se ignora
 
             if (value.ValueKind != JsonValueKind.String)
@@ -415,6 +423,15 @@ public static class IntegrationEndpoints
             {
                 if (!BrandWeight.IsMatch(text))
                     error = "«displayWeight» debe ser un peso tipográfico en centenas, de 100 a 900 (p. ej. 900).";
+            }
+            else if (key == "displayStretch")
+            {
+                // Se guarda tal cual (ya recortado): es el valor literal de la variable CSS.
+                if (!BrandStretch.IsMatch(text)
+                    || !double.TryParse(text.TrimEnd('%'), System.Globalization.NumberStyles.AllowDecimalPoint,
+                        System.Globalization.CultureInfo.InvariantCulture, out var pct)
+                    || pct < BrandStretchMin || pct > BrandStretchMax)
+                    error = "«displayStretch» debe ser un porcentaje de anchura entre 50% y 200% (p. ej. 125%).";
             }
             else if (key == "legal")
             {

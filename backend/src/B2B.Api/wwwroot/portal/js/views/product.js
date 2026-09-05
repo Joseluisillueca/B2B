@@ -91,16 +91,6 @@ export default async function product(host, route) {
     const type = state.prefs.window === 'scheduled' ? 'SCHEDULED' : 'REPLENISHMENT';
     return (windows.find(w => w.orderType === type) || windows[0])?.id || '';
   };
-  // Si la instancia no publica el tipo preferido, la preferencia se realinea al que
-  // existe (mismo criterio que el catálogo): así carrito, header y CTA coinciden con
-  // la ventana cuyo stock y precio se están mostrando.
-  const realignWindow = () => {
-    const wanted = state.prefs.window === 'scheduled' ? 'SCHEDULED' : 'REPLENISHMENT';
-    if (!windows.length || windows.some(w => w.orderType === wanted)) return;
-    const actual = windows[0].orderType === 'SCHEDULED' ? 'scheduled' : 'replenishment';
-    if (actual !== state.prefs.window) state.prefs = { ...state.prefs, window: actual };
-  };
-
   async function loadData() {
     const params = new URLSearchParams();
     params.set('q', reference);
@@ -110,7 +100,10 @@ export default async function product(host, route) {
     const data = await api.get(`/api/shop/catalog?${params}`);
     const knew = windows.length > 0;
     windows = data.windows || [];
-    realignWindow();
+    // Si la instancia no publica el tipo preferido, la preferencia se realinea al que
+    // existe (la misma regla que catálogo y chrome): así carrito, header y CTA
+    // coinciden con la ventana cuyo stock y precio se están mostrando.
+    state.alignWindow(windows);
     if (!knew && windowId() && data.window !== windowId()) return loadData();
     return data;
   }
@@ -200,9 +193,8 @@ export default async function product(host, route) {
             </div>
           </div>
 
-          ${attributes.length || available ? `<div class="product-attrs">${attributes.map(attribute => `
-            <span class="tag"><small style="font-weight:500;letter-spacing:.04em;color:var(--ink-2);margin-right:.45em">${esc(attribute.label)}</small>${esc(attribute.value)}</span>`).join('')}
-            ${available ? `<span class="tag tag-avail">${esc(t('product.available'))}</span>` : ''}</div>` : ''}
+          ${attributes.length ? `<div class="product-attrs">${attributes.map(attribute => `
+            <span class="tag"><small style="font-weight:500;letter-spacing:.04em;color:var(--ink-2);margin-right:.45em">${esc(attribute.label)}</small>${esc(attribute.value)}</span>`).join('')}</div>` : ''}
 
           <div class="product-price">
             ${item.pvd != null ? `<div class="pp-col"><span>${esc(t('catalog.price.pvd'))}</span>
@@ -212,7 +204,15 @@ export default async function product(host, route) {
           </div>
 
           <div class="product-buy">
-            <h2 class="product-sizes-h">${esc(t('product.sizesTitle'))}</h2>
+            <!-- DISPONIBLE es el estado de COMPRA, no un atributo del modelo: va en la
+                 cabecera de la matriz, donde se elige la cantidad, y no mezclado con
+                 corte, forro y suela. El rótulo conserva su clase (rasgos y filete) y el
+                 h2 hereda la fuente; el chip lleva su estilo en línea porque .tag-avail
+                 solo existe dentro de .product-attrs. -->
+            <div class="product-sizes-h product-sizes-head" style="display:flex;align-items:center;justify-content:space-between;gap:.8rem">
+              <h2 style="font:inherit;letter-spacing:inherit;margin:0">${esc(t('product.sizesTitle'))}</h2>
+              ${available ? `<span class="tag tag-avail" style="display:inline-flex;align-items:center;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;border:2px solid var(--blue);color:var(--accent-deep);border-radius:var(--r,0);padding:.3rem .7rem">${esc(t('product.available'))}</span>` : ''}
+            </div>
             <div id="buy">${sizeMatrix(item, { windowKey: data.window, lines })}</div>
             <!-- Sin ninguna talla pedible en esta ventana el botón rojo no lleva a ninguna
                  parte (su handler busca una celda habilitada que no existe): se apaga y
@@ -226,12 +226,11 @@ export default async function product(host, route) {
             </div>
           </div>
 
+          <!-- Solo la ficha técnica: el botón "Descargar galería" volverá con su endpoint;
+               un "Disponible próximamente" apagado en producción no es una función. -->
           <div class="product-docs">
             <button type="button" class="product-doc" id="dl-tech" title="${esc(t('product.downloadTech'))}">
               ${icons.fileDown(17)} ${esc(t('product.downloadTech'))}
-            </button>
-            <button type="button" class="product-doc" disabled title="${esc(t('product.downloadSoon'))}">
-              ${icons.image(17)} ${esc(t('product.downloadGallery'))}
             </button>
           </div>
         </div>
@@ -266,9 +265,78 @@ export default async function product(host, route) {
     catch { related = []; }
     if (!page || !page.isConnected) return;
 
+    // ── "También en:": la gama, visible donde se decide ──
+    // Patrón de swatches de PDP: el color del PROPIO artículo abre la fila (marcado,
+    // no clicable: "estás viendo BLACK") seguido de los HERMANOS de gama (solo cross;
+    // los artículos de la colección se quedan en el raíl). Máximo 6 swatches en
+    // escritorio, 5 en móvil, y "+N" que lleva con scroll suave al raíl completo.
+    const cross = related.filter(entry => entry.relation === 'cross');
+
+    // Pie de color. Primero el ATRIBUTO de color del artículo, si el ERP lo manda
+    // ("COLOR", "COLOR NAME", "COLOUR"...): es el dato de verdad y no depende de cómo
+    // esté escrito el nombre. Si no hay atributo, la convención "MODELO — COLOR" (raya
+    // em — o en –, con espacios); sin ninguna de las dos no hay pie. Un ERP que nombra
+    // "BUND RETRO Field Yellow", sin raya, dejaba la carta de colores sin nombres.
+    const colorAttribute = attributes => {
+      const entries = Object.entries(attributes || {});
+      const hit = entries.find(([key]) => /^colou?r(\s|_|-)?(name)?$/i.test(String(key).trim()))
+        || entries.find(([key]) => /colou?r/i.test(String(key)) && !/code/i.test(String(key)));
+      const value = hit ? hit[1] : '';
+      return Array.isArray(value) ? String(value[0] || '') : String(value || '');
+    };
+    const colorOf = (name, attributes) => {
+      const fromAttribute = colorAttribute(attributes).trim();
+      if (fromAttribute) return fromAttribute;
+      const parts = String(name || '').split(/\s[—–]\s/);
+      return parts.length > 1 ? parts.pop().trim() : '';
+    };
+    // Miniatura ligera: un marco de 116px no necesita el JPEG de 1400px del visor
+    const thumbSrc = uri => (uri || '').replace(/([?&]width=)\d+/, '$1300');
+    const pic = uri => uri
+      ? `<img src="${esc(thumbSrc(uri))}" alt="" loading="lazy" decoding="async">`
+      : `<span class="alsoin-art" aria-hidden="true">${icons.shoe(32)}</span>`;
+
+    const swatch = ({ card }) => {
+      const color = colorOf(card.name, card.attributes);
+      // Sin stock en ninguna talla (availability solo "consult"): foto atenuada + AGOTADO
+      const out = (card.availability || []).includes('consult');
+      // El PVD del hermano SOLO cuando difiere del artículo abierto (igual es ruido)
+      const price = !out && card.pvd != null && card.pvd !== item.pvd ? eur(card.pvd) : '';
+      const label = [card.name, card.reference && `${t('catalog.reference')} ${card.reference}`,
+        out ? t('related.out') : ''].filter(Boolean).join(' — ');
+      const url = `${href('product')}/${encodeURIComponent(card.reference || card.modelId)}`;
+      return `
+        <a class="alsoin-thumb${out ? ' is-out' : ''}" href="${esc(url)}"
+          title="${esc(label)}" aria-label="${esc(label)}">
+          <span class="alsoin-pic">${pic(card.imageUri)}</span>
+          ${color ? `<span class="alsoin-color" aria-hidden="true">${esc(color)}</span>` : ''}
+          ${out ? `<span class="alsoin-sub alsoin-outlbl" aria-hidden="true">${esc(t('related.out'))}</span>`
+            : price ? `<span class="alsoin-sub" aria-hidden="true">${esc(price)}</span>` : ''}
+        </a>`;
+    };
+
+    // Color actual primero; si el nombre no lleva raya, la fila queda como antes
+    const ownColor = cross.length ? colorOf(item.name, item.attributes) : '';
+    const current = ownColor ? `
+      <span class="alsoin-thumb alsoin-current" aria-current="true" title="${esc(item.name || '')}">
+        <span class="alsoin-pic">${pic(item.imageUri)}</span>
+        <span class="alsoin-color">${esc(ownColor)}</span>
+      </span>` : '';
+
+    // Tope de la fila (el swatch actual cuenta): 6 escritorio / 5 móvil. Se calcula
+    // ANTES del raíl porque decide qué hermanos quedan para él.
+    const max = matchMedia('(max-width:48rem)').matches ? 5 : 6;
+    const shown = Math.max(1, max - (current ? 1 : 0));
+
+    // ── "Completa la gama": el RESTO, no toda la lista ──
+    // Los hermanos que la fila de arriba ya enseña no se repiten en el raíl (antes
+    // arrancaba por los mismos cuatro colores del "También en:"): quedan los de más allá
+    // del tope —a los que lleva el "+N"— y los artículos de la colección. Sin resto, sin
+    // sección: ni hueco ni título.
+    const rest = [...cross.slice(shown), ...related.filter(entry => entry.relation !== 'cross')];
     let section = null;
-    if (related.length) {
-      page.insertAdjacentHTML('beforeend', relatedSectionHtml(related, {
+    if (rest.length) {
+      page.insertAdjacentHTML('beforeend', relatedSectionHtml(rest, {
         title: t('related.title'),
         sub: t('related.sub')
       }));
@@ -276,67 +344,7 @@ export default async function product(host, route) {
       bindRelatedRail(section);
     }
 
-    // ── "También en:": la gama, visible donde se decide ──
-    // Patrón de swatches de PDP: el color del PROPIO artículo abre la fila (marcado,
-    // no clicable: "estás viendo BLACK") seguido de los HERMANOS de gama (solo cross;
-    // los artículos de la colección se quedan en el raíl). Máximo 6 swatches en
-    // escritorio, 5 en móvil, y "+N" que lleva con scroll suave al raíl completo.
-    const cross = related.filter(entry => entry.relation === 'cross');
     if (cross.length && slot) {
-      // Pie de color. Primero el ATRIBUTO de color del artículo, si el ERP lo manda
-      // ("COLOR", "COLOR NAME", "COLOUR"...): es el dato de verdad y no depende de cómo
-      // esté escrito el nombre. Si no hay atributo, la convención "MODELO — COLOR" (raya
-      // em — o en –, con espacios); sin ninguna de las dos no hay pie. Un ERP que nombra
-      // "BUND RETRO Field Yellow", sin raya, dejaba la carta de colores sin nombres.
-      const colorAttribute = attributes => {
-        const entries = Object.entries(attributes || {});
-        const hit = entries.find(([key]) => /^colou?r(\s|_|-)?(name)?$/i.test(String(key).trim()))
-          || entries.find(([key]) => /colou?r/i.test(String(key)) && !/code/i.test(String(key)));
-        const value = hit ? hit[1] : '';
-        return Array.isArray(value) ? String(value[0] || '') : String(value || '');
-      };
-      const colorOf = (name, attributes) => {
-        const fromAttribute = colorAttribute(attributes).trim();
-        if (fromAttribute) return fromAttribute;
-        const parts = String(name || '').split(/\s[—–]\s/);
-        return parts.length > 1 ? parts.pop().trim() : '';
-      };
-      // Miniatura ligera: un marco de 116px no necesita el JPEG de 1400px del visor
-      const thumbSrc = uri => (uri || '').replace(/([?&]width=)\d+/, '$1300');
-      const pic = uri => uri
-        ? `<img src="${esc(thumbSrc(uri))}" alt="" loading="lazy" decoding="async">`
-        : `<span class="alsoin-art" aria-hidden="true">${icons.shoe(32)}</span>`;
-
-      const swatch = ({ card }) => {
-        const color = colorOf(card.name, card.attributes);
-        // Sin stock en ninguna talla (availability solo "consult"): foto atenuada + AGOTADO
-        const out = (card.availability || []).includes('consult');
-        // El PVD del hermano SOLO cuando difiere del artículo abierto (igual es ruido)
-        const price = !out && card.pvd != null && card.pvd !== item.pvd ? eur(card.pvd) : '';
-        const label = [card.name, card.reference && `${t('catalog.reference')} ${card.reference}`,
-          out ? t('related.out') : ''].filter(Boolean).join(' — ');
-        const url = `${href('product')}/${encodeURIComponent(card.reference || card.modelId)}`;
-        return `
-          <a class="alsoin-thumb${out ? ' is-out' : ''}" href="${esc(url)}"
-            title="${esc(label)}" aria-label="${esc(label)}">
-            <span class="alsoin-pic">${pic(card.imageUri)}</span>
-            ${color ? `<span class="alsoin-color" aria-hidden="true">${esc(color)}</span>` : ''}
-            ${out ? `<span class="alsoin-sub alsoin-outlbl" aria-hidden="true">${esc(t('related.out'))}</span>`
-              : price ? `<span class="alsoin-sub" aria-hidden="true">${esc(price)}</span>` : ''}
-          </a>`;
-      };
-
-      // Color actual primero; si el nombre no lleva raya, la fila queda como antes
-      const ownColor = colorOf(item.name, item.attributes);
-      const current = ownColor ? `
-        <span class="alsoin-thumb alsoin-current" aria-current="true" title="${esc(item.name || '')}">
-          <span class="alsoin-pic">${pic(item.imageUri)}</span>
-          <span class="alsoin-color">${esc(ownColor)}</span>
-        </span>` : '';
-
-      // Tope de la fila (el swatch actual cuenta): 6 escritorio / 5 móvil
-      const max = matchMedia('(max-width:48rem)').matches ? 5 : 6;
-      const shown = Math.max(1, max - (current ? 1 : 0));
       slot.innerHTML = `
         <div class="product-alsoin" role="group" aria-labelledby="alsoin-label">
           <span class="alsoin-label" id="alsoin-label">${esc(t('related.alsoIn'))}</span>

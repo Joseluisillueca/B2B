@@ -182,23 +182,20 @@ const windowId = () => {
   return (windows.find(w => w.orderType === type) || windows[0])?.id || '';
 };
 
-/**
- * La preferencia es un TIPO de ventana. Si la instancia no publica ese tipo (solo hay
- * programada, p. ej.), `windowId()` cae en la que existe pero el carrito, el botón del
- * header y el CTA de la ficha seguían hablando del tipo preferido: "Añadir a
- * REPOSICIÓN" sobre stock de la programada. Se realinea la preferencia al tipo que
- * existe, SOLO en ese caso: con los dos tipos publicados (MITO, ALMA) no toca nada.
- */
-const realignWindow = () => {
-  const wanted = state.prefs.window === 'scheduled' ? 'SCHEDULED' : 'REPLENISHMENT';
-  if (!windows.length || windows.some(w => w.orderType === wanted)) return;
-  const actual = windows[0].orderType === 'SCHEDULED' ? 'scheduled' : 'replenishment';
-  if (actual !== state.prefs.window) state.prefs = { ...state.prefs, window: actual };
-};
+// Si la instancia no publica el tipo de ventana preferido, la preferencia se realinea
+// al que existe con `state.alignWindow(windows)`: la MISMA regla que aplican el chrome
+// (cabecera y carrito) y la ficha, así ninguna pantalla habla de una ventana que no hay.
 
 export default async function catalog(host) {
   let query = readQuery();
   let data = null;
+
+  // En móvil la foto es la que vende: siete controles antes del primer artículo lo
+  // dejaban en la mitad inferior de la pantalla. Herramientas y filtros se recogen en
+  // UN desplegable cerrado (mismo lenguaje que los lookups de faceta) y solo el buscador
+  // queda a la vista. La decisión se toma al pintar, como la vista por defecto.
+  const mobile = window.matchMedia('(max-width:48rem)').matches;
+  const filtersHtml = `<div class="cat-filters" id="filters" aria-label="${esc(t('catalog.filters'))}"></div>`;
 
   host.innerHTML = `
     <div class="page catalog-top">
@@ -208,9 +205,17 @@ export default async function catalog(host) {
           ${pageHead(t('nav.catalog'), [t('nav.catalog')],
             '<span class="cat-count" id="count" role="status"></span><span class="cat-adapted" id="adapted" hidden></span>')}
         </div>
-        <div id="tools"></div>
+        ${mobile ? '' : '<div id="tools"></div>'}
       </div>
-      <div class="cat-filters" id="filters" aria-label="${esc(t('catalog.filters'))}"></div>
+      ${mobile ? `
+      <div class="cat-filters" id="searchHost"></div>
+      <details class="cat-lookup cat-mobile-tools">
+        <summary><span class="lk-name">${esc(t('catalog.filters'))}</span>${icons.chevron(14)}</summary>
+        <div class="cat-lookup-panel">
+          <div id="tools"></div>
+          ${filtersHtml}
+        </div>
+      </details>` : filtersHtml}
       <div class="cat-list" id="list">
         <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
       </div>
@@ -219,6 +224,9 @@ export default async function catalog(host) {
 
   const ribbon = host.querySelector('#ribbon');
   const filters = host.querySelector('#filters');
+  // Buscador: dentro de la barra de filtros en escritorio, fuera del desplegable en móvil
+  const searchHost = host.querySelector('#searchHost');
+  const searchInput = () => host.querySelector('#modelSearch');
   const list = host.querySelector('#list');
   const tools = host.querySelector('#tools');
   const count = host.querySelector('#count');
@@ -431,14 +439,22 @@ export default async function catalog(host) {
   };
 
   const paintPrices = () => {
-    // El total del artículo (unidades pedidas) se refresca sin repintar la matriz
+    // El TOTAL de línea (unidades × precio de cada talla) se refresca sin repintar la
+    // matriz y solo existe con unidades: sin ellas la fila no lleva segundo importe.
+    // El precio unitario ya va en la ficha; repetirlo bajo la matriz se leía como
+    // tarifa duplicada en las 24 filas de la página.
     for (const article of list.querySelectorAll('.item')) {
-      const units = [...article.querySelectorAll('.sz-qty')]
-        .reduce((sum, input) => sum + (Number(input.value) || 0), 0);
-      const badge = article.querySelector('.item-units');
-      if (!badge) continue;
-      badge.textContent = units ? t('catalog.units', { n: units }) : '';
-      badge.hidden = !units;
+      let units = 0, amount = 0;
+      for (const input of article.querySelectorAll('.sz-qty')) {
+        const qty = Number(input.value) || 0;
+        units += qty;
+        amount += qty * (Number(input.dataset.price) || 0);
+      }
+      const line = article.querySelector('.matrix-price');
+      if (!line) continue;
+      line.querySelector('.item-units').textContent = units ? t('catalog.units', { n: units }) : '';
+      line.querySelector('.item-total').textContent = units ? eur(amount) : '';
+      line.hidden = !units;
     }
   };
 
@@ -473,7 +489,7 @@ export default async function catalog(host) {
     // catálogo es quien las trae); si no coincide se repite una sola vez.
     const knew = windows.length > 0;
     windows = data.windows || [];
-    realignWindow();
+    state.alignWindow(windows);
     if (!knew && windowId() && data.window !== windowId()) return load({ keepScroll: true });
 
     // Tras el await el usuario puede haber navegado: si la vista ya no está
@@ -572,11 +588,17 @@ export default async function catalog(host) {
     const facets = visibleFacets();
     const collator = new Intl.Collator(lang(), { sensitivity: 'base' });
 
-    filters.innerHTML = `
+    const searchHtml = `
       <div class="cat-search">${icons.search(16)}
         <input type="search" id="modelSearch" value="${esc(query.q)}"
           placeholder="${esc(t('catalog.searchPlaceholder'))}" aria-label="${esc(t('catalog.facet.model'))}">
-      </div>
+      </div>`;
+    // En móvil el buscador vive fuera del desplegable y se pinta UNA vez: una faceta
+    // nueva reconstruye los lookups, no la caja donde el usuario está escribiendo.
+    if (searchHost && !searchInput()) searchHost.innerHTML = searchHtml;
+
+    filters.innerHTML = `
+      ${searchHost ? '' : searchHtml}
       ${lines.length ? `
       <details class="cat-lookup" data-lk="family">
         <summary><span class="lk-name">${esc(t('catalog.facet.lines'))}</span><span class="lk-count" data-count="family"></span>${icons.chevron(14)}</summary>
@@ -611,7 +633,7 @@ export default async function catalog(host) {
   }
 
   function wireFilters() {
-    const search = filters.querySelector('#modelSearch');
+    const search = searchInput();
     let timer;
     search.oninput = () => {
       clearTimeout(timer);
@@ -659,7 +681,7 @@ export default async function catalog(host) {
       if (chipBtn) return removeFilter(chipBtn.dataset.remove, chipBtn.dataset.value);
       if (event.target.closest('#clearAll')) {
         query = { ...query, q: '', family: '', availability: [], attributes: {}, skip: 0 };
-        const s = filters.querySelector('#modelSearch'); if (s) s.value = '';
+        const s = searchInput(); if (s) s.value = '';
         load();
       }
     });
@@ -667,7 +689,7 @@ export default async function catalog(host) {
 
   function removeFilter(group, value) {
     if (group === 'family') query = { ...query, family: '', skip: 0 };
-    else if (group === 'q') { query = { ...query, q: '', skip: 0 }; const s = filters.querySelector('#modelSearch'); if (s) s.value = ''; }
+    else if (group === 'q') { query = { ...query, q: '', skip: 0 }; const s = searchInput(); if (s) s.value = ''; }
     else if (group === 'availability') query = { ...query, availability: query.availability.filter(v => v !== value), skip: 0 };
     else {
       const key = group.slice(2);
@@ -684,7 +706,7 @@ export default async function catalog(host) {
     const lines = data.facets?.families || [];
     const attributes = data.facets?.attributes || [];
 
-    const search = filters.querySelector('#modelSearch');
+    const search = searchInput();
     if (search && document.activeElement !== search) search.value = query.q;
 
     filters.querySelectorAll('.cat-check input').forEach(input => {
@@ -898,10 +920,9 @@ export default async function catalog(host) {
 
         <div class="item-matrix">
           ${sizeMatrix(item, { windowKey: stockWindow, lines })}
-          ${main(item) ? `
-            <p class="item-price matrix-price"><span>${main(item).label}</span>
-              <b>${esc(eur(main(item).value))}</b>
-              <span class="item-units" hidden></span></p>` : '<p class="item-units" hidden></p>'}
+          <!-- Total de LÍNEA (unidades × precio), rellenado por paintPrices() y solo
+               visible con unidades: el precio unitario ya va arriba, en la ficha. -->
+          <p class="item-price matrix-price" hidden><span class="item-units"></span><b class="item-total"></b></p>
         </div>
       </article>`;
   }

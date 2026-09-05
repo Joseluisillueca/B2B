@@ -94,12 +94,15 @@ export function linesTable(lines, { delivered = false } = {}) {
  *   filters    false quita los selects de la toolbar (devoluciones solo busca)
  *   action     { label, icon, onClick } sustituye al botón azul de exportar
  *              (en /sat es "⊕ NUEVA DEVOLUCIÓN", que no exporta: crea)
+ *   emptyFirst { text, cta, href } mensaje de la PRIMERA visita: sin filtros y sin
+ *              documentos no hay "resultados" que no se hayan encontrado, es que la
+ *              cuenta aún no tiene historial. Sin esto queda el genérico docs.empty.
  *
  * Devuelve { reload } para que la vista repinte tras crear algo.
  */
 export async function docList(host, config) {
   const { key, endpoint, crumb, statuses, sorts, columns, cells, detail,
-    filters = true, action = null, onRendered = null } = config;
+    filters = true, action = null, onRendered = null, emptyFirst = null } = config;
 
   let query = readQuery();
   let data = null;
@@ -207,8 +210,9 @@ export async function docList(host, config) {
 
   // ── Toolbar ─────────────────────────────────────────────────────────────────
   function paintTools() {
-    // "Temporada" no tiene origen en BC todavía (seasonId llega vacío, plan §5):
-    // sin datos el select va vacío y deshabilitado en vez de mentir con opciones.
+    // "Temporada" solo cuando el listado trae temporadas (seasonId llega vacío mientras
+    // BC no lo alimente, plan §5): un select apagado sin explicación parecía averiado,
+    // y sin temporadas no hay nada que elegir.
     const seasons = data.seasons || [];
 
     tools.innerHTML = `
@@ -219,12 +223,11 @@ export async function docList(host, config) {
           <button type="submit" aria-label="${esc(t('docs.searchLabel'))}">${icons.search(17)}</button>
         </form>
 
-        ${filters ? `
+        ${filters && seasons.length ? `
         <label class="tb-field">
           <span class="tb-legend">${esc(t('docs.season'))}</span>
           <span class="tb-select">
-            <select id="season" aria-label="${esc(t('docs.season'))}"${seasons.length ? '' : ' disabled'}
-              ${seasons.length ? '' : `title="${esc(t('docs.noSeason'))}"`}>
+            <select id="season" aria-label="${esc(t('docs.season'))}">
               <option value="">${esc(t('docs.seasonAll'))}</option>
               ${seasons.map(season => `<option value="${esc(season)}"${season === query.season ? ' selected' : ''}>
                 ${esc(season)}</option>`).join('')}
@@ -296,6 +299,15 @@ export async function docList(host, config) {
       empty: t('docs.empty')
     });
 
+    // Sin filtros y sin documentos no se ha "buscado" nada: es la primera visita de
+    // una cuenta sin historial, y la vista dice qué hacer (Pedidos → ir al catálogo).
+    const filtered = query.search || query.status || query.season || query.dates;
+    const emptyLine = list.querySelector('.grid-empty');
+    if (!items.length && !filtered && emptyFirst && emptyLine) {
+      emptyLine.innerHTML = `${esc(emptyFirst.text)}${emptyFirst.href ? ` <a href="${esc(emptyFirst.href)}"
+        style="color:var(--blue);font-weight:700;text-decoration:underline;text-underline-offset:3px">${esc(emptyFirst.cta)}</a>` : ''}`;
+    }
+
     // El número de documento abre su detalle; el resto de enlaces de la fila
     // (seguimiento del transportista) son anclas normales que van a su destino.
     list.querySelectorAll('[data-open]').forEach(button => {
@@ -320,7 +332,11 @@ export async function docList(host, config) {
 
   // ── Paginación ──────────────────────────────────────────────────────────────
   function paintPager() {
-    pagerHost.innerHTML = pager({ total: data.total ?? 0, skip: query.skip, take: query.take });
+    // Paginador solo si hay algo que paginar (o se llegó por URL a una página que ya no
+    // existe y hay que poder volver): «‹ 1 ›» y "Mostrar 12" sobre cero filas es ruido.
+    const total = data.total ?? 0;
+    if (total <= query.take && !query.skip) { pagerHost.innerHTML = ''; return; }
+    pagerHost.innerHTML = pager({ total, skip: query.skip, take: query.take });
     bindPager(pagerHost, {
       take: query.take,
       onPage: skip => { query = { ...query, skip: Math.max(0, skip) }; load(); },

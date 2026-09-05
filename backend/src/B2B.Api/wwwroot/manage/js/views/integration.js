@@ -173,6 +173,9 @@ const TOKEN_COLORS = [
   ['card', 'Fondo de paneles', '#f8f4f4', 'Banda de pestañas, tarjetas, resumen del pedido y cajón del carrito.'],
   ['rule', 'Color de los filetes de sección', '#111111', 'Las reglas que abren cada bloque: cabecera de tabla, KPI, precio, resumen del pedido.'],
   ['accent', 'Acento secundario', '#e15b47', 'Favoritos, avisos de deuda, barras de los cuadros de mando. Ponlo igual que el color de marca si quieres un único acento.'],
+  // El tinte gobierna a la vez el fondo de los avisos (acento) y el de chips/píldoras (color de
+  // marca): una marca «sin tintes» pone aquí su papel y el texto encima no se oscurece.
+  ['accentSoft', 'Tinte del acento', '#fff2ef', 'El fondo de avisos, chips de estado y píldoras de unidades. Vacío se deriva del color (14 % sobre blanco). Ponlo igual que el fondo de página para una marca sin tintes: el texto encima se queda en el color de marca.'],
 ];
 // Medidas con unidad: [clave, etiqueta, ejemplo, ayuda]
 const TOKEN_SIZES = [
@@ -209,6 +212,13 @@ const isWeight = v => /^[1-9]00$/.test(v);
 // Pesos que ofrece el desplegable: todos los que entiende font-weight, con el nombre usual.
 const WEIGHTS = [['400', '400 · Normal'], ['500', '500 · Medio'], ['600', '600 · Semibold'],
   ['700', '700 · Bold'], ['800', '800 · Extrabold'], ['900', '900 · Black']];
+// Anchura de los titulares: porcentaje de font-stretch entre 50 % y 200 % (asStretch del portal /
+// BrandStretch del servidor). Fuera de rango CSS lo ignora y el titular vuelve a la anchura normal.
+const isStretch = v => /^\d{1,3}(\.\d{1,2})?%$/.test(v) && parseFloat(v) >= 50 && parseFloat(v) <= 200;
+// Anchuras que ofrece el desplegable: las de font-stretch con su nombre usual (100 % es «Por defecto»).
+const STRETCHES = [['62.5%', '62,5 % · Extra condensada'], ['75%', '75 % · Condensada'], ['87.5%', '87,5 % · Semicondensada'],
+  ['112.5%', '112,5 % · Semiexpandida'], ['125%', '125 % · Expandida'], ['150%', '150 % · Extraexpandida'],
+  ['200%', '200 % · Ultraexpandida']];
 
 /** Nº de tokens con valor (para el chip del acordeón). */
 const countTokens = tk => Object.values(tk || {}).filter(v => v !== null && v !== '' && v !== false).length;
@@ -267,6 +277,12 @@ function tokensPanel(tk, open) {
             <label class="mng-check"><input type="checkbox" id="tk_caps" ${tk.caps === true ? 'checked' : ''}>
               <span>Titulares y botones en MAYÚSCULAS</span></label>
             <span class="acc-hint">Estética de moda/lujo. Desactivado, los textos van tal y como se escriben.</span></p>
+          <p class="acc-field"><span>Botones secundarios</span>
+            <label class="mng-check"><input type="checkbox" id="tk_ctaCaps" ${tk.ctaCaps === true ? 'checked' : ''}>
+              <span>Enlaces y botones de acción en MAYÚSCULAS</span></label>
+            <span class="acc-hint">Los botones principales ya van en mayúscula; esto iguala los demás («Explorar el
+              catálogo», «Añadir», «Ver la colección», descargas) con el mismo espaciado, sin tocar titulares
+              ni nombres de producto.</span></p>
           <p class="acc-field"><label for="tk_displayWeight"><span>Peso de los titulares</span></label>
             <select id="tk_displayWeight">
               <option value="">Por defecto (500 en página, 800 en acceso y portada)</option>
@@ -275,6 +291,16 @@ function tokensPanel(tk, open) {
             <span class="acc-hint">Un solo peso para TODOS los titulares (catálogo, ficha, pedidos, portada,
               acceso). La webfont tiene que traer ese peso: con Google Fonts, pide el rango
               (<code>wght@400..900</code>).</span></p>
+          <p class="acc-field"><label for="tk_displayStretch"><span>Anchura de los titulares</span></label>
+            <select id="tk_displayStretch">
+              <option value="">Por defecto (normal, 100 %)</option>
+              ${STRETCHES.map(([w, label]) => `<option value="${w}" ${v('displayStretch') === w ? 'selected' : ''}>${label}</option>`).join('')}
+              ${v('displayStretch') && !STRETCHES.some(([w]) => w === v('displayStretch'))
+                ? `<option value="${esc(v('displayStretch'))}" selected>${esc(v('displayStretch'))}</option>` : ''}
+            </select>
+            <span class="acc-hint">Solo los titulares (portada, acceso, catálogo, KPI); los nombres de producto
+              siguen en anchura normal. La webfont tiene que traer el eje de anchura: con Google Fonts, pide
+              <code>wdth,wght@62..125,400..900</code>. Sin ese eje no se ve el cambio.</span></p>
         </div>
 
         <h3 class="brt-group">Formas y espaciado</h3>
@@ -389,6 +415,7 @@ function readTokens(main, media) {
     t.fontFamily = fontFamily;
   }
   if (main.querySelector('#tk_caps')?.checked) t.caps = true;   // false = el valor de siempre
+  if (main.querySelector('#tk_ctaCaps')?.checked) t.ctaCaps = true;
   const mode = main.querySelector('#tk_heroMode')?.value;
   if (mode === 'none') t.heroFilter = 'none';
   else if (mode === 'custom') {
@@ -415,6 +442,11 @@ function readTokens(main, media) {
   if (weight) {
     if (!isWeight(weight)) return bad('displayWeight', '«Peso de los titulares» debe ser una centena de 100 a 900 (p. ej. 900).');
     t.displayWeight = weight;
+  }
+  const stretch = val('tk_displayStretch');
+  if (stretch) {
+    if (!isStretch(stretch)) return bad('displayStretch', '«Anchura de los titulares» debe ser un porcentaje entre 50% y 200% (p. ej. 125%).');
+    t.displayStretch = stretch;
   }
   const legal = val('tk_legal');
   if (legal) {

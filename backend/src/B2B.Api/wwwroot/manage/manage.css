@@ -158,6 +158,10 @@ a.btn-primary, a.btn-ghost, a.btn-danger { text-decoration:none; }
 .qa:hover { transform:translateY(-2px); box-shadow:var(--shadow-card); border-color:var(--line-control); }
 .qa-ic { display:grid; place-items:center; width:2.8rem; height:2.8rem; flex:none; color:var(--blue);
   background:var(--blue-soft); }
+/* Gestión carga el mismo initBranding que el portal, así que <html data-hero-style> también
+   existe aquí. Con el token accentSoft en el papel el cuadrado pierde el rosa (--blue-soft pasa
+   a ser el papel) y necesita un límite: el filete de 1px en el color de marca, como los chips. */
+html[data-hero-style="paper"] .qa-ic { border:1px solid var(--blue); }
 .qa-txt { flex:1; display:flex; flex-direction:column; gap:.15rem; }
 .qa-txt b { font-size:1rem; }
 .qa-txt span { font-size:.84rem; color:var(--muted); }

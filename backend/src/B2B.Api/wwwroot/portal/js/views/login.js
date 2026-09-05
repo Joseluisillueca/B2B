@@ -28,8 +28,13 @@ export default function login(host) {
           <button class="submit" type="submit">${esc(t('login.submit'))}</button>
           <p class="err" role="alert"></p>
 
-          <h2>${esc(t('login.noAccountTitle'))}</h2>
+          <!-- Dos preguntas distintas, dos bloques: «no puedo entrar» (ya soy cliente y algo
+               falla: va pegado al formulario y a su error) y «no tengo cuenta» (alta). Antes la
+               ayuda de acceso colgaba bajo «¿No tienes cuenta?», donde no respondía a nadie. -->
+          <h2>${esc(t('login.helpTitle'))}</h2>
           <p data-brand-support data-fallback="${esc(t('login.help'))}" data-fallback-noemail="${esc(t('login.helpNoEmail'))}">${brandSupport(t('login.help'), t('login.helpNoEmail'))}</p>
+
+          <h2>${esc(t('login.noAccountTitle'))}</h2>
           <!-- «Crear una cuenta» lleva a la página de contacto (el alta la tramita la marca a
                mano): antes era href="#" sin handler, un enlace que no hacía nada. -->
           <a class="create" href="${href('contact')}">${esc(t('login.create'))}</a>

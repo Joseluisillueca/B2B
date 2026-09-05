@@ -242,7 +242,7 @@ body:has(#hero) { background:var(--paper); }
   line-height:.98; letter-spacing:var(--brand-tracking,-.02em); margin:.1rem 0 .8rem; text-wrap:balance;
   text-shadow:0 2px 30px rgba(0,0,0,.35); }
 .hero-cta { display:inline-flex; align-items:center; gap:.6rem; color:#fff; text-decoration:none;
-  font-weight:600; font-size:.92rem; letter-spacing:.02em; border:1px solid rgba(255,255,255,.6);
+  font-weight:600; font-size:.92rem; letter-spacing:var(--brand-cta-tracking,.02em); border:1px solid rgba(255,255,255,.6);
   border-radius:999px; padding:.72rem 1.5rem; transition:background .18s var(--ease), color .18s var(--ease), border-color .18s var(--ease); }
 .hero-cta:hover { background:#fff; color:var(--ink); border-color:#fff; }
 .hero-cta:focus-visible { outline:2px solid #fff; outline-offset:3px; }
@@ -302,7 +302,7 @@ body:has(#hero) { background:var(--paper); }
   letter-spacing:var(--brand-tracking,-.03em); line-height:1.1; }
 .c-caption span { font-size:clamp(.9rem,1.2vw,1.05rem); color:#e9e9ee; }
 .c-caption .c-cta { margin-top:.7rem; background:var(--blue); color:#fff; font-weight:700;
-  border-radius:var(--r-sm); padding:.6rem 1.15rem; letter-spacing:.02em; }
+  border-radius:var(--r-sm); padding:.6rem 1.15rem; letter-spacing:var(--brand-cta-tracking,.02em); }
 .c-slide:hover .c-cta { background:var(--blue-deep); }
 
 .c-arrow { position:absolute; top:50%; translate:0 -50%; width:2.6rem; height:2.6rem; border-radius:50%;
@@ -357,8 +357,10 @@ body:has(#hero) { background:var(--paper); }
 .tile:focus-visible { outline:3px solid #fff; outline-offset:-3px; box-shadow:0 0 0 3px var(--blue); }
 .tile img, .tile .t-art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
   transition:scale .5s var(--ease); }
-/* 1.04 sobre una tarjeta de 900px era un tirón de 36px; a este tamaño 1.02 se lee mejor */
-.tile:hover img, .tile:hover .t-art { scale:1.02; }
+/* 1.04 sobre una tarjeta de 900px era un tirón de 36px; a este tamaño 1.02 se lee mejor.
+   Solo con puntero real: en táctil el :hover se queda pegado tras el toque y la tarjeta
+   tocada quedaba ampliada hasta tocar otra. */
+@media (hover:hover) { .tile:hover img, .tile:hover .t-art { scale:1.02; } }
 /* Sin imagen en el CMS, la tarjeta se sostiene con el color de marca. Planos, no
    degradados: los tres rojos y los tres grises literales eran los de MITO y una instancia
    de otro color los heredaba tal cual en su portada. */
@@ -432,7 +434,9 @@ body[data-chrome="credentials"] { background:var(--ink); }
 
 /* Login (00-inicio.png) */
 .login-card { width:min(29rem,100%); }
-.login-card .field { width:100%; border:1px solid #ccc; border-radius:4px; padding:.85rem 1rem;
+/* El borde va por el token de control (era un #ccc literal, 1,6:1: la caja de Contraseña casi
+   no existía frente a la de Email en foco), así sigue a --line-control de cada instancia. */
+.login-card .field { width:100%; border:1px solid var(--line-control); border-radius:4px; padding:.85rem 1rem;
   margin-bottom:.9rem; transition:border-color .15s var(--ease); }
 .login-card .field:focus { border-color:var(--blue); }
 /* Un solo marco de 2px al enfocar (borde + sombra interior pegada), no borde + hueco
@@ -455,7 +459,7 @@ body[data-chrome="credentials"] { background:var(--ink); }
 /* Activación / recuperación de contraseña (Fase 2). Reutiliza la tarjeta del login */
 .activate-card h1 { font-family:var(--display); font-size:1.5rem; margin:0 0 .5rem; color:var(--ink); }
 .activate-card .activate-lead { color:var(--ink-2); margin:0 0 1.2rem; }
-.activate-card .activate-form .field { width:100%; border:1px solid #ccc; border-radius:4px;
+.activate-card .activate-form .field { width:100%; border:1px solid var(--line-control); border-radius:4px;
   padding:.85rem 1rem; font-size:1rem; margin:0 0 .9rem; }
 .activate-card .activate-form .field:focus { border-color:var(--blue); }
 .activate-card .activate-form .field:focus-visible { outline:2px solid var(--blue); outline-offset:1px; }
@@ -558,8 +562,11 @@ body[data-chrome="credentials"] { background:var(--ink); }
 .btn-ghost:hover:not([disabled]) { border-color:var(--ink); }
 .btn-danger { background:#fff; color:var(--out); border:1px solid var(--out); }
 .btn-danger:hover:not([disabled]) { background:#fdf1f0; }
+/* Deshabilitado por tokens, no por grises literales: el #e6e5e0/#75746e eran los grises
+   CÁLIDOS de MITO y sobre un papel frío se veían beige. --surface/--muted dan 4,6:1 en MITO
+   y 4,9:1 en BLOCCO, y siguen la temperatura del papel de cada instancia. */
 .btn-primary[disabled], .btn-ghost[disabled], .btn-danger[disabled] {
-  background:#e6e5e0; color:#75746e; border-color:transparent; cursor:not-allowed; }
+  background:var(--surface); color:var(--muted); border-color:transparent; cursor:not-allowed; }
 .block { width:100%; }
 .link { color:var(--blue); text-decoration:underline; text-underline-offset:3px; }
 
@@ -696,6 +703,9 @@ body[data-focus="on"] .cat-count::before { content:none; }
   border-radius:var(--r-sm); }
 .tb-export:hover:not([disabled]) { color:var(--blue); }
 .tb-export[disabled] { color:var(--muted); cursor:progress; }
+/* Las descargas (CSV de stock, catálogo PDF) son de escritorio: en 390px eran dos de los
+   siete controles que había que pasar antes de ver el primer producto. */
+@media (max-width:48rem) { .tb-export { display:none; } }
 .tb-field { display:block; position:relative; }
 .tb-legend { position:absolute; top:-.55rem; left:.6rem; background:var(--paper); padding:0 .3rem;
   font-size:.7rem; color:var(--muted); z-index:1; }
@@ -873,7 +883,9 @@ body[data-focus="on"] .cat-ribbon { display:none; }
 /* Fila de artículo */
 .item { display:grid; grid-template-columns:17rem minmax(0,1fr);
   grid-template-areas:"photo info" "photo matrix"; column-gap:2.4rem; row-gap:1.6rem;
-  align-items:start; padding:2.4rem 0; border-bottom:1px solid var(--line); }
+  /* El divisor entre filas toma el COLOR del filete de marca (como el hilo de la cabecera):
+     con `rule` configurado, un solo lenguaje de regla en toda la sesión; sin él, el gris. */
+  align-items:start; padding:2.4rem 0; border-bottom:1px solid var(--brand-rule,var(--line)); }
 .item-photo { grid-area:photo; }
 /* En filas anchas el bloque de texto (título + ref + atributos + precio) se acota a
    una medida legible para que el corazón no flote lejos del nombre; la matriz de
@@ -884,7 +896,7 @@ body[data-focus="on"] .cat-ribbon { display:none; }
 .item-photo { aspect-ratio:4/5; background:var(--surface); border-radius:var(--r); display:grid;
   place-items:center; overflow:hidden; }
 .item-photo img { width:100%; height:100%; object-fit:cover; transition:scale .5s var(--ease); }
-.item:hover .item-photo img { scale:1.04; }
+@media (hover:hover) { .item:hover .item-photo img { scale:1.04; } }   /* táctil: sin :hover pegado */
 .item-art { color:var(--ink); opacity:.2; }
 
 .item-title { display:flex; align-items:flex-start; gap:1rem; }
@@ -982,7 +994,7 @@ body[data-focus="on"] .cat-ribbon { display:none; }
 .pcard-media { position:relative; aspect-ratio:4/5; background:var(--surface); border-radius:var(--r);
   overflow:hidden; display:grid; place-items:center; }
 .pcard-media img { width:100%; height:100%; object-fit:cover; transition:scale .5s var(--ease); }
-.pcard:hover .pcard-media img { scale:1.05; }
+@media (hover:hover) { .pcard:hover .pcard-media img { scale:1.05; } }   /* táctil: sin :hover pegado */
 .pcard-media .item-art { color:var(--ink); opacity:.2; }
 /* El corazón flota sobre la foto, en una pastilla crema translúcida */
 .pcard-fav { position:absolute; top:.7rem; right:.7rem; z-index:2; width:2.2rem; height:2.2rem;
@@ -1231,7 +1243,7 @@ a.alsoin-thumb:hover .alsoin-color { color:var(--ink); }
 .product-docs { display:flex; flex-wrap:wrap; gap:.8rem; margin:2rem 0 0; padding:1.6rem 0 0;
   border-top:1px solid var(--line); }
 .product-doc { display:inline-flex; align-items:center; gap:.5rem; font-size:.82rem; font-weight:600;
-  letter-spacing:.02em; color:var(--ink); border:1px solid var(--line-control); border-radius:var(--r-sm);
+  letter-spacing:var(--brand-cta-tracking,.02em); color:var(--ink); border:1px solid var(--line-control); border-radius:var(--r-sm);
   padding:.62rem 1rem; background:var(--card);
   transition:border-color .15s var(--ease), color .15s var(--ease); }
 .product-doc:not([disabled]):hover { border-color:var(--ink); }
@@ -2047,7 +2059,8 @@ table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6
 .lb-empty { text-align:center; color:var(--muted); padding:3rem 1rem; }
 
 .lb-story { display:grid; grid-template-columns:1fr 1fr; gap:2rem 3rem; align-items:center;
-  padding:2.6rem 0; border-top:1px solid var(--line);
+  /* Entre capítulos, el color del filete de marca si lo hay (mismo patrón que .item). */
+  padding:2.6rem 0; border-top:1px solid var(--brand-rule,var(--line));
   grid-template-areas:"media text" "shop shop"; }
 .lb-story.lb-right { grid-template-areas:"text media" "shop shop"; }
 .lb-story:first-child { border-top:none; }
@@ -2069,7 +2082,11 @@ table.grid th.cl-pick-col, table.grid td.cl-pick-col { text-align:right; width:6
   display:inline-flex; align-items:center; gap:.5rem; }
 /* Grosor por token (ruleWidth): sin él, los 2px de siempre. */
 .lb-shop-title::before { content:""; width:1.6rem; height:var(--rule-w); background:var(--lb-accent); display:inline-block; }
-.lb-rail { display:grid; grid-auto-flow:column; grid-auto-columns:21rem; justify-content:start; gap:1.2rem; min-width:0;
+/* Tres tarjetas EXACTAS por página del raíl: con 21rem fijos en la columna de 1112px asomaban
+   45px de una cuarta («BUN», «PVD 4», medio botón «Añadir»), un control partido que no se leía
+   como peek sino como error. Las flechas .lb-prev/.lb-next ya paginan; ≤52rem sigue con su
+   minmax (una tarjeta y media, ahí sí es un peek). */
+.lb-rail { display:grid; grid-auto-flow:column; grid-auto-columns:calc((100% - 2 * 1.2rem) / 3); justify-content:start; gap:1.2rem; min-width:0;
   overflow-x:auto; scroll-snap-type:x mandatory; padding:.2rem .2rem 1rem; }
 .lb-rail .pcard { scroll-snap-align:start; }
 /* En el lookbook la tarjeta NO es un enlace estirado: tiene su propia acción
@@ -2478,6 +2495,27 @@ h1.title, .product-name, .item h2, .pcard-name, .t-label, .sel-panel h2 { font-w
 .hero-title, .login-display, .login-h, .cred-h, .kpi-value, .bd-kpi-value, .lb-story-text h2 { font-weight:var(--brand-display-weight,800); }
 .c-caption strong { font-weight:var(--brand-display-weight,700); }
 
+/* ═══════════ Marca configurable: ANCHURA de los titulares (token displayStretch) ═══════════
+   El wordmark de BLOCCO y toda su referencia van en Archivo Expanded, y en la misma cabecera
+   convivían el logotipo expandido y un «Catálogo» estrecho. El token llega como
+   --brand-display-stretch (porcentaje, 50 %..200 %); sin él vale 100 %, que es exactamente el
+   «normal» que heredan hoy, así que MITO y ALMA (Gill Sans no tiene eje wdth) no se mueven.
+   Es la lista de DISPLAY: los nombres de producto (.product-name, .item h2, .pcard-name) quedan
+   fuera a propósito porque en la referencia van en anchura normal. La webfont tiene que traer
+   el eje: con Google Fonts, family=Archivo:wdth,wght@62..125,400..900. */
+h1.title, .hero-title, .login-display, .login-h, .cred-h, .cred-hero-name, .lb-story-text h2, .t-label, .kpi-value,
+.c-caption strong, .related-title { font-stretch:var(--brand-display-stretch,100%); }
+
+/* ═══════════ Marca configurable: MAYÚSCULAS de los botones secundarios (token ctaCaps) ═══════════
+   .btn-primary ya va en mayúscula con tracking (INICIAR SESIÓN, AÑADIR A PROGRAMACIÓN); estos
+   otros botones y enlaces de acción iban en caja de frase: dos voces de botón en la misma
+   pantalla. El token `caps` no sirve porque pondría en mayúscula también h1 y nombres de
+   producto. Sin token text-transform vale «none» y el tracking conserva el valor de hoy de cada
+   pieza (.02em en .hero-cta/.c-cta/.product-doc, que lo leen en su propia regla; normal en el
+   resto), así que nada cambia en MITO ni en ALMA. */
+.hero-cta, .c-cta, .lb-add, .product-doc, .tb-export, .tb-seg-opt, .lb-selbar-toggle { text-transform:var(--brand-cta-caps,none); }
+.lb-add, .tb-export, .tb-seg-opt, .lb-selbar-toggle { letter-spacing:var(--brand-cta-tracking,normal); }
+
 /* ═══════════ Marca configurable: hero sobre PAPEL (token heroStyle = "paper") ═══════════
    branding.js pone <html data-hero-style="paper"> cuando la instancia lo configura; sin
    token el atributo no existe y NADA de este bloque se aplica (ALMA y MITO intactos).
@@ -2509,7 +2547,8 @@ html[data-hero-style="paper"] .tile::after { display:none; }
 html[data-hero-style="paper"] .tile:focus-visible { outline:2px solid var(--blue); outline-offset:2px; box-shadow:none; }
 html[data-hero-style="paper"] .t-body { position:static; background:none; padding:.9rem 0 0; border-top:var(--rule-w) solid var(--rule); }
 html[data-hero-style="paper"] .t-label { color:var(--blue); }
-html[data-hero-style="paper"] .tile:hover .t-label { text-decoration:underline; text-underline-offset:.12em; }
+/* Solo con puntero: en táctil el subrayado se quedaba fijo en la última tarjeta tocada. */
+@media (hover:hover) { html[data-hero-style="paper"] .tile:hover .t-label { text-decoration:underline; text-underline-offset:.12em; } }
 html[data-hero-style="paper"] .t-sub { color:var(--ink-2); }
 html[data-hero-style="paper"] .t-cart { color:var(--ink); }
 /* Hero del lookbook (carrusel con pie por diapositiva): el pie va en tinta sobre una
@@ -2531,3 +2570,58 @@ html[data-hero-style="paper"] .viewer-stage { background:var(--surface); }
 html[data-hero-style="paper"] .avatar { background:none !important; border:1px solid currentColor; color:var(--header-ink); }
 html[data-hero-style="paper"] #assistant-fab { background:var(--header-bg) !important; color:var(--header-ink); border:1px solid var(--header-ink); }
 html[data-hero-style="paper"] #assistant-fab:hover { background:var(--surface) !important; }
+
+/* ── Ronda 2 de crítica de BLOCCO 5: todo cuelga del mismo atributo (sin token, nada de esto existe) ── */
+
+/* Bordes de control: el #bab6b6 de :root da 2:1 sobre papel blanco, por debajo del 3:1 que
+   pide WCAG 1.4.11 para el límite de un campo (buscador, selects, chips, casilla de
+   condiciones). #8a8686 = 3,6:1 sobre blanco y 3,1:1 sobre la placa #f0efed. Se sube aquí y
+   no en :root porque el papel de MITO/ALMA es otro y esa subida es decisión de sus dueños. */
+html[data-hero-style="paper"] { --line-control:#8a8686; }
+
+/* Un solo rojo, sin tintes: con el token accentSoft en el papel, el aviso y los chips pierden
+   el fondo rosa y se delimitan con el filete de 1px de p02. El resumen del checkout deja el
+   marco por los cuatro lados (la «danger card» de framework) y se queda con el filete
+   superior, como abre cualquier otro capítulo del portal. */
+html[data-hero-style="paper"] .notice-error { border-top:var(--rule-w) solid var(--rule); padding-top:1rem; }
+html[data-hero-style="paper"] .ck-side { border-width:var(--rule-w) 0 0 !important; }
+html[data-hero-style="paper"] .item-units, html[data-hero-style="paper"] .chip.tone-red { border:1px solid var(--blue); border-radius:0; }
+
+/* Carrusel de portada sobre papel: los mandos salen de la foto. Los puntos van DEBAJO (el
+   activo, rojo, caía sobre el producto) y en tinta: el blanco al 55 % y la pausa blanca al
+   80 % eran invisibles sobre papel blanco, y la pausa es la única forma de parar una rotación
+   automática (WCAG 2.2.2). .carousel lleva overflow:hidden para tapar las diapositivas
+   vecinas: se cambia por un clip-path que solo cierra los lados y deja asomar 2,6rem por
+   abajo, donde vive la fila de puntos (.6rem de margen + 24px de botón < 2,6rem). El kenburns
+   se apaga: sobre una retícula de producto el zoom recorta los pares exteriores durante 20 s. */
+html[data-hero-style="paper"] .hero-media { margin-bottom:2.6rem; }
+html[data-hero-style="paper"] .hero-media .carousel { overflow:visible; clip-path:inset(0 0 -2.6rem 0); }
+/* A plomo con el titular: el overlay es una columna de --maxw centrada con --gutter de
+   sangría, así que el primer punto cae bajo la primera letra del H1 a cualquier ancho. */
+html[data-hero-style="paper"] .hero-media .c-dots { top:100%; bottom:auto; margin-top:.6rem; justify-content:flex-start;
+  padding-left:max(var(--gutter), calc((100% - var(--maxw)) / 2 + var(--gutter))); }
+html[data-hero-style="paper"] .c-dots button[data-go]::before { background:var(--line-control); border-radius:0; }
+html[data-hero-style="paper"] .c-dots button[data-go]:hover::before { background:var(--ink); }   /* el #fff base desaparecería */
+html[data-hero-style="paper"] .c-dots button[aria-current="true"]::before { background:var(--blue); }
+html[data-hero-style="paper"] .c-dots .c-play { color:var(--ink); opacity:1; }
+html[data-hero-style="paper"] .c-dots button:focus-visible { outline-color:var(--blue); }
+html[data-hero-style="paper"] .c-arrow { color:var(--ink); background:var(--paper); border:1px solid var(--ink); border-radius:0; }
+html[data-hero-style="paper"] .hero-media .c-slide img { animation:none; }
+
+/* Hero del lookbook: la misma proporción 2,4:1 que la portada. A 3,4:1 el recorte «cover»
+   decapitaba la placa y el pie caía sobre el producto; ALMA y MITO siguen en 3,4:1. */
+html[data-hero-style="paper"] .lb-hero .carousel { aspect-ratio:2.4/1; }
+
+/* Etiquetas de los filtros («Ordenar por», «Temporada», «Fechas»): encima del control, en
+   mayúscula con tracking, como los dt del checkout (FECHA, MÉTODO DE PAGO). La etiqueta
+   flotante sobre el borde es el «outlined text field» de Material y nada más en el portal lo hace. */
+html[data-hero-style="paper"] .tb-field { display:grid; gap:.35rem; }
+html[data-hero-style="paper"] .tb-legend { position:static; background:none; padding:0; font-size:.7rem; font-weight:700;
+  letter-spacing:.07em; text-transform:uppercase; color:var(--hint); }
+
+/* Radios literales que se saltan el token: en p12 no hay un solo círculo. Gateado y no por
+   var(--r-sm) porque MITO tiene --r-sm:0 y luce esos círculos precisamente por el literal
+   50 %: sustituirlo le cuadraría también los puntos y las flechas de su carrusel. */
+html[data-hero-style="paper"] :is(.item-fav, .product-fav, .h-search button, .h-menu a, .h-menu button, .item-units,
+  .lb-selbar-toggle, .doc-modal-close, .cart-size, .cart-drop, .req-badge, .as-msg, .as-form textarea, .as-send,
+  .c-arrow, .c-dots button) { border-radius:0; }

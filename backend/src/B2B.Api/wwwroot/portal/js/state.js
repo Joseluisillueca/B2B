@@ -121,6 +121,27 @@ export const state = {
   /** Ventana activa: 'replenishment' | 'scheduled' — la que cuenta el botón azul */
   get window() { return state.prefs.window; },
 
+  /**
+   * La preferencia es un TIPO de ventana. Si la instancia no publica ese tipo (solo
+   * hay programada fuera de temporada, p. ej.), el catálogo cae en la que existe pero
+   * el botón del header, el carrito, las tarjetas de la portada y el CTA de la ficha
+   * seguían hablando del tipo preferido: "REPOSICIÓN (0)" sobre stock de la
+   * programada. Se realinea la preferencia al tipo publicado, SOLO en ese caso: con
+   * los dos tipos publicados no toca nada. Vive aquí, y no en cada vista, para que
+   * chrome, catálogo y ficha apliquen exactamente la misma regla sobre la misma
+   * lista `windows` ([{ id, name, orderType }]) que trae /api/shop/catalog.
+   * Devuelve true si la preferencia ha cambiado (el setter ya avisa al chrome).
+   */
+  alignWindow(windows) {
+    const list = Array.isArray(windows) ? windows : [];
+    const wanted = state.prefs.window === 'scheduled' ? 'SCHEDULED' : 'REPLENISHMENT';
+    if (!list.length || list.some(w => w.orderType === wanted)) return false;
+    const actual = list[0].orderType === 'SCHEDULED' ? 'scheduled' : 'replenishment';
+    if (actual === state.prefs.window) return false;
+    state.prefs = { ...state.prefs, window: actual };
+    return true;
+  },
+
   cartLines(windowKey = state.prefs.window) {
     return Object.values(state.cart[windowKey] || {});
   },

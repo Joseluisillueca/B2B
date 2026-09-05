@@ -51,6 +51,14 @@
 //                       del que cuelga el bloque «hero sobre papel» de app.css (portada,
 //                       banda de ventanas y hero del lookbook con el titular en tinta bajo
 //                       la foto en vez de blanco sobre velo). Único valor admitido: "paper".
+//   accentSoft        → --accent-soft y, además, --blue-soft/--blue-soft-text (el tinte del
+//                       COLOR DE MARCA): el fondo de avisos, chips y píldoras. Sin él se deriva
+//                       como siempre (14 % del acento sobre blanco). Una marca «sin tintes» pone
+//                       aquí su papel y el texto encima se queda en su rojo único
+//   displayStretch    → --brand-display-stretch (anchura de los TITULARES, "50%".."200%";
+//                       exige una webfont con eje wdth; sin token, 100 % = lo de hoy)
+//   ctaCaps           → --brand-cta-caps/--brand-cta-tracking (botones secundarios y enlaces
+//                       de acción en mayúscula con el tracking de .btn-primary)
 
 const KEY = 'b2b_branding';
 const DEFAULTS = { name: 'MITO PROJECTS', color: '#ec3013', logoUrl: null };
@@ -164,6 +172,14 @@ const asWeight = value => {
   const text = String(value).trim();
   return /^[1-9]00$/.test(text) ? text : null;
 };
+/** Anchura de los titulares: porcentaje de font-stretch. CSS solo admite de 50 % a 200 %; fuera
+    de rango la variable es inválida y el titular volvería a la anchura normal sin aviso. */
+const asStretch = value => {
+  const text = String(value).trim();
+  if (!/^\d{1,3}(\.\d{1,2})?%$/.test(text)) return null;
+  const pct = parseFloat(text);
+  return pct >= 50 && pct <= 200 ? text : null;
+};
 /** URL de recurso (logo, favicon, fuente): ni esquemas ejecutables ni nada que pueda
     cerrar el atributo, el url() del @font-face o la propia declaración (espacios,
     controles, comillas, paréntesis, `\`, `;`, `{}` — la misma lista del servidor). */
@@ -201,7 +217,9 @@ const TOKEN_SPEC = {
   heroFilter: asFilter, tagline: asTagline, supportEmail: asEmail,
   // Ronda 1 de crítica de BLOCCO 5: van al final para no alterar el orden (y por tanto el
   // JSON normalizado) de las instancias que no los usan.
-  heroStyle: asHeroStyle, displayWeight: asWeight, legal: asLegal
+  heroStyle: asHeroStyle, displayWeight: asWeight, legal: asLegal,
+  // Ronda 2 de crítica: mismo criterio (al final, y todos opcionales).
+  accentSoft: asColor, displayStretch: asStretch, ctaCaps: asBool
 };
 
 /** Deja solo los tokens conocidos y válidos, SIEMPRE en el mismo orden (así la
@@ -303,7 +321,11 @@ const MANAGED_VARS = [
   '--brand-card', '--brand-rule', '--brand-rule-w',
   // Los TRES del segundo acento: si faltara uno, al vaciar el token se quedaría pegado.
   '--accent', '--accent-deep', '--accent-soft',
-  '--brand-display-weight'
+  '--brand-display-weight',
+  // Ronda 2. --blue-soft/--blue-soft-text NO van aquí a propósito: los fija (o borra) apply()
+  // justo antes de llamar a applyTokenVars según el color de marca, y retirarlos en bloque
+  // aquí dejaría a MITO sin su tinte. Al quitar accentSoft, apply() ya los restaura.
+  '--brand-display-stretch', '--brand-cta-caps', '--brand-cta-tracking'
 ];
 
 function applyTokenVars(style) {
@@ -352,13 +374,31 @@ function applyTokenVars(style) {
   // --accent se deja crudo porque es FONDO con tinta blanca encima, y --accent-soft usa el
   // mismo 0.14 que --blue-soft: con accent = color de marca los dos coinciden EXACTAMENTE,
   // que es lo que significa «un solo acento».
+  // accentSoft (ronda 2) sustituye al tinte derivado. Una marca «de un solo rojo, sin tintes»
+  // pone aquí su PAPEL: como --accent-deep se mide contra ese fondo, el #e70917 de BLOCCO
+  // sobre blanco (4,7:1) se queda tal cual en vez de oscurecerse a un segundo rojo (#cb0814).
+  // Con la placa #f0efed daría 4,1:1 y volvería a oscurecer: por eso el valor es el papel.
+  const soft = tokens.accentSoft || (tokens.accent ? tint(tokens.accent, 0.14) : null);
   if (tokens.accent) {
-    const soft = tint(tokens.accent, 0.14);
     style.setProperty('--accent', tokens.accent);
     style.setProperty('--accent-deep', readableOnPaper(tokens.accent, soft));
-    style.setProperty('--accent-soft', soft);
+  }
+  if (soft) style.setProperty('--accent-soft', soft);
+  if (tokens.accentSoft) {
+    // El mismo fondo para el tinte del COLOR DE MARCA (píldora de unidades, chips de estado,
+    // cuadrados de Gestión): apply() acaba de fijar --blue-soft al 14 % y aquí se pisa, y su
+    // texto se vuelve a medir contra el fondo real. Al quitar el token, apply() lo restaura.
+    style.setProperty('--blue-soft', tokens.accentSoft);
+    style.setProperty('--blue-soft-text', readableOnPaper(brand.color, tokens.accentSoft));
   }
   if (tokens.displayWeight) style.setProperty('--brand-display-weight', tokens.displayWeight);
+  if (tokens.displayStretch) style.setProperty('--brand-display-stretch', tokens.displayStretch);
+  // Una sola voz de botón: el tracking es el que ya lleva .btn-primary, es decir, el token
+  // `tracking` si la instancia lo configura y si no sus .045em de siempre.
+  if (tokens.ctaCaps) {
+    style.setProperty('--brand-cta-caps', 'uppercase');
+    style.setProperty('--brand-cta-tracking', tokens.tracking || '.045em');
+  }
   // heroStyle no es una variable: es un atributo del <html> del que cuelga un bloque entero
   // de app.css. Se borra si el token deja de venir, por la misma razón que MANAGED_VARS.
   if (tokens.heroStyle) document.documentElement.dataset.heroStyle = tokens.heroStyle;

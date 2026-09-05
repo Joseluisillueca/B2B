@@ -12,14 +12,18 @@ import { agentDocList } from '../ui/agent-doc-list.js';
 import { statusChip } from '../ui/status-rail.js';
 import { modalFacts } from '../ui/modal.js';
 import { state } from '../state.js';
+import { href } from '../router.js';
 
-// Orden y colores del rail, tal cual la captura
+// Rail de estados en el orden del CICLO del pedido —Abierto → Envío parcial → Enviado →
+// Facturado— y Cancelado al final, fuera del flujo. La captura los llevaba en otro
+// orden (Facturado primero) y el rail se leía como una lista sin lógica. Los colores
+// se conservan.
 const STATUSES = [
-  { id: 'invoiced', tone: 'blue' },
+  { id: 'open', tone: 'green' },
   { id: 'partially-shipped', tone: 'lime' },
   { id: 'shipped', tone: 'amber' },
-  { id: 'canceled', tone: 'red' },
-  { id: 'open', tone: 'green' }
+  { id: 'invoiced', tone: 'blue' },
+  { id: 'canceled', tone: 'red' }
 ];
 
 const TONE = Object.fromEntries(STATUSES.map(status => [status.id, status.tone]));
@@ -65,6 +69,9 @@ export default async function orders(host) {
     endpoint: '/api/portal/orders',
     crumb: t('orders.crumb'),
     statuses: STATUSES,
+    // Primera visita sin historial: no es un "sin resultados" (no se ha filtrado nada),
+    // es que aún no hay pedidos, y lo siguiente es ir a hacer el primero.
+    emptyFirst: { text: t('orders.emptyFirst'), cta: t('checkout.goCatalog'), href: href('catalog/catalog') },
 
     columns: [
       { label: t('orders.col.number') },

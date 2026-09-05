@@ -60,6 +60,13 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
          "legal": "BLOCCO 5 vende exclusivamente a distribuidores y profesionales del sector. Cuéntanos quién eres y en 24 h laborables tendrás tu acceso."}
         """;
 
+    // Los tres de la RONDA 2: tinte del acento (color), anchura de los titulares (porcentaje de
+    // font-stretch) y mayúsculas de los botones secundarios (booleano). Aparte, como los de la
+    // ronda 1: el juego anterior de BLOCCO tiene que normalizarse igual que antes (prueba 15).
+    private const string Blocco5Round2Tokens = """
+        {"accentSoft": "#FFFFFF", "displayStretch": " 125% ", "ctaCaps": true}
+        """;
+
     // ── Utilidades ─────────────────────────────────────────────────────────────
 
     private async Task<HttpResponseMessage> PutBranding(string json)
@@ -184,6 +191,19 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal(new[] { "heroStyle", "displayWeight", "legal" },
             round1.EnumerateObject().Select(p => p.Name).ToArray());
         Assert.Equal("900", (await AdminSettingsAsync()).GetProperty("brandTokens").GetProperty("displayWeight").GetString());
+
+        // Los tres de la ronda 2: el color en minúsculas, el porcentaje recortado y el booleano.
+        (await PutTokens(Blocco5Round2Tokens)).EnsureSuccessStatusCode();
+        var round2 = await PublicTokensAsync();
+        Assert.Equal("#ffffff", round2.GetProperty("accentSoft").GetString());
+        Assert.Equal("125%", round2.GetProperty("displayStretch").GetString());
+        Assert.True(round2.GetProperty("ctaCaps").GetBoolean());
+        Assert.Equal(new[] { "accentSoft", "displayStretch", "ctaCaps" },
+            round2.EnumerateObject().Select(p => p.Name).ToArray());
+        Assert.Equal("125%", (await AdminSettingsAsync()).GetProperty("brandTokens").GetProperty("displayStretch").GetString());
+        // ctaCaps admite el false explícito, como caps.
+        (await PutTokens("""{"ctaCaps":false}""")).EnsureSuccessStatusCode();
+        Assert.False((await PublicTokensAsync()).GetProperty("ctaCaps").GetBoolean());
     }
 
     // ── 3. Tokens desconocidos: se ignoran EN SILENCIO ─────────────────────────
@@ -238,6 +258,8 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("card", "rojo")]
     [InlineData("rule", "rgb(0,0,0)")]
     [InlineData("accent", "#GGGGGG")]
+    [InlineData("accentSoft", "white")]
+    [InlineData("accentSoft", "#fff")]
     public async Task Tokens_ColorInvalido_400(string token, string value)
     {
         await ResetAsync();
@@ -263,6 +285,10 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("""{"displayWeight":900}""")]  // cadena "900", no número
     [InlineData("""{"heroStyle":true}""")]
     [InlineData("""{"legal":["x"]}""")]
+    [InlineData("""{"ctaCaps":"true"}""")]      // booleano, no cadena (como caps)
+    [InlineData("""{"ctaCaps":1}""")]
+    [InlineData("""{"displayStretch":125}""")] // cadena "125%", no número
+    [InlineData("""{"accentSoft":16777215}""")]
     public async Task Tokens_TipoInvalido_400(string tokensJson)
     {
         await ResetAsync();
@@ -486,6 +512,43 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal(expected, (await PublicTokensAsync()).GetProperty(token).GetString());
     }
 
+    // displayStretch es un porcentaje de font-stretch y CSS solo admite de 50 % a 200 %: fuera de
+    // rango (o sin el «%») la variable queda inválida y el titular vuelve a la anchura normal sin
+    // ningún aviso, así que el servidor lo rechaza con el nombre del token (para el editor).
+    [Theory]
+    [InlineData("125")]                // sin unidad
+    [InlineData("125px")]              // unidad equivocada
+    [InlineData("49%")]                // fuera de rango por abajo
+    [InlineData("201%")]               // fuera de rango por arriba
+    [InlineData("-125%")]
+    [InlineData("12.5.5%")]
+    [InlineData("expanded")]           // palabra clave: no es lo que lee la variable
+    [InlineData("125%;color:red")]     // inyección
+    public async Task Tokens_DisplayStretchInvalido_400(string value)
+    {
+        await ResetAsync();
+
+        var response = await PutTokens($$"""{"displayStretch":{{JsonSerializer.Serialize(value)}} }""");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("displayStretch", await ErrorAsync(response));
+        Assert.Equal(JsonValueKind.Null, (await PublicTokensAsync()).ValueKind);
+    }
+
+    [Theory]
+    [InlineData("125%", "125%")]
+    [InlineData(" 62.5% ", "62.5%")]   // recortado, con decimal
+    [InlineData("50%", "50%")]         // los dos extremos del rango, incluidos
+    [InlineData("200%", "200%")]
+    public async Task Tokens_DisplayStretchValido_SeGuarda(string value, string expected)
+    {
+        await ResetAsync();
+
+        (await PutTokens($$"""{"displayStretch":{{JsonSerializer.Serialize(value)}} }""")).EnsureSuccessStatusCode();
+
+        Assert.Equal(expected, (await PublicTokensAsync()).GetProperty("displayStretch").GetString());
+    }
+
     // Un «@» no basta: el portal (asEmail) exige dominio con punto y, si no lo tiene,
     // descartaba el token en silencio tras haber dicho «Marca guardada y aplicada».
     [Theory]
@@ -640,6 +703,34 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
         // Y a la inversa: los tres solos no arrastran ningún otro token.
         (await PutTokens(Blocco5Round1Tokens)).EnsureSuccessStatusCode();
         foreach (var name in new[] { "card", "rule", "ruleWidth", "accent", "paper", "tagline" })
+            Assert.False((await PublicTokensAsync()).TryGetProperty(name, out _), name);
+    }
+
+    // ── 15. Ronda 2 (accentSoft/displayStretch/ctaCaps): sin ellos TAMPOCO se mueve nada ──
+
+    // Misma garantía para la lista tal como quedó tras la ronda 1: el juego de BLOCCO 5 anterior
+    // a esta ronda (extensión + ronda 1, sin `legal`, cuyos acentos no son lo que se prueba aquí)
+    // se publica con las mismas claves y el mismo orden, sin que el servidor invente un
+    // accentSoft, un displayStretch o un ctaCaps con valor por defecto. Un `accentSoft`
+    // inventado pisaría el tinte de marca de una instancia que nunca lo pidió; un
+    // `displayStretch` inventado movería todos sus titulares.
+    [Fact]
+    public async Task Tokens_SinLosTresDeLaRonda2_ElJsonNormalizadoEsElDeAntes()
+    {
+        await ResetAsync();
+
+        (await PutTokens("""
+            {"card":"#F0EFED","rule":"#E70917","ruleWidth":"1px","accent":"#e70917","heroStyle":"PAPER","displayWeight":"900"}
+            """)).EnsureSuccessStatusCode();
+
+        const string antes = """{"card":"#f0efed","rule":"#e70917","ruleWidth":"1px","accent":"#e70917","heroStyle":"paper","displayWeight":"900"}""";
+        Assert.Equal(antes, (await PublicTokensAsync()).GetRawText());
+        Assert.Equal(antes, (await AdminSettingsAsync()).GetProperty("brandTokens").GetRawText());
+
+        // Y a la inversa: los tres solos no arrastran ningún otro token (ni un `accent` derivado
+        // del tinte, ni un `caps` a partir de ctaCaps).
+        (await PutTokens(Blocco5Round2Tokens)).EnsureSuccessStatusCode();
+        foreach (var name in new[] { "accent", "caps", "displayWeight", "heroStyle", "paper", "card", "tracking" })
             Assert.False((await PublicTokensAsync()).TryGetProperty(name, out _), name);
     }
 }

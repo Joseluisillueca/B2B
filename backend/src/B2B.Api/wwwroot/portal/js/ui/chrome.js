@@ -63,6 +63,22 @@ const SOCIAL = [
 
 const windowLabel = () => t(`window.${state.prefs.window}`).toUpperCase();
 
+// Ventanas de pedido publicadas ([{ id, name, orderType }]): UNA petición por sesión y
+// por token (el agente que cambia de cliente vuelve a preguntar), compartida con la
+// portada para que cabecera, carrito y tarjetas hablen de las mismas ventanas.
+// `take=0`: solo interesan las ventanas, no los artículos. Con error resuelve null y
+// quien la consume no filtra ni realinea nada.
+let windowsToken = null;
+let windowsPromise = null;
+export const publishedWindows = () => {
+  if (windowsPromise && windowsToken === state.token) return windowsPromise;
+  windowsToken = state.token;
+  windowsPromise = api.get('/api/shop/catalog?take=0')
+    .then(data => data?.windows || [])
+    .catch(() => null);
+  return windowsPromise;
+};
+
 export function renderChrome(route) {
   // El enlace de salto vive en index.html (tiene que existir antes del primer
   // pintado), pero su texto se traduce como cualquier otro literal.
@@ -80,6 +96,13 @@ export function renderChrome(route) {
   paintDrawer();
   mountAssistant();   // chat flotante del portal (se monta una sola vez)
   document.body.dataset.focus = state.prefs.focus ? 'on' : 'off';
+
+  // El botón del carrito y el .win del drawer hablan del TIPO de ventana preferido; si
+  // la instancia no lo publica (fuera de temporada solo hay una), la preferencia se
+  // realinea aquí, en cuanto hay sesión de compra, y no solo al entrar al catálogo:
+  // antes la portada decía REPOSICIÓN y el catálogo PROGRAMACIÓN. El setter de prefs
+  // avisa por onCartChange, que repinta etiqueta y contador sin tocar el botón (F-01).
+  if (!state.isAgent || state.acting) publishedWindows().then(list => { if (list) state.alignWindow(list); });
 }
 
 function paintHeader() {

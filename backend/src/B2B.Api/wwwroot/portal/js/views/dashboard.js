@@ -13,6 +13,7 @@ import { href } from '../router.js';
 import { state } from '../state.js';
 import { icons } from '../ui/icons.js';
 import { carousel } from '../ui/carousel.js';
+import { publishedWindows } from '../ui/chrome.js';
 
 // Las dos tarjetas existen aunque el CMS no las haya configurado: son navegación,
 // no contenido. Sin imagen se pintan con el degradado de marca.
@@ -84,6 +85,9 @@ async function paintKpis(node) {
     const open = orders?.counts?.open ?? 0;
     const debt = (invoices?.items ?? []).reduce((s, i) => s + Number(i.debt || 0), 0);
     const overdue = invoices?.counts?.overdue ?? 0;
+    // Una cuenta sin historial no tiene cuadro de mando: tres ceros en la segunda
+    // pantalla no dicen nada. El bento aparece con el primer pedido o la primera factura.
+    if (!(orders?.total) && !(stats?.count) && !(stats?.total) && !debt) { node.hidden = true; return; }
     node.innerHTML =
       kpiHtml('orders', t('dashboard.kpiOrders'), String(orders?.total ?? 0),
         t('dashboard.kpiOrdersSub', { n: open })) +
@@ -142,11 +146,21 @@ export default function dashboard(host) {
     else hero.hidden = true;
   });
 
-  content('dashboard.tiles').then(items => {
+  // Las tarjetas ELIGEN la ventana con la que se compra: la de un tipo que la instancia
+  // no publica (fuera de temporada solo hay reposición, p. ej.) no se pinta, y así la
+  // portada dice lo mismo que la cabecera y el catálogo. Las ventanas son la misma
+  // petición (una por sesión) que ya lanza el chrome. Sin lista (error) no se filtra:
+  // mejor una tarjeta de más que una portada vacía.
+  Promise.all([content('dashboard.tiles'), publishedWindows()]).then(([items, windows]) => {
     if (!tiles.isConnected) return;
     tiles.removeAttribute('aria-busy');
-    const list = items.length ? items : DEFAULT_TILES;
-    tiles.innerHTML = list.map(tileHtml).join('');
-    tiles.dataset.count = String(list.length);
+    const typeOf = value => (String(value).toLowerCase() === 'scheduled' ? 'scheduled' : 'replenishment');
+    const published = new Set((windows || []).map(w => typeOf(w.orderType)));
+    const only = list => (published.size ? list.filter(tile => published.has(typeOf(tile.window))) : list);
+    // Si el CMS solo trae tarjetas de tipos no publicados, quedan las de serie del tipo que sí lo está
+    const list = only(items.length ? items : DEFAULT_TILES);
+    const shown = list.length ? list : only(DEFAULT_TILES);
+    tiles.innerHTML = shown.map(tileHtml).join('');
+    tiles.dataset.count = String(shown.length);
   });
 }
