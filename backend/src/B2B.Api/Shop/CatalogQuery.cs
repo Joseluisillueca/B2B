@@ -311,8 +311,11 @@ public static class CatalogService
     {
         var modelOffers = offersByModel.GetValueOrDefault(model.ExternalId) ?? [];
 
+        // Tallas: primero el rango alfabético (XS < S < M < L < XL < XXL < 3XL…, ver SizeOrder),
+        // luego las numéricas en orden numérico (como siempre) y el resto por texto.
         var variants = (productsByModel.GetValueOrDefault(model.ExternalId) ?? [])
-            .OrderBy(p => decimal.TryParse(p.Size, out var n) ? n : decimal.MaxValue)
+            .OrderBy(p => SizeOrder.Rank(p.Size))
+            .ThenBy(p => decimal.TryParse(p.Size, out var n) ? n : decimal.MaxValue)
             .ThenBy(p => p.Size, StringComparer.OrdinalIgnoreCase)
             .Select(product => new CatalogVariant(
                 product,

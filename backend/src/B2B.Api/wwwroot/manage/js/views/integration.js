@@ -183,6 +183,7 @@ const TOKEN_SIZES = [
   ['radiusButton', 'Redondeo de botones', '50px', 'Solo los botones. 50px los deja en forma de píldora.'],
   ['tracking', 'Espaciado entre letras', '.06em', 'Separa las letras de titulares y botones. Admite px, rem, em o %.'],
   ['ruleWidth', 'Grosor de los filetes de sección', '1px', 'Hoy el portal usa 2px. A 1px las reglas se leen como filete editorial.'],
+  ['headerRuleWidth', 'Grosor de la banda bajo la cabecera', '4px', 'Solo la línea que cierra la barra superior (hoy, un hilo de 1px). Toma el color de los filetes de sección.'],
 ];
 // ── Espejo de la validación del servidor (IntegrationEndpoints.NormalizeBrandTokens) ──
 // Ni más laja ni más estricta: lo que pasa aquí lo acepta el PUT, y lo que aquí se rechaza
@@ -276,10 +277,18 @@ function tokensPanel(tk, open) {
             <input id="tk_fontFamily" value="${esc(v('fontFamily'))}" placeholder="GillSansMTLight" spellcheck="false"></label>
             <span class="acc-hint">El nombre de la familia tal y como la declara la webfont. Si no cuadra con la
               hoja de arriba, no se verá el cambio.</span></p>
-          <p class="acc-field"><span>Mayúsculas</span>
-            <label class="mng-check"><input type="checkbox" id="tk_caps" ${tk.caps === true ? 'checked' : ''}>
-              <span>Titulares y botones en MAYÚSCULAS</span></label>
-            <span class="acc-hint">Estética de moda/lujo. Desactivado, los textos van tal y como se escriben.</span></p>
+          <p class="acc-field"><label><span>Familia de los titulares</span>
+            <input id="tk_fontFamilyDisplay" value="${esc(v('fontFamilyDisplay'))}" placeholder="Newsreader" spellcheck="false"></label>
+            <span class="acc-hint">Solo titulares, cifras grandes y cartel del acceso (una serif sobre una sans,
+              por ejemplo). Tiene que venir en la hoja de arriba. Vacío = la misma familia que el texto.</span></p>
+          <p class="acc-field"><label for="tk_caps"><span>Mayúsculas</span></label>
+            <select id="tk_caps">
+              <option value="" ${tk.caps !== true && tk.caps !== false ? 'selected' : ''}>Por defecto (solo el cartel del acceso en mayúsculas)</option>
+              <option value="true" ${tk.caps === true ? 'selected' : ''}>Titulares y botones en MAYÚSCULAS</option>
+              <option value="false" ${tk.caps === false ? 'selected' : ''}>Nada en mayúsculas (tampoco el cartel del acceso)</option>
+            </select>
+            <span class="acc-hint">Estética de moda/lujo. «Nada» deja también el titular del acceso y el nombre del
+              cliente tal y como se escriben (una tagline serif en caja de frase).</span></p>
           <p class="acc-field"><span>Botones secundarios</span>
             <label class="mng-check"><input type="checkbox" id="tk_ctaCaps" ${tk.ctaCaps === true ? 'checked' : ''}>
               <span>Enlaces y botones de acción en MAYÚSCULAS</span></label>
@@ -347,13 +356,16 @@ function tokensPanel(tk, open) {
               filtro» las deja tal cual se subieron. Personalizado admite cualquier <code>filter</code> de CSS.</span></p>
           <p class="acc-field"><label for="tk_heroStyle"><span>Composición de la portada</span></label>
             <select id="tk_heroStyle">
-              <option value="" ${v('heroStyle') !== 'paper' ? 'selected' : ''}>Sobre la foto (velo oscuro, titular blanco encima)</option>
+              <option value="" ${v('heroStyle') !== 'paper' && v('heroStyle') !== 'photo' ? 'selected' : ''}>Sobre la foto (velo oscuro, titular blanco encima)</option>
               <option value="paper" ${v('heroStyle') === 'paper' ? 'selected' : ''}>Sobre papel (foto arriba, titular en tinta debajo)</option>
+              <option value="photo" ${v('heroStyle') === 'photo' ? 'selected' : ''}>Sobre la foto + acceso de doble página (papel y foto del acceso)</option>
             </select>
             <span class="acc-hint">«Sobre papel» pone el titular, el saludo y los rótulos de las ventanas
               sobre el fondo de página, bajo la foto: el texto lee igual sea cual sea la campaña.
               También cambia el pie del hero del lookbook y deja el monograma y el botón del
-              asistente sin relleno de color.</span></p>
+              asistente sin relleno de color. «Sobre la foto + acceso de doble página» conserva la
+              portada fotográfica y solo pone el acceso y la elección de cliente sobre papel, con la
+              foto del bloque «Fondo del acceso» a la derecha.</span></p>
         </div>
 
         <h3 class="brt-group">Textos del acceso</h3>
@@ -420,7 +432,17 @@ function readTokens(main, media) {
     if (badCssString(fontFamily)) return bad('fontFamily', '«Familia tipográfica» no admite comillas ni los signos ; { } < >.');
     t.fontFamily = fontFamily;
   }
-  if (main.querySelector('#tk_caps')?.checked) t.caps = true;   // false = el valor de siempre
+  const fontFamilyDisplay = val('tk_fontFamilyDisplay');
+  if (fontFamilyDisplay) {
+    if (fontFamilyDisplay.length > 60) return bad('fontFamilyDisplay', '«Familia de los titulares» es demasiado larga (máx. 60 caracteres).');
+    if (badCssString(fontFamilyDisplay)) return bad('fontFamilyDisplay', '«Familia de los titulares» no admite comillas ni los signos ; { } < >.');
+    t.fontFamilyDisplay = fontFamilyDisplay;
+  }
+  // caps: «» = el valor de siempre (sin token); true/false se guardan como booleano (false retira
+  // también las mayúsculas fijas del cartel del acceso, ver branding.js).
+  const caps = main.querySelector('#tk_caps')?.value;
+  if (caps === 'true') t.caps = true;
+  else if (caps === 'false') t.caps = false;
   if (main.querySelector('#tk_ctaCaps')?.checked) t.ctaCaps = true;
   const mode = main.querySelector('#tk_heroMode')?.value;
   if (mode === 'none') t.heroFilter = 'none';
@@ -443,7 +465,8 @@ function readTokens(main, media) {
   }
   // Los tres de la ronda 1 de crítica de BLOCCO 5. Los desplegables solo ofrecen valores
   // válidos, pero se vuelve a comprobar por si el DOM trae otra cosa (misma regla que el PUT).
-  if (main.querySelector('#tk_heroStyle')?.value === 'paper') t.heroStyle = 'paper';
+  const heroStyle = main.querySelector('#tk_heroStyle')?.value;
+  if (heroStyle === 'paper' || heroStyle === 'photo') t.heroStyle = heroStyle;
   const weight = val('tk_displayWeight');
   if (weight) {
     if (!isWeight(weight)) return bad('displayWeight', '«Peso de los titulares» debe ser una centena de 100 a 900 (p. ej. 900).');

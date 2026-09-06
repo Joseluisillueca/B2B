@@ -60,6 +60,17 @@
 //                       exige una webfont con eje wdth; sin token, 100 % = lo de hoy)
 //   ctaCaps           → --brand-cta-caps/--brand-cta-tracking (botones secundarios y enlaces
 //                       de acción en mayúscula con el tracking de .btn-primary)
+//   fontFamilyDisplay → --brand-display-font (familia SOLO de los titulares —POLO CLUB:
+//                       Newsreader sobre Figtree—; app.css la lee en --display con
+//                       fontFamily y luego "Archivo" de respaldo, así que sin token nada cambia)
+//   headerRuleWidth   → --header-rule-w (grosor SOLO de la banda bajo la cabecera, que sin
+//                       token sigue siendo el hilo de 1px; el color es el de `rule`)
+//   heroStyle=photo   → <html data-hero-style="photo">: portada fotográfica a sangre como la
+//                       base y el acceso/credenciales en la doble página de «paper» (papel +
+//                       foto de login.background). Segundo y último valor de la lista cerrada.
+//   caps=false        → --brand-caps:none. Los textos que van en var(--brand-caps,none) no
+//                       cambian; los DOS que llevaban mayúscula fija (.login-display y
+//                       .cred-hero-name) pasan a caja de frase. Sin token (undefined) nada cambia.
 
 // i18n.js no importa nada (sin ciclo); solo se usa lang() para elegir el legal por idioma.
 import { lang } from './i18n.js';
@@ -153,7 +164,10 @@ const asLength = value => {
   const text = String(value).trim();
   return text.length <= 20 && CSS_LENGTH.test(text) ? text : null;
 };
-const asBool = value => (value === true || value === 'true' ? true : null);
+// false se CONSERVA (no se descarta): caps:false significa «quita también las mayúsculas fijas
+// del acceso», distinto de «sin token». Igual que el servidor, que guarda el booleano tal cual.
+const asBool = value => (value === true || value === 'true' ? true
+  : value === false || value === 'false' ? false : null);
 /** Titular del acceso: texto libre, pero sin HTML (el servidor lo rechaza igual). */
 const asTagline = value => {
   const text = String(value).trim();
@@ -168,9 +182,16 @@ const asLegal = value => {
   const text = String(value).trim();
   return text && text.length <= 400 && !/[<>]/.test(text) ? text : null;
 };
-/** Estilo del hero: lista CERRADA de recetas de app.css (hoy solo "paper"); cualquier otra
+/** Estilo del hero: lista CERRADA de recetas de app.css ("paper" | "photo"); cualquier otra
     cosa se descarta, porque acaba en un atributo del <html> que selecciona CSS. */
-const asHeroStyle = value => (String(value).trim().toLowerCase() === 'paper' ? 'paper' : null);
+const HERO_STYLES = ['paper', 'photo'];
+const asHeroStyle = value => {
+  const text = String(value).trim().toLowerCase();
+  return HERO_STYLES.includes(text) ? text : null;
+};
+/** ¿El acceso va en la doble página de papel (marca de tinta, cartel sobre papel)? Con "paper"
+    y con "photo": las dos comparten el bloque del acceso en app.css. */
+const accessOnPaper = () => HERO_STYLES.includes(document.documentElement.dataset.heroStyle);
 /** Peso de los titulares: una centena de 100 a 900 (lo que entiende font-weight). */
 const asWeight = value => {
   const text = String(value).trim();
@@ -225,7 +246,10 @@ const TOKEN_SPEC = {
   // Ronda 2 de crítica: mismo criterio (al final, y todos opcionales).
   accentSoft: asColor, displayStretch: asStretch, ctaCaps: asBool,
   // Ronda 3: el legal por idioma (mismo validador que `legal`; ver brandLegal).
-  legalEn: asLegal, legalFr: asLegal, legalIt: asLegal
+  legalEn: asLegal, legalFr: asLegal, legalIt: asLegal,
+  // POLO CLUB: familia de los titulares y grosor de la banda de la cabecera (al final, como
+  // las rondas anteriores: el JSON normalizado de las otras instancias no cambia).
+  fontFamilyDisplay: asFamily, headerRuleWidth: asLength
 };
 
 /** Deja solo los tokens conocidos y válidos, SIEMPRE en el mismo orden (así la
@@ -262,9 +286,10 @@ export const getTokens = () => brand.tokens;
 // y el color oscuro —el caso ALMA: headerBg #ffffff con marca negra— o al revés, así
 // que el logo alternativo (logoUrlDark) NO puede elegirse una sola vez para todos.
 const onDarkChrome = () => !(brand.tokens.headerBg && isLight(brand.tokens.headerBg));
-// Sobre papel (heroStyle=paper) el cartel del acceso ya no es un bloque del color de marca,
-// así que va el logotipo de tinta aunque el color de marca sea oscuro.
-const onDarkBrand = () => document.documentElement.dataset.heroStyle !== 'paper' && !isLight(brand.color);
+// Sobre papel (heroStyle=paper, y también photo: el acceso comparte la doble página) el cartel
+// del acceso ya no es un bloque del color de marca, así que va el logotipo de tinta aunque el
+// color de marca sea oscuro.
+const onDarkBrand = () => !accessOnPaper() && !isLight(brand.color);
 
 /** Contenido HTML del elemento .brand: logo si lo hay; si no, nombre + ™.
     `onDark` = ¿la superficie que lo recibe es oscura? Por defecto, la del chrome (lo
@@ -337,7 +362,9 @@ const MANAGED_VARS = [
   // Ronda 2. --blue-soft/--blue-soft-text NO van aquí a propósito: los fija (o borra) apply()
   // justo antes de llamar a applyTokenVars según el color de marca, y retirarlos en bloque
   // aquí dejaría a MITO sin su tinte. Al quitar accentSoft, apply() ya los restaura.
-  '--brand-display-stretch', '--brand-cta-caps', '--brand-cta-tracking'
+  '--brand-display-stretch', '--brand-cta-caps', '--brand-cta-tracking',
+  // POLO CLUB: familia de titulares y grosor de la banda de la cabecera.
+  '--brand-display-font', '--header-rule-w'
 ];
 
 function applyTokenVars(style) {
@@ -371,8 +398,13 @@ function applyTokenVars(style) {
   if (tokens.radiusButton) style.setProperty('--r-btn', tokens.radiusButton);
   if (tokens.heroFilter) style.setProperty('--hero-filter', tokens.heroFilter);
   if (tokens.tracking) style.setProperty('--brand-tracking', tokens.tracking);
-  if (tokens.caps) style.setProperty('--brand-caps', 'uppercase');
+  // caps: true = mayúsculas en titulares y botones; false = ni siquiera las fijas del acceso
+  // (.login-display y .cred-hero-name leen var(--brand-caps,uppercase)); ausente = como siempre.
+  if (tokens.caps === true) style.setProperty('--brand-caps', 'uppercase');
+  else if (tokens.caps === false) style.setProperty('--brand-caps', 'none');
   if (tokens.fontFamily) style.setProperty('--brand-font', `"${tokens.fontFamily}"`);
+  if (tokens.fontFamilyDisplay) style.setProperty('--brand-display-font', `"${tokens.fontFamilyDisplay}"`);
+  if (tokens.headerRuleWidth) style.setProperty('--header-rule-w', tokens.headerRuleWidth);
   if (tokens.card) style.setProperty('--brand-card', tokens.card);
   if (tokens.rule) style.setProperty('--brand-rule', tokens.rule);
   if (tokens.ruleWidth) style.setProperty('--brand-rule-w', tokens.ruleWidth);

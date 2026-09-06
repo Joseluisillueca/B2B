@@ -295,7 +295,10 @@ public static class IntegrationEndpoints
     // Medidas CSS con unidad. `ruleWidth` es el grosor de los filetes de capítulo y va junto a
     // `rule` a propósito: el color sin el grosor da un filete rojo de 2px, que ya no es un
     // filete sino una barra (el gesto de marca es la hairline).
-    private static readonly string[] BrandLengthTokens = ["tracking", "radius", "radiusButton", "ruleWidth"];
+    // `headerRuleWidth` (POLO CLUB) es el grosor SOLO de la banda bajo la cabecera (#chrome-header),
+    // que hasta ahora era un hilo fijo de 1px: la banda roja de 4px es la firma de esa marca y
+    // `ruleWidth` no sirve porque engrosaría todos los filetes de capítulo. Misma regla de medida.
+    private static readonly string[] BrandLengthTokens = ["tracking", "radius", "radiusButton", "ruleWidth", "headerRuleWidth"];
     // Ronda 1 de crítica de BLOCCO 5 (tres cadenas con regla propia, ver abajo):
     //   heroStyle     → lista CERRADA de recetas de app.css: acaba en un atributo del <html>
     //                   que selecciona CSS, así que solo se admite lo que app.css conoce.
@@ -304,7 +307,10 @@ public static class IntegrationEndpoints
     //   legalEn/Fr/It → el mismo texto por idioma del portal (ronda 3): sin ellos el login de
     //                   EN/FR/IT enseña `legal` tal cual (una instancia con solo `legal`, como
     //                   ALMA, no cambia). Misma regla que `legal`.
-    private static readonly string[] BrandHeroStyles = ["paper"];
+    //   «photo» (POLO CLUB): portada fotográfica a sangre como la base, pero el acceso y la
+    //   pantalla de credenciales van en la doble página de «paper» (papel + foto de
+    //   login.background). Solo cambia el atributo; el resto lo decide app.css.
+    private static readonly string[] BrandHeroStyles = ["paper", "photo"];
     private static readonly Regex BrandWeight = new("^[1-9]00$", RegexOptions.Compiled);
     private const int BrandLegalMax = 400;
     // Ronda 2: `displayStretch` es un porcentaje de font-stretch. CSS solo admite de 50 % a
@@ -356,7 +362,8 @@ public static class IntegrationEndpoints
                 || BrandLengthTokens.Contains(key)
                 || key is "heroFilter" or "fontFamily" or "tagline" or "supportEmail"
                 || key is "heroStyle" or "displayWeight" or "legal" or "displayStretch"
-                || key is "legalEn" or "legalFr" or "legalIt";
+                || key is "legalEn" or "legalFr" or "legalIt"
+                || key is "fontFamilyDisplay";
             if (!known) continue;                                  // token desconocido: se ignora
 
             if (value.ValueKind != JsonValueKind.String)
@@ -391,14 +398,16 @@ public static class IntegrationEndpoints
                         ? "«heroFilter» no admite «;», llaves, «<», «\\», comentarios CSS ni «url(»."
                         : null;
             }
-            else if (key == "fontFamily")
+            else if (key is "fontFamily" or "fontFamilyDisplay")
             {
-                // Se emite entre comillas: --brand-font: "…". Fuera todo lo que pueda cerrarlas
-                // o escaparlas (el portal, asFamily(), borra esos mismos caracteres: si el
-                // servidor los dejara pasar, lo guardado y lo aplicado no coincidirían).
-                error = text.Length > 60 ? "«fontFamily» es demasiado largo (máx. 60)."
+                // Se emite entre comillas: --brand-font: "…" (y --brand-display-font: "…" para
+                // `fontFamilyDisplay`, la familia SOLO de los titulares —POLO CLUB: Newsreader
+                // sobre Figtree—). Fuera todo lo que pueda cerrarlas o escaparlas (el portal,
+                // asFamily(), rechaza esos mismos caracteres: si el servidor los dejara pasar,
+                // lo guardado y lo aplicado no coincidirían).
+                error = text.Length > 60 ? $"«{key}» es demasiado largo (máx. 60)."
                     : HasCssStringInjection(text)
-                        ? "«fontFamily» no admite «;», llaves, «<», «>», comillas ni «\\»."
+                        ? $"«{key}» no admite «;», llaves, «<», «>», comillas ni «\\»."
                         : null;
             }
             else if (key == "tagline")

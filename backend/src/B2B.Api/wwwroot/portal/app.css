@@ -60,7 +60,9 @@
   --header-bg:#201e1d; --header-ink:#f3f2f2;
   --header-ink-2:color-mix(in srgb, var(--header-ink) 62%, transparent);
   --header-veil:#fff;
-  --display:var(--brand-font,"Archivo"), system-ui, -apple-system, sans-serif;
+  /* Titulares: la familia de display si la instancia la configura (fontFamilyDisplay), si no
+     la de texto (fontFamily) y si no Archivo: sin tokens, exactamente lo de siempre. */
+  --display:var(--brand-display-font,var(--brand-font,"Archivo")), system-ui, -apple-system, sans-serif;
 }
 
 * { box-sizing:border-box; }
@@ -93,8 +95,9 @@ main { flex:1; outline:none; }
 /* ══════════════ Header verde de marca ══════════════ */
 #chrome-header { position:sticky; top:0; z-index:20; background:var(--header-bg); color:var(--header-ink);
   display:flex; align-items:center; gap:1.1rem; padding:0 clamp(1rem,4vw,2.4rem); height:var(--header-h);
-  /* Solo el COLOR toma el token del filete; el hilo se queda en 1px a propósito. */
-  border-bottom:1px solid var(--brand-rule,rgba(0,0,0,.14)); }
+  /* El COLOR toma el token del filete (rule); el grosor solo cambia con headerRuleWidth
+     (--header-rule-w, la banda de marca de POLO CLUB): sin él, el hilo de 1px de siempre. */
+  border-bottom:var(--header-rule-w,1px) solid var(--brand-rule,rgba(0,0,0,.14)); }
 /* Wordmark serif en crema; el italic de Fraunces le da carácter editorial */
 #chrome-header .brand { font-size:1.7rem; font-style:normal; color:var(--header-ink); text-decoration:none; line-height:1; }
 
@@ -421,7 +424,9 @@ body[data-chrome="credentials"] { background:var(--ink); }
 /* Foto del acceso (bloque login.background, la inserta ui/access-photo.js). En la base no se pinta:
    el cartel de color de MITO y ALMA sigue como está; cada marca decide en su bloque cómo la compone. */
 .access-photo { display:none; }
-.login-display { font-family:var(--display); font-weight:800; text-transform:uppercase; letter-spacing:var(--brand-tracking,-.03em);
+/* Mayúscula por defecto, pero el token caps=false (--brand-caps:none) la retira: una tagline
+   serif en caja de frase (POLO CLUB). Sin token la variable no existe y queda en uppercase. */
+.login-display { font-family:var(--display); font-weight:800; text-transform:var(--brand-caps,uppercase); letter-spacing:var(--brand-tracking,-.03em);
   line-height:.96; font-size:clamp(2.6rem,6.4vw,5.4rem); margin:0; color:#fff; }
 .login-panel { display:grid; place-items:center; padding:2rem clamp(1.5rem,5vw,4rem); }
 .login-panel .login-card { width:min(25rem,100%); background:none; box-shadow:none; padding:0; }
@@ -486,7 +491,7 @@ body[data-chrome="credentials"] { background:var(--ink); }
 .cred-hero-mid { display:flex; flex-direction:column; }
 .cred-hero-mid .hero-kicker { font-size:.9rem; font-weight:700; letter-spacing:.22em; text-transform:uppercase;
   color:#fff; margin:0 0 .7rem; font-style:normal; }
-.cred-hero-name { font-family:var(--display); font-weight:800; text-transform:uppercase; letter-spacing:var(--brand-tracking,-.03em);
+.cred-hero-name { font-family:var(--display); font-weight:800; text-transform:var(--brand-caps,uppercase); letter-spacing:var(--brand-tracking,-.03em);
   line-height:.94; font-size:clamp(2.4rem,5.8vw,4.8rem); margin:0; color:#fff; text-wrap:balance; }
 
 .cred-panel { display:grid; place-items:center; padding:2rem clamp(1.5rem,5vw,4rem); }
@@ -2647,48 +2652,53 @@ html[data-hero-style="paper"] :is(.item-fav, .product-fav, .h-search button, .h-
    papel empieza limpio (y sobre el naranja del tren un filete rojo de 1 px no se ve). El filete
    solo existe en el ::before, el papel de la columna cuando el CMS no trae foto. El aside pasa a
    display:contents y sus hijos se colocan por áreas. El logo es el de tinta: onDarkBrand() ya es
-   false sobre papel. */
-html[data-hero-style="paper"] :is(.login-split, .cred-split) { --access-pad:clamp(2rem,5vw,3.5rem);
+   false sobre papel.
+   heroStyle="photo" (POLO CLUB) comparte SOLO este bloque del acceso —de aquí hasta la media query
+   de 52rem inclusive— con html:is([data-hero-style="paper"],[data-hero-style="photo"]) (misma
+   especificidad 0,1,1, así que la cascada de paper no se mueve). El resto del bloque de papel
+   (portada, ventanas, lookbook, matriz…) sigue siendo solo de paper: con photo la portada es la
+   fotográfica a sangre de la base. */
+html:is([data-hero-style="paper"],[data-hero-style="photo"]) :is(.login-split, .cred-split) { --access-pad:clamp(2rem,5vw,3.5rem);
   grid-template-columns:1fr 1.05fr; grid-template-rows:auto 1fr auto;
   grid-template-areas:"brand photo" "main photo" "display photo"; }
-html[data-hero-style="paper"] :is(.login-hero, .cred-hero) { display:contents; }
-html[data-hero-style="paper"] :is(.login-split, .cred-split)::before { content:""; grid-area:photo; border-left:var(--rule-w) solid var(--rule); }
-html[data-hero-style="paper"] .access-photo { display:block; grid-area:photo; position:relative; min-height:0; overflow:hidden;
+html:is([data-hero-style="paper"],[data-hero-style="photo"]) :is(.login-hero, .cred-hero) { display:contents; }
+html:is([data-hero-style="paper"],[data-hero-style="photo"]) :is(.login-split, .cred-split)::before { content:""; grid-area:photo; border-left:var(--rule-w) solid var(--rule); }
+html:is([data-hero-style="paper"],[data-hero-style="photo"]) .access-photo { display:block; grid-area:photo; position:relative; min-height:0; overflow:hidden;
   background:var(--surface); }
-html[data-hero-style="paper"] .access-photo img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:50% 0; }
-html[data-hero-style="paper"] :is(.login-hero, .cred-hero) .brand { grid-area:brand; color:var(--ink); padding:var(--access-pad) var(--access-pad) 0; }
+html:is([data-hero-style="paper"],[data-hero-style="photo"]) .access-photo img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:50% 0; }
+html:is([data-hero-style="paper"],[data-hero-style="photo"]) :is(.login-hero, .cred-hero) .brand { grid-area:brand; color:var(--ink); padding:var(--access-pad) var(--access-pad) 0; }
 /* min-width:0 y la pista interior en minmax(0,1fr): sin ellos la tarjeta única de credenciales (nombre
    en nowrap a 390px, min-content 391) ensanchaba la pista del split a 439px y luego la del panel a 415;
    con la pista acotada la tarjeta encoge y el nombre va a puntos suspensivos, como quiere la base. */
-html[data-hero-style="paper"] :is(.login-panel, .cred-panel) { grid-area:main; min-width:0; grid-template-columns:minmax(0,1fr); }
+html:is([data-hero-style="paper"],[data-hero-style="photo"]) :is(.login-panel, .cred-panel) { grid-area:main; min-width:0; grid-template-columns:minmax(0,1fr); }
 /* 3.5vw y no 4.2vw: «OWN YOUR CODE.» mide 11,25 em y la columna de papel es el 48,8 % del ancho menos
    dos --access-pad; con 4.2vw se partía en dos líneas en los 16:10 (1440×900, 1536×864, 1280×800).
    Medido: 1920×1080 64,8 px, 1440×900 50,4, 1366×768 46,08, 1280×800 44,8, 2560×1440 86,4; una
    línea en todos. */
-html[data-hero-style="paper"] .login-display { grid-area:display; align-self:end; color:var(--blue);
+html:is([data-hero-style="paper"],[data-hero-style="photo"]) .login-display { grid-area:display; align-self:end; color:var(--blue);
   padding:0 var(--access-pad) var(--access-pad); font-size:clamp(2rem, min(3.5vw, 6vh), 5.4rem); }
-html[data-hero-style="paper"] .cred-h { color:var(--blue); }
-html[data-hero-style="paper"] .cred-hero-mid { grid-area:display; align-self:end; padding:0 var(--access-pad) var(--access-pad); }
+html:is([data-hero-style="paper"],[data-hero-style="photo"]) .cred-h { color:var(--blue); }
+html:is([data-hero-style="paper"],[data-hero-style="photo"]) .cred-hero-mid { grid-area:display; align-self:end; padding:0 var(--access-pad) var(--access-pad); }
 /* «HOLA» es el «Collection» de p22 (≈ un cuarto de la caja de «VAGUE»): parte del titular, no una
    etiqueta de tabla. .95rem sobre un nombre de 56 px a 1920 (antes .74rem, proporción 0,21). */
-html[data-hero-style="paper"] .cred-hero-mid .hero-kicker { color:var(--blue-text); font-size:.95rem; font-weight:800; letter-spacing:.14em; margin:0 0 .35rem; }
+html:is([data-hero-style="paper"],[data-hero-style="photo"]) .cred-hero-mid .hero-kicker { color:var(--blue-text); font-size:.95rem; font-weight:800; letter-spacing:.14em; margin:0 0 .35rem; }
 /* La base lo pinta en #fff (para el cartel de color): sobre papel era invisible. */
-html[data-hero-style="paper"] .cred-hero-name { color:var(--blue); font-size:clamp(1.8rem, min(3.4vw, 5.2vh), 4rem); }
+html:is([data-hero-style="paper"],[data-hero-style="photo"]) .cred-hero-name { color:var(--blue); font-size:clamp(1.8rem, min(3.4vw, 5.2vh), 4rem); }
 @media (max-height:50rem) {
-  html[data-hero-style="paper"] :is(.login-split, .cred-split) { --access-pad:2rem; }
-  html[data-hero-style="paper"] :is(.login-panel, .cred-panel) { padding-block:1rem; }
+  html:is([data-hero-style="paper"],[data-hero-style="photo"]) :is(.login-split, .cred-split) { --access-pad:2rem; }
+  html:is([data-hero-style="paper"],[data-hero-style="photo"]) :is(.login-panel, .cred-panel) { padding-block:1rem; }
 }
 @media (max-width:52rem) {
-  html[data-hero-style="paper"] :is(.login-split, .cred-split) { grid-template-columns:1fr; grid-template-rows:auto auto auto 1fr;
+  html:is([data-hero-style="paper"],[data-hero-style="photo"]) :is(.login-split, .cred-split) { grid-template-columns:1fr; grid-template-rows:auto auto auto 1fr;
     grid-template-areas:"brand" "photo" "display" "main"; }
-  html[data-hero-style="paper"] :is(.login-split, .cred-split)::before { display:none; }
-  html[data-hero-style="paper"] .access-photo { min-height:36vh; }
-  html[data-hero-style="paper"] :is(.login-hero, .cred-hero) .brand { padding:1.3rem var(--gutter) 1.1rem; }
-  html[data-hero-style="paper"] :is(.login-display, .cred-hero-mid) { align-self:start; padding:1.4rem var(--gutter) 1.5rem;
+  html:is([data-hero-style="paper"],[data-hero-style="photo"]) :is(.login-split, .cred-split)::before { display:none; }
+  html:is([data-hero-style="paper"],[data-hero-style="photo"]) .access-photo { min-height:36vh; }
+  html:is([data-hero-style="paper"],[data-hero-style="photo"]) :is(.login-hero, .cred-hero) .brand { padding:1.3rem var(--gutter) 1.1rem; }
+  html:is([data-hero-style="paper"],[data-hero-style="photo"]) :is(.login-display, .cred-hero-mid) { align-self:start; padding:1.4rem var(--gutter) 1.5rem;
     border-bottom:var(--rule-w) solid var(--rule); }
-  html[data-hero-style="paper"] .login-display { font-size:2.6rem; }
-  html[data-hero-style="paper"] .cred-hero-mid .hero-kicker { font-size:.8rem; }
-  html[data-hero-style="paper"] .cred-hero-name { font-size:2.2rem; }
+  html:is([data-hero-style="paper"],[data-hero-style="photo"]) .login-display { font-size:2.6rem; }
+  html:is([data-hero-style="paper"],[data-hero-style="photo"]) .cred-hero-mid .hero-kicker { font-size:.8rem; }
+  html:is([data-hero-style="paper"],[data-hero-style="photo"]) .cred-hero-name { font-size:2.2rem; }
 }
 /* El aviso del resumen es el primer hijo del panel: dos filetes a 24px uno de otro */
 html[data-hero-style="paper"] .ck-side > .notice-error:first-child { border-top:0; padding-top:0; }

@@ -372,6 +372,8 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("tracking", "-.em")]
     [InlineData("ruleWidth", "1")]             // sin unidad
     [InlineData("ruleWidth", "calc(1px)")]
+    [InlineData("headerRuleWidth", "4")]       // POLO CLUB: misma regla que ruleWidth
+    [InlineData("headerRuleWidth", "4px;color:red")]
     public async Task Tokens_MedidaInvalida_400(string token, string value)
     {
         await ResetAsync();
@@ -388,6 +390,7 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("tracking", "-0.5px")]
     [InlineData("radius", "0.75rem")]
     [InlineData("radiusButton", "50%")]
+    [InlineData("headerRuleWidth", "4px")]
     public async Task Tokens_MedidaValida_SeGuarda(string token, string value)
     {
         await ResetAsync();
@@ -416,6 +419,10 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
     // borraba, así que lo guardado y lo aplicado no coincidían).
     [InlineData("""{"fontFamily":"Gill</style><img src=x>"}""")]
     [InlineData("""{"fontFamily":"Gill\" , x:url(http://malo)"}""")]
+    // fontFamilyDisplay (POLO CLUB) se emite igual, entre comillas: misma barrera.
+    [InlineData("""{"fontFamilyDisplay":"Newsreader; background:red"}""")]
+    [InlineData("""{"fontFamilyDisplay":"Newsreader\" , x:url(http://malo)"}""")]
+    [InlineData("""{"fontFamilyDisplay":"News</style><img src=x>"}""")]
     public async Task Tokens_InyeccionCss_400(string tokensJson)
     {
         await ResetAsync();
@@ -429,6 +436,7 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
     [Theory]
     [InlineData("heroFilter", 121)]
     [InlineData("fontFamily", 61)]
+    [InlineData("fontFamilyDisplay", 61)]
     [InlineData("tagline", 121)]
     [InlineData("supportEmail", 121)]
     [InlineData("legal", 401)]
@@ -527,6 +535,8 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("heroStyle", "dark")]
     [InlineData("heroStyle", "paper; background:red")]
     [InlineData("heroStyle", "paper\"")]
+    [InlineData("heroStyle", "photo\"")]
+    [InlineData("heroStyle", "picture")]
     [InlineData("displayWeight", "950")]
     [InlineData("displayWeight", "9")]
     [InlineData("displayWeight", "1000")]
@@ -547,6 +557,9 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
     [Theory]
     [InlineData("heroStyle", "paper", "paper")]
     [InlineData("heroStyle", "  Paper ", "paper")]
+    // «photo» (POLO CLUB): segundo valor de la lista cerrada, también en minúsculas.
+    [InlineData("heroStyle", "photo", "photo")]
+    [InlineData("heroStyle", " PHOTO ", "photo")]
     [InlineData("displayWeight", "100", "100")]
     [InlineData("displayWeight", " 900 ", "900")]
     public async Task Tokens_HeroStyleODisplayWeightValidos_SeGuardanNormalizados(string token, string value, string expected)
@@ -706,6 +719,31 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal(JsonValueKind.Null, (await PublicTokensAsync()).ValueKind);
+    }
+
+    // ── 12b. POLO CLUB: fontFamilyDisplay, headerRuleWidth, heroStyle=photo y caps=false ──
+    // Los tres tokens nuevos se publican tal cual (la familia de titulares con la misma barrera
+    // que fontFamily, el grosor como medida, photo en minúsculas) y caps:false se guarda como
+    // false —no se confunde con «sin token»—: el portal emite --brand-caps:none con él.
+
+    [Fact]
+    public async Task Tokens_PoloClub_SePublicanYCapsFalseSeConserva()
+    {
+        await ResetAsync();
+
+        (await PutTokens("""
+            {"fontFamily":"Figtree","fontFamilyDisplay":" Newsreader ","headerRuleWidth":"4px",
+             "heroStyle":"Photo","caps":false,"ctaCaps":false,"rule":"#EE0000"}
+            """)).EnsureSuccessStatusCode();
+
+        var tokens = await PublicTokensAsync();
+        Assert.Equal("Figtree", tokens.GetProperty("fontFamily").GetString());
+        Assert.Equal("Newsreader", tokens.GetProperty("fontFamilyDisplay").GetString());
+        Assert.Equal("4px", tokens.GetProperty("headerRuleWidth").GetString());
+        Assert.Equal("photo", tokens.GetProperty("heroStyle").GetString());
+        Assert.False(tokens.GetProperty("caps").GetBoolean());
+        Assert.False(tokens.GetProperty("ctaCaps").GetBoolean());
+        Assert.Equal("#ee0000", tokens.GetProperty("rule").GetString());
     }
 
     // ── 13. Extensión (card/rule/ruleWidth/accent): sin ellos NADA se mueve ────
