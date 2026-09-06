@@ -301,6 +301,9 @@ public static class IntegrationEndpoints
     //                   que selecciona CSS, así que solo se admite lo que app.css conoce.
     //   displayWeight → peso de los titulares, una centena de 100 a 900 (font-weight).
     //   legal         → texto legal del login; como tagline pero con sitio para dos frases.
+    //   legalEn/Fr/It → el mismo texto por idioma del portal (ronda 3): sin ellos el login de
+    //                   EN/FR/IT enseña `legal` tal cual (una instancia con solo `legal`, como
+    //                   ALMA, no cambia). Misma regla que `legal`.
     private static readonly string[] BrandHeroStyles = ["paper"];
     private static readonly Regex BrandWeight = new("^[1-9]00$", RegexOptions.Compiled);
     private const int BrandLegalMax = 400;
@@ -352,7 +355,8 @@ public static class IntegrationEndpoints
             var known = BrandColorTokens.Contains(key) || BrandUrlTokens.Contains(key)
                 || BrandLengthTokens.Contains(key)
                 || key is "heroFilter" or "fontFamily" or "tagline" or "supportEmail"
-                || key is "heroStyle" or "displayWeight" or "legal" or "displayStretch";
+                || key is "heroStyle" or "displayWeight" or "legal" or "displayStretch"
+                || key is "legalEn" or "legalFr" or "legalIt";
             if (!known) continue;                                  // token desconocido: se ignora
 
             if (value.ValueKind != JsonValueKind.String)
@@ -433,11 +437,11 @@ public static class IntegrationEndpoints
                     || pct < BrandStretchMin || pct > BrandStretchMax)
                     error = "«displayStretch» debe ser un porcentaje de anchura entre 50% y 200% (p. ej. 125%).";
             }
-            else if (key == "legal")
+            else if (key is "legal" or "legalEn" or "legalFr" or "legalIt")
             {
                 // Mismo criterio que tagline (texto plano publicado): nada de HTML crudo.
-                error = text.Length > BrandLegalMax ? $"«legal» es demasiado largo (máx. {BrandLegalMax})."
-                    : text.Contains('<') || text.Contains('>') ? "«legal» no admite «<» ni «>»." : null;
+                error = text.Length > BrandLegalMax ? $"«{key}» es demasiado largo (máx. {BrandLegalMax})."
+                    : text.Contains('<') || text.Contains('>') ? $"«{key}» no admite «<» ni «>»." : null;
             }
             if (error is not null) return (null, error);
             tokens[key] = text;

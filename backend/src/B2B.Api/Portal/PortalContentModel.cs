@@ -23,6 +23,8 @@ public static class PortalContentModel
 
     public const string CommonLocale = "*";
     public const string DefaultLocale = "es";
+    /// El único bloque que el portal lee SIN sesión: el cartel del login se pinta antes de entrar.
+    public const string PublicKey = "login.background";
 
     // lookbook.hero NO está: su apertura puede ser solo texto. Sobre papel (heroStyle=paper) el
     // portal pinta un índice tipográfico con title/subtitle/cta e ignora la imagen; en las demás

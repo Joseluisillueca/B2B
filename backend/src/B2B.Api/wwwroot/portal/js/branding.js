@@ -39,6 +39,7 @@
 //   logoUrlDark       → logo alternativo para fondos oscuros (ver brandMark)
 //   tagline/supportEmail → textos del login (ver brandTagline/brandSupport)
 //   legal             → texto legal del login (ver brandLegal; hasta 400 caracteres)
+//   legalEn/Fr/It     → el mismo texto por idioma del portal; sin el del idioma activo, `legal`
 //   card              → --brand-card   (fondo de paneles y de la banda de pestañas)
 //   rule/ruleWidth    → --brand-rule/--brand-rule-w  (color y grosor de los filetes de
 //                       CAPÍTULO: los 2px de tinta que abren cada bloque, no los hilos)
@@ -59,6 +60,9 @@
 //                       exige una webfont con eje wdth; sin token, 100 % = lo de hoy)
 //   ctaCaps           → --brand-cta-caps/--brand-cta-tracking (botones secundarios y enlaces
 //                       de acción en mayúscula con el tracking de .btn-primary)
+
+// i18n.js no importa nada (sin ciclo); solo se usa lang() para elegir el legal por idioma.
+import { lang } from './i18n.js';
 
 const KEY = 'b2b_branding';
 const DEFAULTS = { name: 'MITO PROJECTS', color: '#ec3013', logoUrl: null };
@@ -219,7 +223,9 @@ const TOKEN_SPEC = {
   // JSON normalizado) de las instancias que no los usan.
   heroStyle: asHeroStyle, displayWeight: asWeight, legal: asLegal,
   // Ronda 2 de crítica: mismo criterio (al final, y todos opcionales).
-  accentSoft: asColor, displayStretch: asStretch, ctaCaps: asBool
+  accentSoft: asColor, displayStretch: asStretch, ctaCaps: asBool,
+  // Ronda 3: el legal por idioma (mismo validador que `legal`; ver brandLegal).
+  legalEn: asLegal, legalFr: asLegal, legalIt: asLegal
 };
 
 /** Deja solo los tokens conocidos y válidos, SIEMPRE en el mismo orden (así la
@@ -306,10 +312,14 @@ export function brandSupport(text, textWithoutEmail) {
     el href de un mailto: y su texto. El llamante lo escapa según dónde lo ponga. */
 export const brandSupportEmail = fallback => brand.tokens.supportEmail || String(fallback ?? '');
 
-/** Texto legal del login: el token `legal` manda sobre el texto traducido (que es el de un
-    distribuidor multimarca y no vale para un fabricante). HTML ESCAPADO, como brandTagline:
-    el llamante lo inserta tal cual. */
-export const brandLegal = fallback => esc(brand.tokens.legal || String(fallback ?? ''));
+/** Texto legal del login por idioma: `legal<Xx>` del idioma activo manda (legalEn, legalFr,
+    legalIt); sin él, `legal` (monolingüe) y, sin ninguno, el texto traducido del producto (que
+    es el de un distribuidor multimarca y no vale para un fabricante). HTML ESCAPADO, como
+    brandTagline: el llamante lo inserta tal cual. Una instancia con solo `legal` (ALMA) se
+    comporta exactamente como antes; para «es» no hay clave propia (`legal` ya lo es). */
+const legalKey = code => 'legal' + code.charAt(0).toUpperCase() + code.slice(1);
+export const brandLegal = fallback =>
+  esc(brand.tokens[legalKey(lang())] || brand.tokens.legal || String(fallback ?? ''));
 
 // ── Aplicación al documento ───────────────────────────────────────────────────
 // Todas las variables que ESTE módulo gobierna. Se retiran en bloque antes de volver

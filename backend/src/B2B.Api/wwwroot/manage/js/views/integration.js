@@ -209,6 +209,9 @@ const badCssString = v => /["'\\<>{};]/.test(v);
 const isEmail = v => /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(v);
 // Peso de los titulares: una centena de 100 a 900 (asWeight del portal / BrandWeight del servidor).
 const isWeight = v => /^[1-9]00$/.test(v);
+// Texto legal por idioma: sufijo del token (legalEn, legalFr, legalIt) y nombre del campo. El
+// castellano no tiene sufijo: es el token `legal` de siempre (y el fallback de los otros tres).
+const LEGAL_LANGS = [['En', 'Inglés'], ['Fr', 'Francés'], ['It', 'Italiano']];
 // Pesos que ofrece el desplegable: todos los que entiende font-weight, con el nombre usual.
 const WEIGHTS = [['400', '400 · Normal'], ['500', '500 · Medio'], ['600', '600 · Semibold'],
   ['700', '700 · Bold'], ['800', '800 · Extrabold'], ['900', '900 · Black']];
@@ -366,6 +369,9 @@ function tokensPanel(tk, open) {
             <span class="acc-hint">La nota pequeña bajo «¿No tienes cuenta?». El texto de siempre habla de un
               distribuidor multimarca; una marca que fabrica su producto pone aquí el suyo (máx. 400
               caracteres, sin HTML). Vacío = el de siempre.</span></p>
+          ${LEGAL_LANGS.map(([code, name]) => `<p class="acc-field wide"><label><span>Texto legal del acceso (${name})</span>
+            <textarea id="tk_legal${code}" rows="2" maxlength="400">${esc(v('legal' + code))}</textarea></label>
+            <span class="acc-hint">Lo que ve una tienda con el portal en ${name.toLowerCase()}. Vacío = el texto legal de arriba.</span></p>`).join('')}
         </div>
       </div>
     </div>`;
@@ -453,6 +459,14 @@ function readTokens(main, media) {
     if (legal.length > 400) return bad('legal', '«Texto legal del acceso» es demasiado largo (máx. 400 caracteres).');
     if (/[<>]/.test(legal)) return bad('legal', '«Texto legal del acceso» no admite «<» ni «>».');
     t.legal = legal;
+  }
+  // Ronda 3: el legal por idioma (legalEn/legalFr/legalIt), misma regla que `legal`.
+  for (const [code, name] of LEGAL_LANGS) {
+    const v = val('tk_legal' + code);
+    if (!v) continue;
+    if (v.length > 400) return bad('legal' + code, `«Texto legal del acceso (${name})» es demasiado largo (máx. 400 caracteres).`);
+    if (/[<>]/.test(v)) return bad('legal' + code, `«Texto legal del acceso (${name})» no admite «<» ni «>».`);
+    t['legal' + code] = v;
   }
   return { tokens: t };
 }

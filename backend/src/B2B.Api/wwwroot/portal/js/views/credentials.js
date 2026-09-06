@@ -1,13 +1,13 @@
-// Vista 2 — post-login: selección de acceso. Rediseño "split de acceso" (hero rojo +
-// panel de tarjetas), coherente con el login. El agente elige su credencial y luego, en
-// su cartera, con qué cliente opera; el cliente entra a su dashboard.
+// Vista 2 — post-login: selección de acceso. Split coherente con el login: cartel de color
+// (marca + «HOLA» + nombre de la cuenta) a un lado y panel de tarjetas al otro; la marca sobre papel
+// lo convierte en doble página con la misma foto del CMS (login.background) y el saludo en rojo
+// sobre papel. El agente elige su credencial y luego, en su cartera, con qué cliente opera; el
+// cliente entra a su dashboard.
 //
-// Reparto de texto (decisión de diseño): el hero rojo queda solo con display grande
-// (marca + saludo + nombre), igual que el login. El texto pequeño en blanco sobre el
-// rojo de marca no llega a contraste AA, así que TODA la guía de lectura vive en el
-// panel claro (tinta sobre papel), que además es donde se decide. La etiqueta de acción
-// de cada tarjeta ("Entrar" / "Elegir cliente") comunica el siguiente paso en el propio
-// punto de acción.
+// Reparto de texto (decisión de diseño): el cartel queda solo con display grande (marca + saludo +
+// nombre), igual que el login. TODA la guía de lectura vive en el panel claro (tinta sobre papel),
+// que además es donde se decide. La etiqueta de acción de cada tarjeta («Entrar» / «Elegir cliente»)
+// comunica el siguiente paso en el propio punto de acción.
 
 import { t } from '../i18n.js';
 import { esc, initial, roleLabel, typeLabel } from '../format.js';
@@ -15,6 +15,7 @@ import { state } from '../state.js';
 import { go } from '../router.js';
 import { icons } from '../ui/icons.js';
 import { brandMarkOnBrand, brandSupport } from '../branding.js';
+import { paintAccessPhoto } from '../ui/access-photo.js';
 
 const isAgent = credential => !!(credential && (credential.agent || credential.type === 'agent'));
 
@@ -47,6 +48,9 @@ export default function credentials(host) {
         </div>
       </div>
     </div>`;
+
+  // La misma foto que el login (login.background), entre la marca y el saludo; sin ella, nada cambia.
+  paintAccessPhoto(host.querySelector('.cred-hero'), host.querySelector('.cred-hero-mid'));
 
   for (const button of host.querySelectorAll('[data-pick]')) {
     button.onclick = () => {

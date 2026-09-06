@@ -418,6 +418,9 @@ body[data-chrome="credentials"] { background:var(--ink); }
 .login-hero { background:var(--blue); color:#fff; display:flex; flex-direction:column; justify-content:space-between;
   gap:2rem; padding:clamp(2rem,5vw,3.5rem); }
 .login-hero .brand { color:#fff; font-size:1.9rem; }
+/* Foto del acceso (bloque login.background, la inserta ui/access-photo.js). En la base no se pinta:
+   el cartel de color de MITO y ALMA sigue como está; cada marca decide en su bloque cómo la compone. */
+.access-photo { display:none; }
 .login-display { font-family:var(--display); font-weight:800; text-transform:uppercase; letter-spacing:var(--brand-tracking,-.03em);
   line-height:.96; font-size:clamp(2.6rem,6.4vw,5.4rem); margin:0; color:#fff; }
 .login-panel { display:grid; place-items:center; padding:2rem clamp(1.5rem,5vw,4rem); }
@@ -2631,15 +2634,62 @@ html[data-hero-style="paper"] :is(.item-fav, .product-fav, .h-search button, .h-
   .lb-selbar-toggle, .doc-modal-close, .cart-size, .cart-drop, .req-badge, .as-msg, .as-form textarea, .as-send,
   .c-arrow, .c-dots button, .sz-qty:focus-visible, .ck-size, .ck-drop, .lb-selremove) { border-radius:0; }
 
-/* ══════════════ Marca sobre papel · ronda 3 de crítica ══════════════ */
-/* Acceso y credenciales: el rojo de la marca es tinta y filete, nunca una superficie. El
-   cartel pasa a papel con el claim en rojo (como «VAGUE» en la apertura de colección) y un
-   filete separando las dos mitades. */
-html[data-hero-style="paper"] :is(.login-hero, .cred-hero) { background:var(--paper); color:var(--ink); border-right:var(--rule-w) solid var(--rule); }
-html[data-hero-style="paper"] :is(.login-hero, .cred-hero) .brand { color:var(--ink); }
-html[data-hero-style="paper"] .login-display, html[data-hero-style="paper"] .cred-h { color:var(--blue); }
-html[data-hero-style="paper"] .cred-hero-mid .hero-kicker { color:var(--ink-2); }
-@media (max-width:52rem) { html[data-hero-style="paper"] :is(.login-hero, .cred-hero) { border-right:0; border-bottom:var(--rule-w) solid var(--rule); } }
+/* ══════════════ Marca sobre papel · acceso = la doble página del metro (p22) ══════════════
+   p22 es papel con el texto en rojo en la página IZQUIERDA y la foto a sangre por el corte exterior
+   en la DERECHA; la modelo mira hacia el interior del pliego, es decir, hacia el formulario. El
+   acceso es esa doble página, en ese orden: columna de papel a la izquierda (marca arriba, donde
+   la lleva todo el portal; formulario o tarjetas centrados; el rojo grande —el claim en el login,
+   HOLA + nombre en el acceso— abajo, el hueco «Collection / VAGUE» de p22) y la foto
+   (login.background, la inserta access-photo.js) a la derecha a 100 vh. TODO el texto va sobre
+   papel (medido sobre la foto: blanco 2,5:1 de media y 1,2:1 en lo peor, tinta 1,06:1 en las
+   sombras; nada llega a 3:1, así que ni el logo ni el claim se posan sobre ella, y sin gradiente:
+   el libro no tiene uno). Entre foto y papel NO hay filete: en p22 la foto corta a sangre y el
+   papel empieza limpio (y sobre el naranja del tren un filete rojo de 1 px no se ve). El filete
+   solo existe en el ::before, el papel de la columna cuando el CMS no trae foto. El aside pasa a
+   display:contents y sus hijos se colocan por áreas. El logo es el de tinta: onDarkBrand() ya es
+   false sobre papel. */
+html[data-hero-style="paper"] :is(.login-split, .cred-split) { --access-pad:clamp(2rem,5vw,3.5rem);
+  grid-template-columns:1fr 1.05fr; grid-template-rows:auto 1fr auto;
+  grid-template-areas:"brand photo" "main photo" "display photo"; }
+html[data-hero-style="paper"] :is(.login-hero, .cred-hero) { display:contents; }
+html[data-hero-style="paper"] :is(.login-split, .cred-split)::before { content:""; grid-area:photo; border-left:var(--rule-w) solid var(--rule); }
+html[data-hero-style="paper"] .access-photo { display:block; grid-area:photo; position:relative; min-height:0; overflow:hidden;
+  background:var(--surface); }
+html[data-hero-style="paper"] .access-photo img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:50% 0; }
+html[data-hero-style="paper"] :is(.login-hero, .cred-hero) .brand { grid-area:brand; color:var(--ink); padding:var(--access-pad) var(--access-pad) 0; }
+/* min-width:0 y la pista interior en minmax(0,1fr): sin ellos la tarjeta única de credenciales (nombre
+   en nowrap a 390px, min-content 391) ensanchaba la pista del split a 439px y luego la del panel a 415;
+   con la pista acotada la tarjeta encoge y el nombre va a puntos suspensivos, como quiere la base. */
+html[data-hero-style="paper"] :is(.login-panel, .cred-panel) { grid-area:main; min-width:0; grid-template-columns:minmax(0,1fr); }
+/* 3.5vw y no 4.2vw: «OWN YOUR CODE.» mide 11,25 em y la columna de papel es el 48,8 % del ancho menos
+   dos --access-pad; con 4.2vw se partía en dos líneas en los 16:10 (1440×900, 1536×864, 1280×800).
+   Medido: 1920×1080 64,8 px, 1440×900 50,4, 1366×768 46,08, 1280×800 44,8, 2560×1440 86,4; una
+   línea en todos. */
+html[data-hero-style="paper"] .login-display { grid-area:display; align-self:end; color:var(--blue);
+  padding:0 var(--access-pad) var(--access-pad); font-size:clamp(2rem, min(3.5vw, 6vh), 5.4rem); }
+html[data-hero-style="paper"] .cred-h { color:var(--blue); }
+html[data-hero-style="paper"] .cred-hero-mid { grid-area:display; align-self:end; padding:0 var(--access-pad) var(--access-pad); }
+/* «HOLA» es el «Collection» de p22 (≈ un cuarto de la caja de «VAGUE»): parte del titular, no una
+   etiqueta de tabla. .95rem sobre un nombre de 56 px a 1920 (antes .74rem, proporción 0,21). */
+html[data-hero-style="paper"] .cred-hero-mid .hero-kicker { color:var(--blue-text); font-size:.95rem; font-weight:800; letter-spacing:.14em; margin:0 0 .35rem; }
+/* La base lo pinta en #fff (para el cartel de color): sobre papel era invisible. */
+html[data-hero-style="paper"] .cred-hero-name { color:var(--blue); font-size:clamp(1.8rem, min(3.4vw, 5.2vh), 4rem); }
+@media (max-height:50rem) {
+  html[data-hero-style="paper"] :is(.login-split, .cred-split) { --access-pad:2rem; }
+  html[data-hero-style="paper"] :is(.login-panel, .cred-panel) { padding-block:1rem; }
+}
+@media (max-width:52rem) {
+  html[data-hero-style="paper"] :is(.login-split, .cred-split) { grid-template-columns:1fr; grid-template-rows:auto auto auto 1fr;
+    grid-template-areas:"brand" "photo" "display" "main"; }
+  html[data-hero-style="paper"] :is(.login-split, .cred-split)::before { display:none; }
+  html[data-hero-style="paper"] .access-photo { min-height:36vh; }
+  html[data-hero-style="paper"] :is(.login-hero, .cred-hero) .brand { padding:1.3rem var(--gutter) 1.1rem; }
+  html[data-hero-style="paper"] :is(.login-display, .cred-hero-mid) { align-self:start; padding:1.4rem var(--gutter) 1.5rem;
+    border-bottom:var(--rule-w) solid var(--rule); }
+  html[data-hero-style="paper"] .login-display { font-size:2.6rem; }
+  html[data-hero-style="paper"] .cred-hero-mid .hero-kicker { font-size:.8rem; }
+  html[data-hero-style="paper"] .cred-hero-name { font-size:2.2rem; }
+}
 /* El aviso del resumen es el primer hijo del panel: dos filetes a 24px uno de otro */
 html[data-hero-style="paper"] .ck-side > .notice-error:first-child { border-top:0; padding-top:0; }
 /* Matriz de tallas: bordes de control a 3:1, las agotadas se distinguen de las abiertas y la
@@ -2649,6 +2699,27 @@ html[data-hero-style="paper"] .sz.out .sz-head { background:var(--ink-3); }
 html[data-hero-style="paper"] .sz.out .sz-body { background:var(--surface); }
 html[data-hero-style="paper"] .sz.out .sz-qty::placeholder { color:transparent; }
 html[data-hero-style="paper"] .sz-cell .sz-stock { font-size:.8rem; font-weight:500; }
+/* Rótulo de la fila de disponibilidad: las cifras bajo las tallas no llevan palabra y una tienda
+   nueva las lee como precio o como cantidad ya puesta. Solo cuando HAY fila de stock (en la ventana
+   programada no se pinta): un «STOCK» rojo pequeño como último asiento de la rejilla, a la altura
+   de las cifras. Pseudoelemento porque size-matrix.js es compartido: en ALMA no cambia nada. */
+html[data-hero-style="paper"] .matrix:has(.sz-stock)::after { content:"stock"; align-self:end; justify-self:start;
+  font:800 .62rem/1.5 var(--display); letter-spacing:.1em; text-transform:uppercase; color:var(--blue-text);
+  font-stretch:var(--brand-display-stretch,100%); padding:0 0 .15rem .1rem; white-space:nowrap; }
+/* Nombres con raya («Bund Fantasy — Silver»): las dos líneas se equilibran y la raya no queda colgada. */
+html[data-hero-style="paper"] .product-name { text-wrap:balance; }
+/* La ventana de pedido se elige en las dos cajas de la portada (PROGRAMACIÓN SS27 | REPOSICIÓN) y
+   el carrito de la cabecera dice cuál está activa: el conmutador de la barra de herramientas del
+   catálogo se oculta en esta marca. Solo CSS: catalog.js lo sigue pintando y enlazando
+   (paintWindowSwitch), state.prefs.window lo siguen escribiendo los tiles y state.alignWindow
+   sigue corrigiendo la preferencia al cargar; ALMA y MITO lo conservan. */
+html[data-hero-style="paper"] .tb-window { display:none; }
+/* Sin conmutador, la ventana activa se lee junto al título: en escritorio la decía solo el carrito
+   (a 1700 px del h1) y en móvil, con su etiqueta clipada por la base a ≤52rem, nadie. Antetítulo
+   rojo en mayúscula, el mismo de «HOLA» y de las cajas de la portada; el nombre lo deja catalog.js
+   en data-window-name (dato sin CSS en la base: ALMA y MITO no cambian). */
+html[data-hero-style="paper"] .cat-title .cat-headline[data-window-name]::before { content:attr(data-window-name); flex-basis:100%;
+  font-size:.74rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--blue-text); line-height:1.3; }
 /* El estado de un conmutador no es una acción: en tinta, y el carrito queda como único
    bloque rojo de la cabecera */
 html[data-hero-style="paper"] .tb-seg-opt.on { background:var(--ink); color:#fff; }
@@ -2666,31 +2737,31 @@ html[data-hero-style="paper"] .item-attrs .tag[title]::before { content:attr(tit
 
 /* ══════════════ Marca sobre papel · apertura del lookbook = ÍNDICE (p02) ══════════════
    El lookbook de la marca no abre con una foto: abre con estructura —seis entradas numeradas
-   entre filetes rojos a sangre— y una palabra gigante en rojo cortada por el borde inferior
-   (p02 «Index»; p10 «Bund» y p22 «VAGUE» abren capítulo igual). Aquí la palabra es el title
-   del bloque lookbook.hero (la temporada: «SS27»), la línea de estado su subtitle, la acción
-   su ctaText/ctaHref, y cada entrada del índice ancla a su historia. Cuelga del atributo como
+   entre filetes rojos a sangre— cerradas por la línea de estado y la acción (p02 «Index»). El
+   title del bloque lookbook.hero (la temporada, «SS27») solo da nombre a la apertura para
+   lectores de pantalla; la línea de estado es su subtitle, la acción su ctaText/ctaHref, y cada
+   entrada del índice ancla a su historia. Cuelga del atributo como
    el resto de la marca: lookbook.js solo pinta .lb-index bajo data-hero-style="paper", así
    que ALMA y MITO conservan su carrusel byte a byte. */
 
 /* El aire tras el índice lo pone el padding-top de la primera historia (3.5rem, más abajo), no
    el hero: su filete inferior ES el borde superior de la historia 01 (que nace sin border-top). */
 html[data-hero-style="paper"] .lb-hero-index { margin-bottom:0; }
-/* Mientras llega el CMS: papel, sin brillo y a la altura del índice (≈640px medidos a 390 y
-   a 1900), para que la página no salte cuando se pinta. Nada de placa gris: después no hay foto. */
-html[data-hero-style="paper"] .lb-hero-index .hero-skeleton { aspect-ratio:auto; min-height:min(40rem,80vh); border-radius:0;
+/* Mientras llega el CMS: papel, sin brillo y a la altura del índice (≈340px medidos a 390 y
+   a 1920), para que la página no salte cuando se pinta. Nada de placa gris: después no hay foto. */
+html[data-hero-style="paper"] .lb-hero-index .hero-skeleton { aspect-ratio:auto; min-height:min(21rem,60vh); border-radius:0;
   background:var(--paper); background-image:none; animation:none; }
 
-/* Orden VISUAL: cabecera de página (solo si el CMS trae kicker), índice, línea de estado + acción,
-   palabra. El DOM va en orden de LECTURA (cabecera, h1 = palabra, índice, pie): el lector de
-   pantalla oye el título antes que las seis entradas, y el tabulado (entradas → acción) coincide
-   con lo visible. El filete inferior es el «borde de página» que corta la palabra.
-   --ix-x es EL MISMO padding de #chrome-nav (misma expresión; si cambia allí, cambiar aquí): el
-   «01», el pie y la palabra caen a plomo con el logo y la pestaña CATÁLOGO, no con la columna de
-   lectura de las historias. p02 abre a página y p03 en adelante lleva márgenes: los filetes
-   sangran y el texto va al margen de página, no a una columna centrada dentro de ellos. */
-html[data-hero-style="paper"] .lb-index { display:grid; grid-template-areas:"head" "nav" "foot" "word";
-  --ix-x:max(clamp(1rem,4vw,2.4rem), calc((100% - var(--maxw-wide)) / 2));
+/* Orden VISUAL = orden del DOM: cabecera de página (solo si el CMS trae kicker), h1 solo para
+   lectores («Lookbook SS27»), índice, línea de estado + acción: el lector de pantalla oye el título
+   antes que las seis entradas, y el tabulado (entradas → acción) coincide con lo visible. El
+   filete inferior es el borde de página del índice.
+   --ix-x es EL MISMO padding de #chrome-nav (misma expresión, definida en .page.lookbook —bloque
+   «historias a página», más abajo— para el índice y las historias a la vez; si cambia allí,
+   cambiar aquí): el «01» y el pie caen a plomo con el logo y la pestaña CATÁLOGO. p02 abre a
+   página y p03 en adelante lleva márgenes: los filetes sangran y el texto va al margen de página,
+   no a una columna centrada dentro de ellos. */
+html[data-hero-style="paper"] .lb-index { display:grid; grid-template-areas:"head" "nav" "foot";
   background:var(--paper); color:var(--ink); border-bottom:var(--rule-w) solid var(--rule); }
 
 /* Cabecera de página SOLO si el CMS trae kicker (p03-p22 llevan «LOOKBOOK 2027SS» arriba a la
@@ -2724,73 +2795,80 @@ html[data-hero-style="paper"] .lb-ix-num { font-size:.9rem; font-weight:800; let
 html[data-hero-style="paper"] .lb-ix-name { font-size:.9rem; font-weight:500; letter-spacing:.04em; text-transform:uppercase; line-height:1.35; }
 html[data-hero-style="paper"] .lb-ix-title { font-size:1rem; line-height:1.4; color:var(--ink); }
 /* Un kicker o título sin espacios no invade la columna vecina ni ensancha el documento. */
-html[data-hero-style="paper"] :is(.lb-ix-name,.lb-ix-title,.lb-ix-kicker,.lb-ix-label,.lb-ix-sub) { overflow-wrap:anywhere; min-width:0; }
+html[data-hero-style="paper"] :is(.lb-ix-name,.lb-ix-title,.lb-ix-kicker,.lb-ix-sub) { overflow-wrap:anywhere; min-width:0; }
 /* Solo con puntero: en táctil el subrayado se quedaría pegado a la última entrada tocada. */
 @media (hover:hover) {
   html[data-hero-style="paper"] .lb-ix-list a:hover .lb-ix-name { text-decoration:underline; text-underline-offset:.14em; text-decoration-color:var(--blue); }
 }
 html[data-hero-style="paper"] .lb-ix-list a:focus-visible { outline:2px solid var(--blue); outline-offset:-2px; }
 
-/* Pie del índice: la línea de estado del CMS («Abierta a pedidos.») y, seguida en el orden de
-   lectura (no en la esquina opuesta), la acción como ENLACE rojo en mayúscula, no como botón: la
-   referencia no tiene un solo bloque de color y el único rojo grande de esta pantalla debe ser la
-   palabra. El botón relleno queda para el cierre de la página. */
-html[data-hero-style="paper"] .lb-ix-foot { grid-area:foot; display:flex; flex-wrap:wrap; justify-content:flex-start;
-  align-items:baseline; gap:.6rem 2.5rem; width:100%; padding:1rem var(--ix-x) 0; }
-html[data-hero-style="paper"] .lb-ix-sub { margin:0; font-size:1.05rem; font-weight:500; color:var(--ink); }
+/* Pie del índice = su colofón: la línea de estado del CMS («Abierta a pedidos.») y la acción como
+   ENLACE rojo en mayúscula, no como botón: la referencia no tiene un solo bloque de color. El botón
+   relleno queda para el cierre de la página. Misma rejilla que los asientos (numeral · nombre ·
+   titular): la línea de estado ocupa numeral + nombre y la acción nace A PLOMO con la columna de
+   titulares (antes, con flex + gap, caía en x=272, en ninguna columna de la tabla). Algo más alto
+   que un asiento (58px frente a 46) para leerse como pie y no como séptimo asiento; lo cierra el
+   filete inferior de .lb-index, el borde de página. */
+html[data-hero-style="paper"] .lb-ix-foot { grid-area:foot; display:grid; grid-template-columns:3.5rem 17rem minmax(0,1fr); column-gap:1rem;
+  row-gap:.6rem; align-items:baseline; width:100%; padding:.95rem var(--ix-x) 1.05rem; }
+/* La línea de estado ocupa numeral + nombre; la acción nace a plomo con la columna de titulares. */
+html[data-hero-style="paper"] .lb-ix-sub { grid-column:1 / 3; margin:0; font-size:1.05rem; font-weight:500; color:var(--ink); }
 /* padding-block compensado con margen negativo: área táctil de 36px (44 en móvil; WCAG 2.5.8) con
    la misma línea base y sin mover nada del layout. */
-html[data-hero-style="paper"] .lb-ix-cta { display:inline-flex; align-items:center; gap:.4rem; font-size:.8rem; font-weight:800;
+html[data-hero-style="paper"] .lb-ix-cta { grid-column:3; justify-self:start; display:inline-flex; align-items:center; gap:.4rem; font-size:.8rem; font-weight:800;
   letter-spacing:.1em; text-transform:uppercase; color:var(--blue-text); text-decoration:none; font-stretch:var(--brand-display-stretch,100%);
   padding-block:.5rem; margin-block:-.5rem; }
 html[data-hero-style="paper"] .lb-ix-cta:hover { text-decoration:underline; text-underline-offset:.16em; }
 html[data-hero-style="paper"] .lb-ix-cta:focus-visible { outline:2px solid var(--blue); outline-offset:3px; }
 
-/* La PALABRA: Archivo 900 a 125 % (los tokens de titular), rojo de marca, UNA línea anclada al
-   margen izquierdo (lookbook.js mide y fija el font-size: llena la caja o, si eso la haría más
-   alta, el tope de altura del 19 % de la página bajo la cabecera, la proporción de «Index» en p02;
-   los 6rem son el respaldo antes de medir). Con line-height:1 las mayúsculas de Archivo van de
-   ~.14em a ~.84em de la caja: un alto de .64em enseña el 70 % superior de la mayúscula y el filete
-   del contenedor la corta, la misma proporción con la que p10/p22 cortan «Bund» y «VAGUE» (p02
-   corta «Index» algo más; a 70 % el «SS27» se sigue leyendo de un vistazo). overflow:clip (no crea
-   contenedor de scroll) también la recorta por la DERECHA si el suelo de 2.25rem no cabe (palabra
-   muy larga en móvil): nunca hay scroll horizontal. min-width:0 en el ítem de grid es obligatorio:
-   sin él el min-content del nowrap ensancha la pista y el documento (661px de scrollWidth a 390px).
-   El tracking va fijo, no por token: el token es para etiquetas, no para un cuerpo de 300px. */
-html[data-hero-style="paper"] .lb-ix-wordbox { grid-area:word; min-width:0; overflow:clip; width:100%; margin:.9rem 0 0; padding:0 var(--ix-x); }
-/* El claim de la marca (token tagline), pequeño y en rojo, justo encima de la palabra: es el hueco
-   «Collection» sobre «Bund»/«VAGUE» de p10/p22. Solo si no se dice ya en la palabra o en el pie. */
-html[data-hero-style="paper"] .lb-ix-label { margin:0 0 .2rem; font-size:.74rem; line-height:1.3; font-weight:800; letter-spacing:.12em;
-  text-transform:uppercase; color:var(--blue-text); font-stretch:var(--brand-display-stretch,100%); }
-html[data-hero-style="paper"] .lb-ix-word { margin:0; font-family:var(--display); font-weight:var(--brand-display-weight,800);
-  font-stretch:var(--brand-display-stretch,100%); letter-spacing:-.02em; text-transform:none; color:var(--blue);
-  font-size:6rem; line-height:1; height:.64em; overflow:clip; white-space:nowrap; }
-/* Óptico: el hombro izquierdo de un glifo de 300px son 10-15px; sin esto la palabra no cae a
-   plomo con los «01» de arriba. */
-html[data-hero-style="paper"] .lb-ix-glyphs { display:inline-block; margin-left:-.03em; }
-
 /* Las entradas del índice llevan a la historia por JS (scrollIntoView): que el kicker no quede
    bajo la cabecera pegajosa (66px). Gateado: en ALMA nadie salta a una historia. */
 html[data-hero-style="paper"] .lb-story { scroll-margin-top:calc(var(--header-h) + 1rem); }
-/* Aire entre el filete que corta la palabra y la placa de la historia 01 (56px, como estado →
-   palabra): la palabra lee como pie de su índice, no como pie de la foto de abajo. */
-html[data-hero-style="paper"] .lb-story:first-child { padding-top:3.5rem; }
+/* Aire entre el filete que cierra el índice y la placa de la historia 01 (88px, casi dos asientos):
+   en el libro cada historia es un pliego nuevo; con 56px la placa parecía un séptimo asiento. La
+   placa sigue entera en la primera pantalla a 1080 (y=541) y asoma 227px a 768. */
+html[data-hero-style="paper"] .lb-story:first-child { padding-top:5.5rem; }
 
-/* Móvil (390px): p02 literal —un asiento = una línea (el titular ya lo dice la historia), la
-   palabra a sangre («Index» nace en x=0) y llenando el ancho (SS27 ≈ 115px de cuerpo). El margen
-   del texto es el del logo (--gutter = 20px). Bloque ≈530px: la placa de la historia 01 entra en
-   la primera pantalla. */
+/* Móvil (390px): p02 literal —un asiento = una línea (el titular ya lo dice la historia). El margen
+   del texto es el del logo (--gutter = 20px). Bloque ≈365px: placa de la historia 01 en y≈534, dentro
+   de la primera pantalla. */
 @media (max-width:48rem) {
-  html[data-hero-style="paper"] .lb-index { --ix-x:var(--gutter); }
+  html[data-hero-style="paper"] .page.lookbook { --ix-x:var(--gutter); }
   html[data-hero-style="paper"] .lb-ix-head { padding-top:1.2rem; }
   html[data-hero-style="paper"] .lb-ix-title { display:none; }
   html[data-hero-style="paper"] .lb-ix-list a { grid-template-columns:2.4rem minmax(0,1fr); padding-block:.7rem; }
+  /* Sin columna de titulares no hay plomo que guardar: dos líneas seguidas, como hasta ahora. */
+  html[data-hero-style="paper"] .lb-ix-foot { display:flex; flex-wrap:wrap; gap:.6rem 2.5rem; }
   html[data-hero-style="paper"] .lb-ix-cta { padding-block:.75rem; margin-block:-.75rem; }
-  html[data-hero-style="paper"] .lb-ix-wordbox { padding-inline:0; margin-top:.9rem; }
-  html[data-hero-style="paper"] .lb-ix-label { padding-inline:var(--ix-x); }
-  html[data-hero-style="paper"] .lb-ix-glyphs { margin-left:0; }
-  html[data-hero-style="paper"] .lb-story:first-child { padding-top:2.6rem; }
+  html[data-hero-style="paper"] .lb-story:first-child { padding-top:3.2rem; }
 }
+
+/* ══════════════ Marca sobre papel · historias a PÁGINA ══════════════
+   Las historias (texto + foto + raíl «Referencias del look») iban en la columna de lectura de la
+   base (--maxw = 1240) y a 1920 dejaban 340 px vacíos a cada lado. En el libro cada historia es un
+   pliego (p03-p22: texto en una columna, la foto en la otra, hasta el margen de página), así que
+   aquí usan los MISMOS márgenes que el índice y el cromo (--ix-x, que se define en .page.lookbook
+   para el índice y las historias a la vez): a 1920 el contenido mide 1843 px, a 1366 1289. Texto y
+   foto crecen en proporción 5:7 (texto minmax(28ch,5fr) · foto 7fr): a 1920 la foto mide 1030×773
+   y la columna de texto 736; a 1366, 720×540 y 514. La medida del párrafo se acota a 38em (unos 75
+   caracteres) y el titular sube con la ventana (2.2vw, 42 px a 1920). Las fotos del CMS miden de
+   1246 a 1867 px: a 1x ninguna se estira por encima de su tamaño (a 2560 la más pequeña queda al
+   109 %). El raíl toma todo el ancho con más tarjetas por fila (4 → 5 a partir de 1300 px → 6 a
+   partir de 1700 px); la tarjeta sigue en 4:5 (object-fit:cover) y el paso de las flechas se
+   calcula a partir de la tarjeta (bindRails), así que no cambia. Solo a partir de 52 rem + 1 px:
+   el apilado móvil de la base queda byte a byte. */
+html[data-hero-style="paper"] .page.lookbook { --ix-x:max(clamp(1rem,4vw,2.4rem), calc((100% - var(--maxw-wide)) / 2)); }
+@media (min-width:52.0625rem) {
+  html[data-hero-style="paper"] .lb-stories { max-width:none; padding:0 var(--ix-x); }
+  html[data-hero-style="paper"] .lb-story { grid-template-columns:7fr minmax(28ch,5fr); column-gap:clamp(3rem,4vw,5rem); padding:3.2rem 0; }
+  html[data-hero-style="paper"] .lb-story.lb-right { grid-template-columns:minmax(28ch,5fr) 7fr; }
+  html[data-hero-style="paper"] .lb-story-text { max-width:none; }
+  html[data-hero-style="paper"] .lb-story-text h2 { font-size:clamp(2rem, 2.2vw, 2.75rem); max-width:16em; }
+  html[data-hero-style="paper"] .lb-story-text p { font-size:clamp(1.02rem, .9vw, 1.15rem); max-width:38em; }
+  html[data-hero-style="paper"] .lb-rail { --lb-cols:4; grid-auto-columns:calc((100% - (var(--lb-cols) - 1) * 1.2rem) / var(--lb-cols)); }
+}
+@media (min-width:81.25rem) { html[data-hero-style="paper"] .lb-rail { --lb-cols:5; } }
+@media (min-width:106.25rem) { html[data-hero-style="paper"] .lb-rail { --lb-cols:6; } }
 
 /* ══════════════ Marca sobre papel · film de portada ══════════════
    El vídeo del hero es una PLACA sobre el papel, como las páginas de producto del libro (p14-p21):

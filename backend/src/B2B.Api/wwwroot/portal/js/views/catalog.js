@@ -810,6 +810,9 @@ export default async function catalog(host) {
     for (const w of windows) if (!byType.has(typeOf(w))) byType.set(typeOf(w), w);
     if (byType.size < 2) return;
     const active = state.prefs.window === 'scheduled' ? 'scheduled' : 'replenishment';
+    // La ventana activa, como DATO, junto al título: la base no lo pinta (ningún CSS lo usa);
+    // la marca que oculta el conmutador (paper) lo muestra como antetítulo (app.css).
+    host.querySelector('.cat-title .cat-headline')?.setAttribute('data-window-name', byType.get(active)?.name || t(`window.${active}`));
     tools.querySelector('.toolbar')?.insertAdjacentHTML('afterbegin', `
       <div class="tb-seg tb-window" role="group" aria-label="${esc(t('catalog.window'))}">
         ${[...byType].map(([type, w]) => `<button type="button" class="tb-seg-opt${type === active ? ' on' : ''}"

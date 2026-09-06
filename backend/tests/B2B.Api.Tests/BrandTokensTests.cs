@@ -432,6 +432,9 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("tagline", 121)]
     [InlineData("supportEmail", 121)]
     [InlineData("legal", 401)]
+    [InlineData("legalEn", 401)]
+    [InlineData("legalFr", 401)]
+    [InlineData("legalIt", 401)]
     public async Task Tokens_DemasiadoLargos_400(string token, int length)
     {
         await ResetAsync();
@@ -471,6 +474,49 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("legal", await ErrorAsync(response));
+        Assert.Equal(JsonValueKind.Null, (await PublicTokensAsync()).ValueKind);
+    }
+
+    // Ronda 3: el legal por idioma (legalEn/legalFr/legalIt) se guarda y se publica junto a
+    // `legal`; el portal elige el del idioma activo y cae a `legal` si falta. Antes el backend
+    // descartaba en silencio cualquier clave desconocida y el login de EN/FR/IT salía en
+    // castellano. Una instancia con solo `legal` (ALMA) no cambia.
+    [Fact]
+    public async Task Tokens_LegalPorIdioma_SeGuardaYSePublica()
+    {
+        await ResetAsync();
+
+        var response = await PutTokens("""{"legal":"Solo profesionales.","legalEn":"Trade only.","legalFr":" Professionnels uniquement. ","legalIt":"Solo professionisti."}""");
+        response.EnsureSuccessStatusCode();
+
+        var tokens = await PublicTokensAsync();
+        Assert.Equal("Solo profesionales.", tokens.GetProperty("legal").GetString());
+        Assert.Equal("Trade only.", tokens.GetProperty("legalEn").GetString());
+        Assert.Equal("Professionnels uniquement.", tokens.GetProperty("legalFr").GetString());   // recortado
+        Assert.Equal("Solo professionisti.", tokens.GetProperty("legalIt").GetString());
+        Assert.Equal(new[] { "legal", "legalEn", "legalFr", "legalIt" },
+            tokens.EnumerateObject().Select(p => p.Name).ToArray());
+        Assert.Equal("Trade only.", (await AdminSettingsAsync()).GetProperty("brandTokens").GetProperty("legalEn").GetString());
+
+        // Solo `legal`: los tres por idioma no aparecen (el portal cae a `legal`).
+        (await PutTokens("""{"legal":"Solo profesionales."}""")).EnsureSuccessStatusCode();
+        var only = await PublicTokensAsync();
+        Assert.Equal(new[] { "legal" }, only.EnumerateObject().Select(p => p.Name).ToArray());
+    }
+
+    // El legal por idioma se publica y el login lo pinta: mismo criterio que `legal` (sin HTML).
+    [Theory]
+    [InlineData("legalEn")]
+    [InlineData("legalFr")]
+    [InlineData("legalIt")]
+    public async Task Tokens_LegalPorIdiomaConHtml_400(string token)
+    {
+        await ResetAsync();
+
+        var response = await PutTokens($$"""{"{{token}}":"Trade <b>only</b>"}""");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(token, await ErrorAsync(response));
         Assert.Equal(JsonValueKind.Null, (await PublicTokensAsync()).ValueKind);
     }
 

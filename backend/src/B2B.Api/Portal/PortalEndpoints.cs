@@ -90,10 +90,15 @@ public static class PortalEndpoints
         // Contenido publicado (plan §3): lo que el CMS ha dejado listo para este
         // idioma. El portal nunca ve elementos apagados ni fuera de su ventana de
         // publicación, así que una campaña caducada desaparece sola de la portada.
-        app.MapGet("/api/portal/content/{key}", async (string key, string? locale, AppDbContext db) =>
+        app.MapGet("/api/portal/content/{key}", async (string key, string? locale, ClaimsPrincipal principal, AppDbContext db) =>
         {
             if (!PortalContentModel.IsKnownKey(key))
                 return Results.BadRequest(new { error = "Clave de contenido desconocida." });
+
+            // El cartel del login se pinta ANTES de entrar: login.background es el único bloque
+            // público. El resto sigue exigiendo sesión (Portal_SinToken_Devuelve401).
+            if (key != PortalContentModel.PublicKey && principal.Identity?.IsAuthenticated != true)
+                return Results.Unauthorized();
 
             var requested = PortalContentModel.NormalizeLocale(locale) ?? PortalContentModel.DefaultLocale;
 
@@ -113,7 +118,7 @@ public static class PortalEndpoints
                 : PortalContentModel.Published(block.Json, DateTimeOffset.UtcNow);
 
             return Results.Ok(new { key, locale = block?.Locale ?? requested, items });
-        }).RequireAuthorization();
+        }).AllowAnonymous();
     }
 
     // Proyección canónica del cliente: lo que el portal necesita en cada vista

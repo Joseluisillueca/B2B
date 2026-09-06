@@ -313,6 +313,17 @@ public class PortalContentTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    // El cartel del acceso se pinta ANTES de entrar: login.background es el único bloque público.
+    [Fact]
+    public async Task Portal_LoginBackground_SinToken_Devuelve200()
+    {
+        var response = await _client.GetAsync("/api/portal/content/login.background?locale=es");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("login.background", body.GetProperty("key").GetString());
+        Assert.Equal(JsonValueKind.Array, body.GetProperty("items").ValueKind);
+    }
+
     [Fact]
     public async Task Portal_SoloDevuelveElementosActivosYEnVentanaDePublicacion()
     {

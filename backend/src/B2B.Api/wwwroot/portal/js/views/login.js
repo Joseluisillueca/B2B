@@ -1,4 +1,6 @@
-// Vista 1 — /login (00-inicio.png): tarjeta blanca sobre degradado azul.
+// Vista 1 — /login: split de acceso. Cartel de color (marca + claim) a un lado y formulario al otro;
+// la marca sobre papel lo convierte en doble página con la foto del CMS (login.background, la inserta
+// ui/access-photo.js entre la marca y el claim). Todo el texto va sobre papel; nada sobre la foto.
 
 import { t } from '../i18n.js';
 import { esc } from '../format.js';
@@ -6,6 +8,7 @@ import { api } from '../api.js';
 import { state } from '../state.js';
 import { go, href } from '../router.js';
 import { brandMarkOnBrand, brandText, brandTagline, brandSupport, brandLegal } from '../branding.js';
+import { paintAccessPhoto } from '../ui/access-photo.js';
 
 export default function login(host) {
   host.innerHTML = `
@@ -46,6 +49,9 @@ export default function login(host) {
         </form>
       </div>
     </div>`;
+
+  // La foto del CMS (login.background) entra entre la marca y el claim; sin ella, nada cambia.
+  paintAccessPhoto(host.querySelector('.login-hero'), host.querySelector('.login-display'));
 
   const form = host.querySelector('form');
   const error = host.querySelector('.err');
