@@ -216,6 +216,17 @@ const asUrl = value => {
   if (/[\s"'()<>\\;{}\u0000-\u001f\u007f-\u009f]/.test(text)) return null;
   return /^(javascript|data|vbscript):/i.test(text) ? null : text;
 };
+/** La URL de la fuente admite además «;» cuando NO es un fichero .woff2: entonces no entra
+    en el url("…") de un @font-face, sino en el href de un <link> por setAttribute, y el «;»
+    es el separador de pesos de Google Fonts (family=Figtree:wght@300;400;700). */
+const asFontUrl = value => {
+  const text = String(value).trim();
+  if (!text || text.length > 500) return null;
+  if (/\.woff2?([?#].*)?$/i.test(text)) return asUrl(text);
+  // eslint-disable-next-line no-control-regex
+  if (/[\s"'()<>\\{} --]/.test(text)) return null;
+  return /^(javascript|data|vbscript):/i.test(text) ? null : text;
+};
 /** Familia tipográfica: se emite entre comillas, así que se RECHAZA —no se mutila, que
     era lo de antes: `Gill Sans "MT"` se convertía en silencio en otra familia— todo lo
     que pueda romperlas o salirse de la declaración. */
@@ -234,7 +245,7 @@ const asFilter = value => {
 };
 
 const TOKEN_SPEC = {
-  logoUrlDark: asUrl, faviconUrl: asUrl, fontUrl: asUrl,
+  logoUrlDark: asUrl, faviconUrl: asUrl, fontUrl: asFontUrl,
   fontFamily: asFamily, caps: asBool,
   tracking: asLength, radius: asLength, radiusButton: asLength, ruleWidth: asLength,
   paper: asColor, surface: asColor, ink: asColor, headerBg: asColor, headerInk: asColor,

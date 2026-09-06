@@ -379,11 +379,18 @@ public static class IntegrationEndpoints
             }
             else if (BrandUrlTokens.Contains(key))
             {
+                // El «;» solo es peligroso cuando la URL acaba dentro del url("…") de un
+                // @font-face: ahí cerraría la declaración. Una hoja de estilos (Google Fonts)
+                // va al href de un <link> por setAttribute, así que su «;» de separación de
+                // pesos (family=Figtree:wght@300;400;700) es inocuo y hay que admitirlo.
+                var enCss = key == "fontUrl" && IsFontFile(text);
                 error = text.Length > BrandTokenUrlMax
                     ? $"«{key}» es demasiado largo (máx. {BrandTokenUrlMax})."
                     : HasDangerousScheme(text) ? $"«{key}» no admite URLs javascript: ni data:."
-                    : HasUnsafeUrlChars(text)
-                        ? $"«{key}» no admite espacios, comillas, paréntesis, «<», «>», «\\», «;» ni llaves."
+                    : HasUnsafeUrlChars(text, allowSemicolon: key == "fontUrl" && !enCss)
+                        ? (enCss
+                            ? $"«{key}» de un fichero .woff2 no admite espacios, comillas, paréntesis, «<», «>», «\\», «;» ni llaves."
+                            : $"«{key}» no admite espacios, comillas, paréntesis, «<», «>», «\\» ni llaves.")
                         : null;
             }
             else if (BrandLengthTokens.Contains(key))
@@ -478,9 +485,18 @@ public static class IntegrationEndpoints
     /// URLs de marca: acaban en un atributo src/href del portal y dentro del url("…") del
     /// @font-face que se inyecta. Además del esquema se cierran los caracteres que rompen esos
     /// contextos, exactamente los mismos que rechaza asUrl() en el portal.
-    private static bool HasUnsafeUrlChars(string url) =>
+    private static bool HasUnsafeUrlChars(string url, bool allowSemicolon = false) =>
         url.Any(c => char.IsWhiteSpace(c) || char.IsControl(c)
-            || c is '"' or '\'' or '(' or ')' or '<' or '>' or '\\' or ';' or '{' or '}');
+            || c is '"' or '\'' or '(' or ')' or '<' or '>' or '\\' or '{' or '}'
+            || (c == ';' && !allowSemicolon));
+
+    /// Fichero de fuente: se declara con @font-face y su URL entra en un url("…") de CSS.
+    /// Cualquier otra URL de fuente es una hoja de estilos y va al href de un <link>.
+    private static bool IsFontFile(string url) =>
+        FontFilePattern.IsMatch(url);
+
+    private static readonly Regex FontFilePattern =
+        new(@"\.woff2?([?#].*)?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     /// Valor que acaba dentro de una declaración CSS: no puede cerrarla, ni escapar un carácter
     /// (en CSS «\75» es una «u», así que «\75rl(…)» era un url() válido que se colaba), ni abrir

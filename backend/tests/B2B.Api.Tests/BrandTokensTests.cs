@@ -817,4 +817,31 @@ public class BrandTokensTests : IClassFixture<TestWebApplicationFactory>
         foreach (var name in new[] { "accent", "caps", "displayWeight", "heroStyle", "paper", "card", "tracking" })
             Assert.False((await PublicTokensAsync()).TryGetProperty(name, out _), name);
     }
+
+    /// Una hoja de Google Fonts con varios pesos lleva «;» como separador (wght@300;400;700).
+    /// Esa URL va al href de un <link> por setAttribute, no al url("…") de un @font-face, así
+    /// que el «;» no puede cerrar ninguna declaración: hay que admitirla o la marca se queda
+    /// sin su tipografía. El fichero .woff2 sí entra en CSS y mantiene la regla estricta.
+    [Fact]
+    public async Task FontUrl_HojaDeEstilosConVariosPesos_SeGuarda()
+    {
+        await ResetAsync();
+
+        const string hoja = "https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap";
+        (await PutTokens($$"""{"fontUrl":"{{hoja}}","fontFamily":"Figtree"}""")).EnsureSuccessStatusCode();
+        Assert.Equal(hoja, (await PublicTokensAsync()).GetProperty("fontUrl").GetString());
+    }
+
+    [Theory]
+    [InlineData("/media/fuente.woff2;body{display:none}")]
+    [InlineData("/media/fuente.woff2?v=1;x")]
+    public async Task FontUrl_FicheroDeFuenteConPuntoYComa_400(string url)
+    {
+        await ResetAsync();
+
+        var response = await PutTokens($$"""{"fontUrl":"{{url}}","fontFamily":"Fuente"}""");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("fontUrl", await ErrorAsync(response));
+    }
 }
